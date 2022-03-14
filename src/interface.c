@@ -12,16 +12,44 @@ char *choice_panel[] = { "Start", "Processes", "Memory", "Others", (char *)NULL,
 char *panel_func[] = { " ", " ", " ", " ", (char *)NULL, } ; 
 
 
+
+
+
+// start_interface
+struct Interface{
+    // first : windows
+    WINDOW *main_window[4] ;
+    WINDOW *right_window[1] ; 
+    WINDOW *title_window[1] ; 
+    WINDOW *selector_window[1] ;  
+    PANEL *my_panels[7] ;
+    ITEM **my_items ; 
+    MENU *my_menus ; 
+    ITEM *cur_item ; 
+};
+
+//struct start_interface(void){
+//    struct Interface inter  ; 
+//    return inter ; 
+//}
+
+
+// rules for each individual window
 int show_window_start(WINDOW *start);
 int show_window_processes(WINDOW *processes);
 int show_window_memory(WINDOW *memory);
 int show_window_others(WINDOW *others);
 
 
+
+
+
 int main(int argc, char **argv){
     printf("This is the Ncurses sbstndbs debugger ! \n");   
 
-    // entities creation : 
+    /*
+
+    // int creation : 
     // first : windows
     WINDOW *main_window[4] ; // there are 2 distinct windows
     WINDOW *right_window[1] ; 
@@ -33,7 +61,8 @@ int main(int argc, char **argv){
     MENU *my_menus ; 
     ITEM *cur_item ; // selected item 
 
-
+*/
+    struct Interface inter ; 
 
 
     // get the window size
@@ -72,51 +101,51 @@ int main(int argc, char **argv){
     //keypad(stdscr, TRUE) ; // toggle managmeent with keyboard
    
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]) ; 
-    my_items = (ITEM **)calloc(n_choice  , sizeof(ITEM *)) ; 
+    inter.my_items = (ITEM **)calloc(n_choice  , sizeof(ITEM *)) ; 
 
     for (int i = 0 ; i < n_choice ; i++){
-        my_items[i] = new_item(panel_func[i], choice_panel[i]);
+        inter.my_items[i] = new_item(panel_func[i], choice_panel[i]);
     }
-    my_items[n_choice] = (ITEM *)NULL ;
+    inter.my_items[n_choice] = (ITEM *)NULL ;
 
-    my_menus= new_menu((ITEM **)my_items) ; 
+    inter.my_menus= new_menu((ITEM **)inter.my_items) ; 
 
 
     // window creation
     for (int i = 0 ; i < 4 ; i++){
-        main_window[i] = newwin(linesmain, colsmain, xmain, ymain) ; 
+        inter.main_window[i] = newwin(linesmain, colsmain, xmain, ymain) ; 
     }
-    right_window[0] = newwin(linesright, colsright, xright, yright) ; 
-    title_window[0] = newwin(linestitle, colstitle, xtitle, ytitle) ; 
-    selector_window[0] = newwin(linesselector, colsselector, xselector, yselector) ; 
+    inter.right_window[0] = newwin(linesright, colsright, xright, yright) ; 
+    inter.title_window[0] = newwin(linestitle, colstitle, xtitle, ytitle) ; 
+    inter.selector_window[0] = newwin(linesselector, colsselector, xselector, yselector) ; 
     //keypad(selector_window[0], TRUE);
 
     // draw boxes
     for (int i = 0 ; i < 4 ; i++){
-        box(main_window[i], 0, 0) ;     
+        box(inter.main_window[i], 0, 0) ;     
     }   
-    box(right_window[0], 0, 0) ; 
+    box(inter.right_window[0], 0, 0) ; 
     
 
     // panel initialsation ( works well with window superpositions)
 
     for(int i = 0 ; i < 4 ; i++){
-    my_panels[i] = new_panel(main_window[i]) ;
+    inter.my_panels[i] = new_panel(inter.main_window[i]) ;
     }
-    my_panels[4] = new_panel(right_window[0]) ;
-    my_panels[5] = new_panel(title_window[0]) ;
-    my_panels[6] = new_panel(selector_window[0]) ;
+    inter.my_panels[4] = new_panel(inter.right_window[0]) ;
+    inter.my_panels[5] = new_panel(inter.title_window[0]) ;
+    inter.my_panels[6] = new_panel(inter.selector_window[0]) ;
 
 
     // title 
     char title[] = "NCurses debugger v0.1" ;
-    mvwprintw(title_window[0], 0, 0, "%s", title) ; 
+    mvwprintw(inter.title_window[0], 0, 0, "%s", title) ; 
 
 
     // assiciate 4th window with the menu selector
-    set_menu_win(my_menus, selector_window[0]) ; 
-    set_menu_sub(my_menus, derwin(selector_window[0], linesselector, colsselector, 0, 0));
-    set_menu_format(my_menus, 1, n_choice );
+    set_menu_win(inter.my_menus, inter.selector_window[0]) ; 
+    set_menu_sub(inter.my_menus, derwin(inter.selector_window[0], linesselector, colsselector, 0, 0));
+    set_menu_format(inter.my_menus, 1, n_choice );
     //set_menu_mark(my_menus, "*");
     //box(my_window_selector[0], 0, 0) ;
 
@@ -127,19 +156,19 @@ int main(int argc, char **argv){
     
     update_panels();    
     
-    post_menu(my_menus) ; 
-    wrefresh(selector_window[0]) ; 
+    post_menu(inter.my_menus) ; 
+    wrefresh(inter.selector_window[0]) ; 
 
     int c ;
-    set_current_item(my_menus, my_items[0]);
+    set_current_item(inter.my_menus, inter.my_items[0]);
 
 
 
-    c = show_window_start(main_window[0]); // c est la touche d'interraction pressee
-    mvwaddnstr(main_window[0],1, 1,  "Bienvenue sur le menu d'execution\n", 35);
+    c = show_window_start(inter.main_window[0]); // c est la touche d'interraction pressee
+    mvwaddnstr(inter.main_window[0],1, 1,  "Bienvenue sur le menu d'execution\n", 35);
     //leaveok(win, TRUE);
     //wprintw(win, "test de wprintw \n");
-    box(main_window[0], 0, 0) ; 
+    box(inter.main_window[0], 0, 0) ; 
     update_panels();
     doupdate();
     refresh();    
@@ -151,47 +180,47 @@ int main(int argc, char **argv){
             case 49:   
             mvaddstr(1, 1, "F1 pressed ");  
                 refresh();
-                set_current_item(my_menus, my_items[0]);
-                hide_panel(my_panels[1]);
-                hide_panel(my_panels[2]);
-                hide_panel(my_panels[3]);
-                show_panel(my_panels[0]);    
+                set_current_item(inter.my_menus, inter.my_items[0]);
+                hide_panel(inter.my_panels[1]);
+                hide_panel(inter.my_panels[2]);
+                hide_panel(inter.my_panels[3]);
+                show_panel(inter.my_panels[0]);    
                 refresh();                
                 update_panels();  
                 doupdate();       
-                c = show_window_start(main_window[0]) ; 
+                c = show_window_start(inter.main_window[0]) ; 
                 break;
             case 50: 
             mvaddstr(1, 1, "F2 pressed ");    
                 refresh(); 
-                hide_panel(my_panels[0]);
-                hide_panel(my_panels[2]);
-                hide_panel(my_panels[3]);
-                show_panel(my_panels[1]);        
+                hide_panel(inter.my_panels[0]);
+                hide_panel(inter.my_panels[2]);
+                hide_panel(inter.my_panels[3]);
+                show_panel(inter.my_panels[1]);        
                 refresh();        
                 update_panels();
                 doupdate();                              
-                set_current_item(my_menus, my_items[1]);
-                c = show_window_processes(main_window[1]) ;
+                set_current_item(inter.my_menus, inter.my_items[1]);
+                c = show_window_processes(inter.main_window[1]) ;
                 break;
             case 51:
             mvaddstr(1, 1, "F3 pressed ");      
                 refresh();
-                hide_panel(my_panels[0]);
-                hide_panel(my_panels[1]);
-                hide_panel(my_panels[3]);
-                show_panel(my_panels[2]);        
+                hide_panel(inter.my_panels[0]);
+                hide_panel(inter.my_panels[1]);
+                hide_panel(inter.my_panels[3]);
+                show_panel(inter.my_panels[2]);        
                 refresh();        
                 update_panels();  
                 doupdate();                                     
-                set_current_item(my_menus, my_items[2]);
-                c =show_window_memory(main_window[2]) ;
+                set_current_item(inter.my_menus, inter.my_items[2]);
+                c =show_window_memory(inter.main_window[2]) ;
                 break;                
             case 52:  
                 mvaddstr(1, 1, "F4 pressed ");   
                     refresh(); 
-                set_current_item(my_menus, my_items[3]);
-                c = show_window_others(main_window[3]) ;
+                set_current_item(inter.my_menus, inter.my_items[3]);
+                c = show_window_others(inter.main_window[3]) ;
                 break;
 /* 
             case 10:
@@ -241,8 +270,8 @@ int main(int argc, char **argv){
     doupdate();
     getch();
 
-    free_item(my_items[0]);
-    free_menu(my_menus);
+    free_item(inter.my_items[0]);
+    free_menu(inter.my_menus);
     endwin();
 
 }
