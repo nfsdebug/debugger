@@ -246,6 +246,8 @@ int show_window_start(WINDOW *win){
     char text[1];
     mvaddstr(1, 1, "show window start");
     refresh();
+    mvwaddstr(win, 2, 1, "sart panel");
+    wrefresh(win);    
     while(( c = getch())){
         if( (c >= 49) & (c <= 52)){
             break;
@@ -267,6 +269,8 @@ int show_window_processes(WINDOW *win){
     int c ;
     mvaddstr(1, 1, "show window processes");
     refresh();
+    mvwaddstr(win, 2, 1, "processes panel");
+    wrefresh(win);
     while(( c = getch())){
         if( (c >= 49) & (c <= 52)){
             break;
@@ -288,6 +292,8 @@ int show_window_memory(WINDOW *win){
     int c ; 
     mvaddstr(1, 1, "show window memory");
     refresh();
+    mvwaddstr(win, 2, 1, "memory panel");
+    wrefresh(win);    
     while(( c = getch())){
         if( (c >= 49) & (c <= 52)){
             break;
@@ -307,6 +313,8 @@ int show_window_others(WINDOW *win){
     update_panels();
     mvaddstr(1, 1, "show window others");
     refresh();
+    mvwaddstr(win, 2, 1, "others panel");
+    wrefresh(win);
     int c ; 
     while(( c = getch())){
         if( (c >= 49) & (c <= 52)){
