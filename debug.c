@@ -14,45 +14,14 @@
 #include <unistd.h>
 #include <sys/user.h>
 
-#include "lib/linenoise.h"
 
-
-pid_t child;
-int wait_status;
-
-/*
-void completion(const char *buf, linenoiseCompletions *lc) {
-    if (buf[0] == 'c') {
-        linenoiseAddCompletion(lc,"continue");
-    }
-}*/
-
-char *hints(const char *buf, int *color, int *bold) {
-    if (!strcasecmp(buf,"continue")) {
-        printf("\n");
-
-        //Continue the child program
-        ptrace(PTRACE_CONT, child, 0, 0);
-
-        //Wait its execution
-        waitpid(child, &wait_status, WUNTRACED | WCONTINUED);  
-
-        if (WIFEXITED(wait_status) || WIFSIGNALED(wait_status))
-                    exit(0);
-
-        int  signum = WSTOPSIG(wait_status);
-
-        printf("child has stopped with signal %s (%d)\n", strsignal(signum),signum);
-        
-    }
-    return NULL;
-}
 
 int main(int argc, char** argv){
 
     //Name of the program has not been inputed (return -1)
     if ( argc < 2) return printf("You need to put the name of the program to be debugged"), -1;
 
+    pid_t child;
 
     child = fork();
     
@@ -64,6 +33,7 @@ int main(int argc, char** argv){
 
         //Launch program ( without arg for the test)
 
+        // TODO : use exevp
         execl(argv[1], argv[1], NULL); 
 
 
@@ -74,13 +44,9 @@ int main(int argc, char** argv){
     else
     {
 
-        char *line;
+        char cmd[80];
+        int wait_status;
 
-
-
-   // linenoiseSetCompletionCallback(completion);
-    linenoiseSetHintsCallback(hints);
-    linenoiseHistoryLoad("history.txt");
 
 
     // Print proc information
@@ -91,18 +57,41 @@ int main(int argc, char** argv){
 
        //Wait for the program (first execution)
        waitpid(child,&wait_status,0);
-    while((line = linenoise("NFSD> ")) != NULL) {
-        if (line[0] != '\0' && line[0] != '/') {
-          //  printf("echo: '%s'\n", line);
-            linenoiseHistoryAdd(line);
-            linenoiseHistorySave("history.txt");
-        } else if (line[0] == '/') {
-            printf("Unreconized command: %s\n", line);
-        }
-        free(line);
-    }
-    }
+        scanf("%[^\n]",cmd);
 
+    while (cmd != NULL)
+    {
+
+
+    if (!strcasecmp(cmd,"continue")) {
+
+        //Continue the child program and waiting for sys calls
+        ptrace(PTRACE_SYSCALL, child, 0, 0);
+
+        //Wait its execution
+        waitpid(child, &wait_status,0);  
+
+        siginfo_t signinf;
+
+        //Sighandler with ptrace
+        ptrace(PTRACE_GETSIGINFO,child,NULL,&signinf);
+
+        // If it's not a breakpoint made by ptrace, it's an error from the child
+        if(signinf.si_signo != 5)
+        {
+            printf("\n child stopped : %s (%d) at adress 0x%p\n",strsignal(signinf.si_signo),signinf.si_signo,signinf.si_addr);
+
+            // TODO: toggle when the parser will not do a loop ( to fix)
+            break;
+        }
+        
+        scanf("%[^\n]",cmd);
+    
+    }
+  //  return;
+    
+}
+    }
 }
 
 
