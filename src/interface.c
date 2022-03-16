@@ -17,6 +17,7 @@ char *panel_func[] = { " ", " ", " ", " ", (char *)NULL, } ;
 
 
 
+
 int NumDigits(int n){
     // this is a method to determine the lenght of the decimal representation of a nuumber
     // stolen from stackoverflow
@@ -99,7 +100,7 @@ struct All_window_size compute_size_window(void){
     size.main.dx = (int)(1.0 * w.ws_row) - 3  ,  size.main.dy = (int)(vertical_ratio * w.ws_col)  ; 
     size.right.dx = (int)(1.0 * w.ws_row) - 3  ,  size.right.dy = (int)((1.0 - vertical_ratio) * w.ws_col) - 3  ; 
     size.title.dx = 1 ; 
-    size.title.dy = 30 ;
+    size.title.dy = 23 ;
     size.selector.dx = 1 ; 
     size.selector.dy = (int)(1.0 * w.ws_col) - 1 ; 
 
@@ -169,7 +170,7 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws){
 }
 
 // rules for each individual window
-int show_window_start(WINDOW *start);
+int show_window_start(WINDOW *start, WINDOW *main);
 int show_window_processes(WINDOW *processes, vec_t *vp);
 int show_window_memory(WINDOW *memory);
 int show_window_others(WINDOW *others);
@@ -190,7 +191,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c){
                 refresh();                
                 update_panels();  
                 doupdate();       
-                c = show_window_start(inter->right_window[0]) ; 
+                c = show_window_start(inter->right_window[0], inter->main_window[0]) ; 
                 break;
             case 50: 
             mvaddstr(1, 1, "F2 pressed ");    
@@ -271,7 +272,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c){
 }
 
 // this is the way the main window is drawn
-int show_window_start(WINDOW *win){
+int show_window_start(WINDOW *win, WINDOW *main_win){
     keypad(win, FALSE);
     box(win, 0, 0) ; 
     //attron(A_BLINK); 
@@ -285,14 +286,57 @@ int show_window_start(WINDOW *win){
     mvaddstr(1, 1, "show window start");
     refresh();
     mvwaddstr(win, 2, 1, "sart panel");
-    wrefresh(win);    
+    wrefresh(win);   
+
+// test de scroll
+    scrollok(main_win, TRUE) ; 
+    int i = 0 ; 
+    /*
+    while( i < 20){   
+
+        wprintw(main_win, "this is another line\n") ; 
+        wrefresh(main_win) ; 
+        i++;
+    }
+
+    while( i > 0){   
+
+        wprintw(main_win, "this is another loop line\n") ; 
+        wrefresh(main_win) ; 
+        i--;
+    }
+    */
+
+
+    int espace = 32 ;
+    waddch(main_win, espace) ;  
+    wrefresh(main_win) ; 
+
+    char temp = 20 + '0' ; 
+
     while(( c = getch())){
         if( (c >= 49) & (c <= 52)){
             break;
         } 
-           // waddch(win, c) ; 
+        if ((c == KEY_F(1)) || (c == KEY_F(2)) || (c == KEY_F(3)) || (c == KEY_F(4))){
+            //waddch(main_win, espace) ; 
+            mvaddstr(1,1,"specialkey") ;             
+            wrefresh(main_win);
+        }
+        else if (c == 10){ //enter key
+            mvaddstr(1,1,"enterkey") ;             
+            wrefresh(main_win);
+        }
+        else{
+            mvaddstr(1,1,"notspecialkey") ; 
+            temp = c + '0' ; 
+            waddch(main_win, c) ; 
+            //wprintw(main_win, temp) ; 
             doupdate();
-            refresh();
+            wrefresh(main_win);
+        }
+        box(main_win, 0,0) ; 
+        wrefresh(main_win) ; 
      }
     mvaddstr(1, 1, "exit window start"); 
     refresh();
@@ -514,7 +558,7 @@ int show_window_others(WINDOW *win){
     }
     int iline = 0 ; 
     int nline = 0 ; 
-    while ((nline < nrow ) && (fgets(buff, ncol, fp) != NULL) ){
+    while ((nline < nrow - 1 ) && (fgets(buff, ncol, fp) != NULL) ){
         mvaddstr(1, 1, "begin writing the line file ");
         if (iline >= begin){
 
@@ -543,6 +587,7 @@ int show_window_others(WINDOW *win){
     // close file
     fclose(fp) ;
 
+    box(win, 0, 0);
     wrefresh(win) ;  
 
     int c ; 
@@ -593,6 +638,9 @@ int main(int argc, char **argv){
     setup_title(&inter) ; 
     setup_menu(&inter, &ws) ; 
 
+    keypad(stdscr, TRUE);
+
+
     refresh() ;
     update_panels() ;    
 
@@ -603,8 +651,10 @@ int main(int argc, char **argv){
     
     vec_t* vp = generate_processes() ;  // to add processes. Need to be obtain from branch/features
 
+    keypad(inter.main_window[0], TRUE) ; 
+
     int c ;
-    c = show_window_start(inter.right_window[0]); // c est la touche d'interraction pressee
+    c = show_window_start(inter.right_window[0], inter.main_window[0]); // c est la touche d'interraction pressee
     //TODO: utiliser l'execution conditionelle au debug (compil) des mvwaddnstr 
     // qui servent au debug uniquement
     mvwaddnstr(inter.right_window[0],1, 1,  "Bienvenue sur le menu d'execution\n", 35); // a titre de debug
