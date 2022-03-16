@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <string.h>
 
 #include <panel.h>
 #include <menu.h>
@@ -13,6 +14,21 @@
 
 char *choice_panel[] = { "Start", "Processes", "Memory", "Others", (char *)NULL, } ; 
 char *panel_func[] = { " ", " ", " ", " ", (char *)NULL, } ; 
+
+
+
+int NumDigits(int n){
+    // this is a method to determine the lenght of the decimal representation of a nuumber
+    // stolen from stackoverflow
+    // @user:14637
+    int digits = 0 ; 
+    while (n){
+        n /= 10 ; 
+        ++digits ; 
+    }
+    return digits ; 
+}
+
 
 
 
@@ -466,7 +482,7 @@ int show_window_others(WINDOW *win){
     // we want to prijnt a specific part of the code where the bug occurs, or something else
     // protocole : we get a file, and a line 
     // example : want to print line 54 in main.c --> we print from line 54-height/2 to 54+height/2
-    int line_to_print = 44; 
+    int line_to_print = 10; 
 
     int nrow, ncol ; 
     getmaxyx(win, nrow, ncol) ; // get the specific window size 
@@ -486,16 +502,40 @@ int show_window_others(WINDOW *win){
     // open the specific file 
     FILE *fp ; 
     char *buff = malloc( ncol * sizeof(char)) ; 
+
+    // length of the char line
+    int numdigits = NumDigits(line_to_print + midheight) ; 
+    char *chline = malloc( numdigits * sizeof(char));   
+
+
     fp = fopen("/home/sbstndbs/debugger/src/interface.c", "r") ;
     if (fp == NULL){
-        mvwaddstr(win, 1, 1, "cannot open the selected file...");
+        mvwaddstr(win, 1, 4, "cannot open the selected file...");
     }
     int iline = 0 ; 
     int nline = 0 ; 
     while ((nline < nrow ) && (fgets(buff, ncol, fp) != NULL) ){
         mvaddstr(1, 1, "begin writing the line file ");
         if (iline >= begin){
-            mvwaddstr(win, 1 + nline, 1, buff) ; 
+
+            // print the line
+            sprintf(chline, "%d", iline + 1);
+            //wattron(win, COLOR_PAIR(1));  
+            mvwaddstr(win, 1 + nline, 1, chline) ;
+            //wattroff(win, COLOR_PAIR(1));  
+
+            if(nline + begin == line_to_print){
+                char *symbol[1] = {" "} ; 
+                wattron(win, COLOR_PAIR(1));                  
+                for (int i = 0 ; i < ncol - 2 ; i++){
+                    mvwaddstr(win, 1 + nline, i + 2 + numdigits, symbol[0]) ;
+                }              
+                mvwaddstr(win, 1 + nline, 2 + numdigits, buff) ; 
+                wattroff(win, COLOR_PAIR(1));                                
+            }
+            else{
+            mvwaddstr(win, 1 + nline, 2 + numdigits, buff) ; 
+            }
             nline++;
         }     
         iline++;  
