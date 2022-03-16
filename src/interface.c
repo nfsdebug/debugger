@@ -36,8 +36,8 @@ struct process_t{
 // start_interface
 struct Interface{
     // first : windows
-    WINDOW *main_window[4] ;
-    WINDOW *right_window[1] ; 
+    WINDOW *main_window[1] ;
+    WINDOW *right_window[4] ; 
     WINDOW *title_window[1] ; 
     WINDOW *selector_window[1] ;  
     PANEL *my_panels[7] ;
@@ -114,25 +114,26 @@ void setup_selector(struct Interface *inter){
 
 void setup_window(struct Interface *inter, struct All_window_size *ws){
     for (int i = 0 ; i < 4 ; i++){
-        inter->main_window[i] = newwin(ws->main.dx, ws->main.dy, ws->main.x, ws->main.y) ; 
+        inter->right_window[i] = newwin(ws->right.dx, ws->right.dy, ws->right.x, ws->right.y) ; 
     }
-    inter->right_window[0] = newwin(ws->right.dx, ws->right.dy, ws->right.x, ws->right.y) ; 
+    inter->main_window[0] = newwin(ws->main.dx, ws->main.dy, ws->main.x, ws->main.y) ; 
     inter->title_window[0] = newwin(ws->title.dx, ws->title.dy, ws->title.x, ws->title.y) ; 
     inter->selector_window[0] = newwin(ws->selector.dx, ws->selector.dy, ws->selector.x, ws->selector.y) ;    
 }
 
 void draw_box(struct Interface *inter){
+     box(inter->main_window[0], 0, 0) ;     
     for (int i = 0 ; i < 4 ; i++){
-        box(inter->main_window[i], 0, 0) ;     
+        box(inter->right_window[i], 0, 0) ;     
     }   
-    box(inter->right_window[0], 0, 0) ;     
+   
 }
 
 void setup_panel(struct Interface *inter){
+    inter->my_panels[0] = new_panel(inter->main_window[0]) ;    
      for(int i = 0 ; i < 4 ; i++){
-        inter->my_panels[i] = new_panel(inter->main_window[i]) ;
+        inter->my_panels[i+1] = new_panel(inter->right_window[i]) ;
     }
-    inter->my_panels[4] = new_panel(inter->right_window[0]) ;
     inter->my_panels[5] = new_panel(inter->title_window[0]) ;
     inter->my_panels[6] = new_panel(inter->selector_window[0]) ;   
 }
@@ -153,11 +154,11 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws){
 
 // rules for each individual window
 int show_window_start(WINDOW *start);
-int show_window_processes(WINDOW *processes);
+int show_window_processes(WINDOW *processes, vec_t *vp);
 int show_window_memory(WINDOW *memory);
 int show_window_others(WINDOW *others);
 
-void loop_execution(struct Interface *inter, int c){
+void loop_execution(struct Interface *inter, vec_t *vp, int c){
     while(c != KEY_F(10)){
         mvaddstr(1, 1, "while main"); 
         refresh();
@@ -166,46 +167,46 @@ void loop_execution(struct Interface *inter, int c){
             mvaddstr(1, 1, "F1 pressed ");  
                 refresh();
                 set_current_item(inter->my_menus, inter->my_items[0]);
-                hide_panel(inter->my_panels[1]);
                 hide_panel(inter->my_panels[2]);
                 hide_panel(inter->my_panels[3]);
-                show_panel(inter->my_panels[0]);    
+                hide_panel(inter->my_panels[4]);
+                show_panel(inter->my_panels[1]);    
                 refresh();                
                 update_panels();  
                 doupdate();       
-                c = show_window_start(inter->main_window[0]) ; 
+                c = show_window_start(inter->right_window[0]) ; 
                 break;
             case 50: 
             mvaddstr(1, 1, "F2 pressed ");    
                 refresh(); 
-                hide_panel(inter->my_panels[0]);
-                hide_panel(inter->my_panels[2]);
+                hide_panel(inter->my_panels[1]);
                 hide_panel(inter->my_panels[3]);
-                show_panel(inter->my_panels[1]);        
+                hide_panel(inter->my_panels[4]);
+                show_panel(inter->my_panels[2]);        
                 refresh();        
                 update_panels();
                 doupdate();                              
                 set_current_item(inter->my_menus, inter->my_items[1]);
-                c = show_window_processes(inter->main_window[1]) ;
+                c = show_window_processes(inter->right_window[1], vp) ;
                 break;
             case 51:
             mvaddstr(1, 1, "F3 pressed ");      
                 refresh();
-                hide_panel(inter->my_panels[0]);
                 hide_panel(inter->my_panels[1]);
-                hide_panel(inter->my_panels[3]);
-                show_panel(inter->my_panels[2]);        
+                hide_panel(inter->my_panels[2]);
+                hide_panel(inter->my_panels[4]);
+                show_panel(inter->my_panels[3]);        
                 refresh();        
                 update_panels();  
                 doupdate();                                     
                 set_current_item(inter->my_menus, inter->my_items[2]);
-                c =show_window_memory(inter->main_window[2]) ;
+                c =show_window_memory(inter->right_window[2]) ;
                 break;                
             case 52:  
                 mvaddstr(1, 1, "F4 pressed ");   
                     refresh(); 
                 set_current_item(inter->my_menus, inter->my_items[3]);
-                c = show_window_others(inter->main_window[3]) ;
+                c = show_window_others(inter->right_window[3]) ;
                 break;
 /* 
             case 10:
@@ -282,19 +283,9 @@ int show_window_start(WINDOW *win){
      return c ; 
 }
 
-int show_window_processes(WINDOW *win){
-    box(win, 0, 0) ;  
-    update_panels();
-    refresh();
-    refresh();
-    int c ;
-    mvaddstr(1, 1, "show window processes");
-    refresh();
-    mvwaddstr(win, 2, 1, "processes panel");
-    wrefresh(win);
 
-
-    // test p
+vec_t* generate_processes(void){
+   // test p
     // first main process
     struct process_t p1 = {  
         .pid = 2, 
@@ -347,14 +338,28 @@ int show_window_processes(WINDOW *win){
     vec_push( vp , &p4) ; 
     vec_push( vp , &p5) ; 
 
+    return vp ;  
+}
+
+int show_window_processes(WINDOW *win, vec_t *vp ){
+    box(win, 0, 0) ;  
+    update_panels();
+    refresh();
+    refresh();
+    int c ;
+    mvaddstr(1, 1, "show window processes");
+    refresh();
+    mvwaddstr(win, 2, 1, "processes panel");
+    wrefresh(win);
+
 
     // affichage des processes
     wclear(win); 
     box(win, 0, 0) ; 
     wrefresh(win) ; 
 
-    char *entity_name[] = { "PID", "PPID", "GID", "status", "threads", "memory", (char *)NULL, } ; 
-    char *reduced_entity_name[] = { "PID", "PPID", "GID", "stat.", "th.", "mem.", (char *)NULL, } ; 
+    char *entity_name[] = { "PID", "PPID", "GID", "status", "threads", "Memory", (char *)NULL, } ; 
+    char *reduced_entity_name[] = { "PID", "PPID", "GID", "stat.", "th.", "Mem.", (char *)NULL, } ; 
     // first line : legendary line
     // other lines : show each processes of vec.
     int ncol, nrow ; 
@@ -365,7 +370,15 @@ int show_window_processes(WINDOW *win){
     if (width > max_width){
         width = 10 ; 
     }
-    // print the first title line
+    // print the first title line 
+
+ 
+
+    wattron(win, COLOR_PAIR(1));
+    char *symbol[1] = {" "} ; 
+    for (int i = 0 ; i < ncol - 2 ; i++){
+        mvwaddstr(win, 1,i + 1, symbol[0]) ;
+    }
     for (int i = 0 ; i < nentity_col; i++)
     {
         if (width > 7){
@@ -375,7 +388,13 @@ int show_window_processes(WINDOW *win){
             mvwaddstr(win, 1, 1 + width * i, reduced_entity_name[i]) ;            
         }
     }
+    wattroff(win, COLOR_PAIR(1));
     wrefresh(win) ;
+
+
+// we want to have an arborescence between processes : sort them. 
+// 
+
     // print each process line
     char tmp[10] ; 
     for (int i = 0 ; i < vp->len ; i++){
@@ -479,6 +498,9 @@ int main(int argc, char **argv){
     noecho(); 
     curs_set(0);
 
+    start_color() ; 
+    init_pair(1, COLOR_BLACK, COLOR_WHITE);    
+
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]) ;
 
     setup_selector(&inter) ; 
@@ -490,18 +512,26 @@ int main(int argc, char **argv){
 
     refresh() ;
     update_panels() ;    
+
+        attron(COLOR_PAIR(1));
+        mvprintw( 0, 0, "%s", "voila");
+        attroff(COLOR_PAIR(1));
+
     
+    vec_t* vp = generate_processes() ;  // to add processes. Need to be obtain from branch/features
+
     int c ;
-    c = show_window_start(inter.main_window[0]); // c est la touche d'interraction pressee
+    c = show_window_start(inter.right_window[0]); // c est la touche d'interraction pressee
     //TODO: utiliser l'execution conditionelle au debug (compil) des mvwaddnstr 
     // qui servent au debug uniquement
-    mvwaddnstr(inter.main_window[0],1, 1,  "Bienvenue sur le menu d'execution\n", 35); // a titre de debug
-    box(inter.main_window[0], 0, 0) ; 
+    mvwaddnstr(inter.right_window[0],1, 1,  "Bienvenue sur le menu d'execution\n", 35); // a titre de debug
+    box(inter.right_window[0], 0, 0) ; 
+
     update_panels();
     doupdate();
     refresh();    
 
-    loop_execution(&inter, c) ; 
+    loop_execution(&inter, vp, c) ; 
 
     doupdate();
     getch();
