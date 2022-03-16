@@ -540,14 +540,10 @@ int show_window_others(WINDOW *win){
         }     
         iline++;  
     }
-
-
-
-
-
-
     // close file
-    fclose(fp) ; 
+    fclose(fp) ;
+
+    wrefresh(win) ;  
 
     int c ; 
     while(( c = getch())){
