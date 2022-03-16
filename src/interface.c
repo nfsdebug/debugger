@@ -353,6 +353,46 @@ int show_window_processes(WINDOW *win){
     box(win, 0, 0) ; 
     wrefresh(win) ; 
 
+    char *entity_name[] = { "PID", "PPID", "GID", "status", "threads", "memory", (char *)NULL, } ; 
+    char *reduced_entity_name[] = { "PID", "PPID", "GID", "stat.", "th.", "mem.", (char *)NULL, } ; 
+    // first line : legendary line
+    // other lines : show each processes of vec.
+    int ncol, nrow ; 
+    getmaxyx(win, nrow, ncol) ; // get the specific window size
+    int nentity_col = 6 ; 
+    int width = ncol / nentity_col ; 
+    int max_width = 10 ; 
+    if (width > max_width){
+        width = 10 ; 
+    }
+    // print the first title line
+    for (int i = 0 ; i < nentity_col; i++)
+    {
+        if (width > 7){
+            mvwaddstr(win, 1, 1 + width * i, entity_name[i]) ; 
+        }
+        else{
+            mvwaddstr(win, 1, 1 + width * i, reduced_entity_name[i]) ;            
+        }
+    }
+    wrefresh(win) ;
+    // print each process line
+    char tmp[10] ; 
+    for (int i = 0 ; i < vp->len ; i++){
+            sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].pid) ; 
+            mvwaddstr(win, 2 + i, 1, tmp  ) ;   
+            sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].ppid) ;               
+            mvwaddstr(win, 2 + i, 1 + width * 1, tmp  ) ;           
+            sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].gid) ;               
+            mvwaddstr(win, 2 + i, 1 + width * 2, tmp  ) ;     
+            sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].status) ;               
+            mvwaddstr(win, 2 + i, 1 + width * 3, tmp  ) ;     
+            sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].num_threads) ;               
+            mvwaddstr(win, 2 + i, 1 + width * 4, tmp  ) ;     
+            sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].memory) ;               
+            mvwaddstr(win, 2 + i, 1 + width * 5, tmp  ) ;                                                                                                      
+    }
+    wrefresh(win) ;
     
 
 
