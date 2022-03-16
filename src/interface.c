@@ -7,9 +7,30 @@
 #include <panel.h>
 #include <menu.h>
 #include <form.h>
+#include "../ext/vec/src/vec.h"
+
+
 
 char *choice_panel[] = { "Start", "Processes", "Memory", "Others", (char *)NULL, } ; 
 char *panel_func[] = { " ", " ", " ", " ", (char *)NULL, } ; 
+
+
+
+
+// this code is for process printing through the interface
+// process structure
+struct process_t{
+    // state = 0 for killed , state = 1 for active, state = 2 for inactive
+    // this cnvention may change
+    int status ;
+    int pid ; 
+    int ppid ; 
+    int gid   ;  
+    int num_threads ;   // number of threads in the process
+    int memory ;           // memory used by the process
+};
+
+
 
 
 // start_interface
@@ -56,11 +77,11 @@ struct All_window_size compute_size_window(void){
     struct All_window_size size ; 
     struct winsize w = compute_size_terminal(); // get the size of the terminal
     // ratios are fromn 0 to 1 and indicaters the relative position of delimiters
-    float vertical_ratio = 0.8 ; 
+    float vertical_ratio = 0.5 ; 
     float horizontal_ratio = 0.6 ; 
     // compute the integer dimensions and positions of each windows
-    size.main.dx = (int)(1.0 * w.ws_row) - 3  ,  size.main.dy = (int)(0.8 * w.ws_col)  ; 
-    size.right.dx = (int)(1.0 * w.ws_row) - 3  ,  size.right.dy = (int)(0.2 * w.ws_col) - 2  ; 
+    size.main.dx = (int)(1.0 * w.ws_row) - 3  ,  size.main.dy = (int)(vertical_ratio * w.ws_col)  ; 
+    size.right.dx = (int)(1.0 * w.ws_row) - 3  ,  size.right.dy = (int)((1.0 - vertical_ratio) * w.ws_col) - 3  ; 
     size.title.dx = 1 ; 
     size.title.dy = 30 ;
     size.selector.dx = 1 ; 
@@ -271,6 +292,73 @@ int show_window_processes(WINDOW *win){
     refresh();
     mvwaddstr(win, 2, 1, "processes panel");
     wrefresh(win);
+
+
+    // test p
+    // first main process
+    struct process_t p1 = {  
+        .pid = 2, 
+        .ppid = 1, 
+        .gid = 4399,
+        .status = 1, 
+        .num_threads = 2, 
+        .memory = 329848
+    }; 
+    // second main process
+    struct process_t p2 = {  
+        .pid = 3, 
+        .ppid = 1, 
+        .gid = 4399,
+        .status = 1, 
+        .num_threads = 2, 
+        .memory = 329848
+    }; 
+    // processes attached to second main process
+    struct process_t p3 = {  
+        .pid = 4, 
+        .ppid = 3, 
+        .gid = 765,
+        .status = 1, 
+        .num_threads = 1, 
+        .memory = 4344
+    };     
+
+    struct process_t p4 = {  
+        .pid = 5, 
+        .ppid = 3, 
+        .gid = 76,
+        .status = 1, 
+        .num_threads = 1, 
+        .memory = 143
+    }; 
+    struct process_t p5 = {  
+        .pid = 6, 
+        .ppid = 3, 
+        .gid = 543,
+        .status = 1, 
+        .num_threads = 1, 
+        .memory = 98
+    }; 
+
+    vec_t* vp = vec_new( sizeof(struct process_t)) ; 
+    vec_push( vp , &p1) ; 
+    vec_push( vp , &p2) ; 
+    vec_push( vp , &p3) ; 
+    vec_push( vp , &p4) ; 
+    vec_push( vp , &p5) ; 
+
+
+    // affichage des processes
+    wclear(win); 
+    box(win, 0, 0) ; 
+    wrefresh(win) ; 
+
+    
+
+
+
+    //show_process_list(vp) ; 
+
     while(( c = getch())){
         if( (c >= 49) & (c <= 52)){
             break;
@@ -330,7 +418,9 @@ int show_window_others(WINDOW *win){
 
 }
 
+void show_process_list(vec_t vp){
 
+}
 
 
 
