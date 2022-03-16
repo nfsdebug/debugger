@@ -460,8 +460,55 @@ int show_window_others(WINDOW *win){
     update_panels();
     mvaddstr(1, 1, "show window others");
     refresh();
-    mvwaddstr(win, 2, 1, "others panel");
+    //mvwaddstr(win, 2, 1, "others panel");
     wrefresh(win);
+
+    // we want to prijnt a specific part of the code where the bug occurs, or something else
+    // protocole : we get a file, and a line 
+    // example : want to print line 54 in main.c --> we print from line 54-height/2 to 54+height/2
+    int line_to_print = 44; 
+
+    int nrow, ncol ; 
+    getmaxyx(win, nrow, ncol) ; // get the specific window size 
+    nrow-- ;
+    int midheight = (int)( nrow / 2 ) ; 
+    int begin ; 
+    if (midheight < line_to_print){
+        // we can naively print the code
+        begin = line_to_print - midheight ; 
+    } 
+    else{
+        // we have to begin with the first line of code
+        begin = 0 ; 
+    }
+
+
+    // open the specific file 
+    FILE *fp ; 
+    char *buff = malloc( ncol * sizeof(char)) ; 
+    fp = fopen("/home/sbstndbs/debugger/src/interface.c", "r") ;
+    if (fp == NULL){
+        mvwaddstr(win, 1, 1, "cannot open the selected file...");
+    }
+    int iline = 0 ; 
+    int nline = 0 ; 
+    while ((nline < nrow ) && (fgets(buff, ncol, fp) != NULL) ){
+        mvaddstr(1, 1, "begin writing the line file ");
+        if (iline >= begin){
+            mvwaddstr(win, 1 + nline, 1, buff) ; 
+            nline++;
+        }     
+        iline++;  
+    }
+
+
+
+
+
+
+    // close file
+    fclose(fp) ; 
+
     int c ; 
     while(( c = getch())){
         if( (c >= 49) & (c <= 52)){
