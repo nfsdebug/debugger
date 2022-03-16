@@ -171,16 +171,17 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws){
 
 // rules for each individual window
 int show_window_start(WINDOW *start, WINDOW *main);
-int show_window_processes(WINDOW *processes, vec_t *vp);
-int show_window_memory(WINDOW *memory);
-int show_window_others(WINDOW *others);
+int show_window_processes(WINDOW *processes, WINDOW *main, vec_t *vp);
+int show_window_memory(WINDOW *memory, WINDOW *main);
+int show_window_others(WINDOW *others, WINDOW *main);
 
 void loop_execution(struct Interface *inter, vec_t *vp, int c){
     while(c != KEY_F(10)){
         mvaddstr(1, 1, "while main"); 
         refresh();
         switch(c){
-            case 49:   
+            //case 49:   
+            case KEY_F(1):
             mvaddstr(1, 1, "F1 pressed ");  
                 refresh();
                 set_current_item(inter->my_menus, inter->my_items[0]);
@@ -193,7 +194,8 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c){
                 doupdate();       
                 c = show_window_start(inter->right_window[0], inter->main_window[0]) ; 
                 break;
-            case 50: 
+            //case 50:
+            case KEY_F(2):             
             mvaddstr(1, 1, "F2 pressed ");    
                 refresh(); 
                 hide_panel(inter->my_panels[1]);
@@ -204,9 +206,10 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c){
                 update_panels();
                 doupdate();                              
                 set_current_item(inter->my_menus, inter->my_items[1]);
-                c = show_window_processes(inter->right_window[1], vp) ;
+                c = show_window_processes(inter->right_window[1], inter->main_window[0], vp) ;
                 break;
-            case 51:
+            //case 51:
+            case KEY_F(3):            
             mvaddstr(1, 1, "F3 pressed ");      
                 refresh();
                 hide_panel(inter->my_panels[1]);
@@ -217,13 +220,14 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c){
                 update_panels();  
                 doupdate();                                     
                 set_current_item(inter->my_menus, inter->my_items[2]);
-                c =show_window_memory(inter->right_window[2]) ;
+                c =show_window_memory(inter->right_window[2], inter->main_window[0]) ;
                 break;                
-            case 52:  
+            //case 52:  
+            case KEY_F(4):            
                 mvaddstr(1, 1, "F4 pressed ");   
                     refresh(); 
                 set_current_item(inter->my_menus, inter->my_items[3]);
-                c = show_window_others(inter->right_window[3]) ;
+                c = show_window_others(inter->right_window[3], inter->main_window[0]) ;
                 break;
 /* 
             case 10:
@@ -271,6 +275,62 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c){
     }
 }
 
+
+
+void new_main_line(WINDOW *win){
+            wprintw(win, "\n") ;          
+	    wprintw(win, " ") ; 
+	    wrefresh(win) ;   
+}
+
+
+int function_key(WINDOW *win, int key){
+        if ((key == KEY_F(1)) || (key == KEY_F(2)) || (key == KEY_F(3)) || (key == KEY_F(4))){
+            //waddch(main_win, espace) ; 
+            mvaddstr(1,1,"specialkey") ;             
+            wrefresh(win);
+            return 1 ;
+        }	
+        else{
+        	return 0 ; 
+        }
+}
+
+int enter_key(WINDOW *win, int key){
+        if (key == 10){ //enter key
+            mvaddstr(1,1,"enterkey") ; 
+	    new_main_line(win) ; 
+	    wrefresh(win); 
+	    return 1 ;
+        }	
+        else{
+        	return 0 ;
+        }
+}
+
+int keyboard_input(WINDOW *win){
+	int key ; 
+    while(( key = getch())){
+
+	if (function_key(win, key)){
+		break;
+	}
+	else if (enter_key(win, key)){
+		//
+	}
+        else{
+            mvaddstr(1,1,"notspecialkey") ; 
+            waddch(win, key) ; 
+            //wprintw(main_win, temp) ; 
+            doupdate();
+            wrefresh(win);
+        }
+        box(win, 0,0) ; 
+        wrefresh(win) ; 
+     }	
+	return key ;
+}
+
 // this is the way the main window is drawn
 int show_window_start(WINDOW *win, WINDOW *main_win){
     keypad(win, FALSE);
@@ -292,7 +352,7 @@ int show_window_start(WINDOW *win, WINDOW *main_win){
     scrollok(main_win, TRUE) ; 
     int i = 0 ; 
     /*
-    while( i < 20){   
+    while( i < 30){   
 
         wprintw(main_win, "this is another line\n") ; 
         wrefresh(main_win) ; 
@@ -306,38 +366,12 @@ int show_window_start(WINDOW *win, WINDOW *main_win){
         i--;
     }
     */
-
-
-    int espace = 32 ;
-    waddch(main_win, espace) ;  
+ 
+    //int espace = 32 ;
+    //waddch(main_win, espace) ;  
     wrefresh(main_win) ; 
 
-    char temp = 20 + '0' ; 
-
-    while(( c = getch())){
-        if( (c >= 49) & (c <= 52)){
-            break;
-        } 
-        if ((c == KEY_F(1)) || (c == KEY_F(2)) || (c == KEY_F(3)) || (c == KEY_F(4))){
-            //waddch(main_win, espace) ; 
-            mvaddstr(1,1,"specialkey") ;             
-            wrefresh(main_win);
-        }
-        else if (c == 10){ //enter key
-            mvaddstr(1,1,"enterkey") ;             
-            wrefresh(main_win);
-        }
-        else{
-            mvaddstr(1,1,"notspecialkey") ; 
-            temp = c + '0' ; 
-            waddch(main_win, c) ; 
-            //wprintw(main_win, temp) ; 
-            doupdate();
-            wrefresh(main_win);
-        }
-        box(main_win, 0,0) ; 
-        wrefresh(main_win) ; 
-     }
+    c = keyboard_input(main_win) ; 
     mvaddstr(1, 1, "exit window start"); 
     refresh();
      return c ; 
@@ -401,7 +435,7 @@ vec_t* generate_processes(void){
     return vp ;  
 }
 
-int show_window_processes(WINDOW *win, vec_t *vp ){
+int show_window_processes(WINDOW *win, WINDOW *main_win, vec_t *vp ){
     box(win, 0, 0) ;  
     update_panels();
     refresh();
@@ -478,14 +512,7 @@ int show_window_processes(WINDOW *win, vec_t *vp ){
 
     //show_process_list(vp) ; 
 
-    while(( c = getch())){
-        if( (c >= 49) & (c <= 52)){
-            break;
-        } 
-            //waddch(win, text[0]) ; 
-            doupdate();
-            refresh();
-     }
+    c = keyboard_input(main_win) ; 
     mvaddstr(1, 1, "exit window processes"); 
     refresh();
      return c ; 
@@ -493,7 +520,7 @@ int show_window_processes(WINDOW *win, vec_t *vp ){
 
 }
 
-int show_window_memory(WINDOW *win){
+int show_window_memory(WINDOW *win, WINDOW *main_win){
     box(win, 0, 0) ;  
     update_panels();
     int c ; 
@@ -501,21 +528,14 @@ int show_window_memory(WINDOW *win){
     refresh();
     mvwaddstr(win, 2, 1, "memory panel");
     wrefresh(win);    
-    while(( c = getch())){
-        if( (c >= 49) & (c <= 52)){
-            break;
-        } 
-            //waddch(win, text[0]) ; 
-            doupdate();
-            refresh();
-     }
+    c = keyboard_input(main_win) ; 
     mvaddstr(1, 1, "exit window memory"); 
     refresh();
      return c ;    
 
 }
 
-int show_window_others(WINDOW *win){
+int show_window_others(WINDOW *win, WINDOW *main_win){
     box(win, 0, 0) ;  
     update_panels();
     mvaddstr(1, 1, "show window others");
@@ -591,14 +611,7 @@ int show_window_others(WINDOW *win){
     wrefresh(win) ;  
 
     int c ; 
-    while(( c = getch())){
-        if( (c >= 49) & (c <= 52)){
-            break;
-        } 
-            //waddch(win, text[0]) ; 
-            doupdate();
-            refresh();
-     }
+    c = keyboard_input(main_win) ; 
     mvaddstr(1, 1, "exit window others"); 
     refresh();
      return c ; 
@@ -652,6 +665,8 @@ int main(int argc, char **argv){
     vec_t* vp = generate_processes() ;  // to add processes. Need to be obtain from branch/features
 
     keypad(inter.main_window[0], TRUE) ; 
+
+	new_main_line(inter.main_window[0]);
 
     int c ;
     c = show_window_start(inter.right_window[0], inter.main_window[0]); // c est la touche d'interraction pressee
