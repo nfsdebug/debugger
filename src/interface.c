@@ -335,7 +335,7 @@ int keyboard_input(WINDOW *win, vec_t *input){
             wrefresh(win);
  
             vec_push(input, (char *)&key) ; 
-
+ 
 
         }
         box(win, 0,0) ; 
