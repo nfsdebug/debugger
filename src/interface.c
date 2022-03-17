@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <string.h>
+#include <pthread.h>
 
 #include <panel.h>
 #include <menu.h>
@@ -309,6 +310,29 @@ int enter_key(WINDOW *win, int key){
 }
 
 
+void *spawn_thread(WINDOW *win){
+	    waddstr(win , "bienvenue dans le thread") ; 
+	    new_main_line(win) ;  	
+	    
+	    // nous allons tenter un fork
+	    
+	    
+	    pid_t child_pid ; 
+	    int pid_status ; 
+	    child_pid = fork() ; 
+	    	char *argprog[] = {"/home/sbstndbs/debugger/target/mon_programme", "5433", (char *)NULL} ; 
+	    	if (child_pid == 0){
+	    		execv(argprog[0], &argprog[0]) ; 
+	    	}
+	    	else{
+	    	wait(NULL);
+	    	}
+	    	waddstr(win, "Programme lance") ; 
+	    	new_main_line(win) ; 	
+	    
+	    pthread_exit(NULL) ; 
+}
+
 void parse(WINDOW *win, vec_t *input){
 	    waddstr(win , "\n vous avew saisi :") ; 
 	    new_main_line(win) ;  
@@ -317,10 +341,38 @@ void parse(WINDOW *win, vec_t *input){
 	    // split method from internet hint
 	    const char *sep = " " ; 
 	    char * strToken = strtok((char *)(&input->data)[0] , sep ) ; 
+	    
+	    //pthread_t thread ; 
+	    //int thr = 1 ; 
+	    //pthread_create(&thread, NULL, spawn_thread, (WINDOW *)win);
+	    //pthread_join(thread , NULL) ; 
+	    
+	    
+	    
+	    
 	    if ( strcmp(strToken, command[0]) ){
 	    	waddstr(win, "Lancement de l'execution") ; 
 	    	new_main_line(win) ; 
+	    	
+	    	pid_t child_pid ; 
+	    	int pid_status ; 
+	    	child_pid = fork() ; 
+	    	char *argprog[] = {"/home/sbstndbs/debugger/target/mon_programme", "95433", (char *)NULL} ; 
+	    	char *arg[] = {"mon_programme", "9434543", (char *)NULL} ; 
+	    	if (child_pid == 0){
+	    		//execvp(arg[0], &arg[0]) ;
+	    		execv(argprog[0], &argprog[0]) ;  
+	    	}
+
+	    	waddstr(win, "Programme lance") ; 
+	    	new_main_line(win) ; 	    	
+	    	
 	    }
+	    
+	    
+	    
+	    //simple threading example to launch fork
+	    
 	    while (strToken != (char *)NULL){
 	    	//waddstr(win,strToken) ;
 	    	//new_main_line(win);  
