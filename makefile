@@ -8,16 +8,19 @@ TARGET = target
 EXP = exp
 
 
-all : $(TARGET)/interface $(TARGET)/test_process
+all : $(TARGET)/interface $(TARGET)/test_process $(TARGET)/mon_programme
 
 $(TARGET)/interface :  $(SRC)/interface.c 
 	gcc  -L./$(VEC) -Wl,-rpath=./$(VEC) $< -o $@  -lvec -lcurses -lpanel -lmenu -lform	
 
 $(TARGET)/test_process :  $(EXP)/test_process.c
 	gcc -L./$(VEC) -Wl,-rpath=./$(VEC) $< -o $@ -lvec
+	
+$(TARGET)/mon_programme:  $(SRC)/mon_programme.c
+	gcc $< -o $@ 	
 
 clean:
-	rm target/*
+	rm target/* 
 
 
 run_interface:

@@ -14,7 +14,7 @@
 
 char *choice_panel[] = { "Start", "Processes", "Memory", "Others", (char *)NULL, } ; 
 char *panel_func[] = { " ", " ", " ", " ", (char *)NULL, } ; 
-
+char *command[] = { "exe", "value", "adress", "reg",   (char *)NULL} ;
 
 
 
@@ -308,6 +308,28 @@ int enter_key(WINDOW *win, int key){
         }
 }
 
+
+void parse(WINDOW *win, vec_t *input){
+	    waddstr(win , "\n vous avew saisi :") ; 
+	    new_main_line(win) ;  
+	    waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
+	    new_main_line(win) ;  
+	    // split method from internet hint
+	    const char *sep = " " ; 
+	    char * strToken = strtok((char *)(&input->data)[0] , sep ) ; 
+	    if ( strcmp(strToken, command[0]) ){
+	    	waddstr(win, "Lancement de l'execution") ; 
+	    	new_main_line(win) ; 
+	    }
+	    while (strToken != (char *)NULL){
+	    	//waddstr(win,strToken) ;
+	    	//new_main_line(win);  
+	    	strToken = strtok (NULL, sep) ; 
+	    }			
+	    
+
+}
+
 int keyboard_input(WINDOW *win, vec_t *input){
 	int key ; 
     while(( key = getch())){
@@ -321,9 +343,10 @@ int keyboard_input(WINDOW *win, vec_t *input){
             char end = '\0' ; // signal de terminaison de la saisie
 	    vec_push(input, (char *)&end) ; // le vecteur est rempli d caracteres a interpreter termin2 par null
 	    // affichagele temps de debug	
-	    waddstr(win , "\n vous avew saisi : \n") ; 
-	    waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
-	    waddstr(win , "\n") ; 
+	    //waddstr(win , "\n vous avew saisi : \n") ; 
+	    //waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
+	    //waddstr(win , "\n") ; 
+	    parse(win, input) ; 
 	    vec_clear(input) ; // apres envoi au parseur, onvide le vec 
 	    	    
 	}
