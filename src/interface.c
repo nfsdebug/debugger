@@ -16,7 +16,7 @@
 
 
 
-char *choice_panel[] = { "Start", "Processes", "Memory", "Others", (char *)NULL, } ; 
+char *choice_panel[] = { "Start", "Processes", "Memory", "Code", (char *)NULL, } ; 
 char *panel_func[] = { " ", " ", " ", " ", (char *)NULL, } ; 
 char *command[] = { "exec", "value", "adress", "reg",   (char *)NULL} ;
 
