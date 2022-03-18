@@ -28,7 +28,7 @@ clean:
 
 
 run_interface:
-	./target/interface
+	@LD_LINRARY_PATH=. target/interface
 
 run_exp:
 	./target/test_process	
