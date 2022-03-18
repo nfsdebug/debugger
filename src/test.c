@@ -11,7 +11,7 @@ void foo(int b);
 void sigh(int sig)
 {
 
-	printf("J'ai planté :'(\n");
+	//printf("J'ai planté :'(\n");
 
 	void * addrs[64];
 	int cnt = backtrace((void**)&addrs, 64);
@@ -20,7 +20,7 @@ void sigh(int sig)
 
 	for(i = 0; i < cnt; i++)
 	{
-		printf("%d == %p\n", i, addrs[i]);
+		//printf("%d == %p\n", i, addrs[i]);
 	}
 
        //backtrace_symbols_fd(addrs, cnt, STDOUT_FILENO);
@@ -33,11 +33,11 @@ void sigh(int sig)
 
 int main(int argc, char ** argv)
 {
-	printf("Début\n");
+	//printf("Début\n");
 
-	printf("1\n");
+	//printf("1\n");
 
-	printf("2\n");	
+	//printf("2\n");	
 	int var = 3;
 
 	raise(SIGSEGV);

@@ -34,9 +34,6 @@ int NumDigits(int n){
 }
 
 
-
-
-
 // this code is for process printing through the interface
 // process structure
 struct process_t{
@@ -49,6 +46,65 @@ struct process_t{
     int num_threads ;   // number of threads in the process
     int memory ;           // memory used by the process
 };
+
+vec_t* generate_processes(void){
+   // test p
+    // first main process
+    struct process_t p1 = {  
+        .pid = 2, 
+        .ppid = 1, 
+        .gid = 4399,
+        .status = 1, 
+        .num_threads = 2, 
+        .memory = 329848
+    }; 
+    // second main process
+    struct process_t p2 = {  
+        .pid = 3, 
+        .ppid = 1, 
+        .gid = 4399,
+        .status = 1, 
+        .num_threads = 2, 
+        .memory = 329848
+    }; 
+    // processes attached to second main process
+    struct process_t p3 = {  
+        .pid = 4, 
+        .ppid = 3, 
+        .gid = 765,
+        .status = 1, 
+        .num_threads = 1, 
+        .memory = 4344
+    };     
+
+    struct process_t p4 = {  
+        .pid = 5, 
+        .ppid = 3, 
+        .gid = 76,
+        .status = 1, 
+        .num_threads = 1, 
+        .memory = 143
+    }; 
+    struct process_t p5 = {  
+        .pid = 6, 
+        .ppid = 3, 
+        .gid = 543,
+        .status = 1, 
+        .num_threads = 1, 
+        .memory = 98
+    }; 
+
+    vec_t* vp = vec_new( sizeof(struct process_t)) ; 
+    vec_push( vp , &p1) ; 
+    vec_push( vp , &p2) ; 
+    vec_push( vp , &p3) ; 
+    vec_push( vp , &p4) ; 
+    vec_push( vp , &p5) ; 
+
+    return vp ;  
+}
+
+
 
 
 
@@ -173,10 +229,10 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws){
 }
 
 // rules for each individual window
-int show_window_start(WINDOW *start, WINDOW *main, vec_t *input);
-int show_window_processes(WINDOW *processes, WINDOW *main, vec_t *vp, vec_t *input);
-int show_window_memory(WINDOW *memory, WINDOW *main, vec_t *input);
-int show_window_others(WINDOW *others, WINDOW *main, vec_t *input);
+int show_window_start(struct Interface *inter, WINDOW *start, WINDOW *main, vec_t *input);
+int show_window_processes(struct Interface *inter, vec_t *vp);
+int show_window_memory(struct Interface *inter, WINDOW *memory, WINDOW *main, vec_t *input);
+int show_window_others(struct Interface *inter, WINDOW *others, WINDOW *main, vec_t *input);
 
 void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
     while(c != KEY_F(10)){
@@ -195,7 +251,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 refresh();                
                 update_panels();  
                 doupdate();       
-                c = show_window_start(inter->right_window[0], inter->main_window[0], input) ; 
+                c = show_window_start(inter, inter->right_window[0], inter->main_window[0], input) ; 
                 break;
             //case 50:
             case KEY_F(2):             
@@ -209,7 +265,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 update_panels();
                 doupdate();                              
                 set_current_item(inter->my_menus, inter->my_items[1]);
-                c = show_window_processes(inter->right_window[1], inter->main_window[0], vp, input) ;
+                c = show_window_processes(inter, vp) ;
                 break;
             //case 51:
             case KEY_F(3):            
@@ -223,14 +279,14 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 update_panels();  
                 doupdate();                                     
                 set_current_item(inter->my_menus, inter->my_items[2]);
-                c =show_window_memory(inter->right_window[2], inter->main_window[0], input) ;
+                c =show_window_memory(inter, inter->right_window[2], inter->main_window[0], input) ;
                 break;                
             //case 52:  
             case KEY_F(4):            
                 mvaddstr(1, 1, "F4 pressed ");   
                     refresh(); 
                 set_current_item(inter->my_menus, inter->my_items[3]);
-                c = show_window_others(inter->right_window[3], inter->main_window[0], input) ;
+                c = show_window_others(inter, inter->right_window[3], inter->main_window[0], input) ;
                 break;
 /* 
             case 10:
@@ -312,9 +368,9 @@ int enter_key(WINDOW *win, int key){
 }
 
 
-void *spawn_thread(WINDOW *win){
-	    waddstr(win , "bienvenue dans le thread") ; 
-	    new_main_line(win) ;  	
+void *spawn_thread(struct Interface *inter){
+	    waddstr(inter->main_window[0] , "bienvenue dans le thread") ; 
+	    new_main_line(inter->main_window[0]) ;  	
 	    
 	    // nous allons tenter un fork
 	    
@@ -334,18 +390,24 @@ void *spawn_thread(WINDOW *win){
                 int wait_status ; 
                 char tmp[10] ;
                 sprintf(tmp, "%d", (int)getpid()) ; 
-                waddstr(win , " PID : ") ;                
-                waddstr(win, tmp  ) ;   
-                new_main_line(win) ;
+                waddstr(inter->main_window[0] , " PID : ") ;                
+                waddstr(inter->main_window[0], tmp  ) ;   
+                new_main_line(inter->main_window[0]) ;
                 sprintf(tmp, "%d", (int)getppid()) ; 
-                waddstr(win , " PPID : ") ;                       
-                waddstr(win, tmp  ) ;   
-                new_main_line(win) ;
+                waddstr(inter->main_window[0] , " PPID : ") ;                       
+                waddstr(inter->main_window[0], tmp  ) ;   
+                new_main_line(inter->main_window[0]) ;
                 sprintf(tmp, "%d", (int)getgid()) ; 
-                waddstr(win , " GID : ") ;       
-                waddstr(win, tmp  ) ;   
-                new_main_line(win) ;
-                wrefresh(win);
+                waddstr(inter->main_window[0] , " GID : ") ;       
+                waddstr(inter->main_window[0], tmp  ) ;   
+                new_main_line(inter->main_window[0]) ;
+                //wrefresh(win);
+            
+
+                vec_t* vp = generate_processes() ; 
+
+                ((struct process_t*)vp->data)[0].pid = 4934780;
+                show_window_processes(inter, vp) ; 
 
                 while(true){
                     ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
@@ -360,13 +422,13 @@ void *spawn_thread(WINDOW *win){
                         sprintf(tmp2, "%s",strsignal(signinf.si_signo)) ; 
                         sprintf(tmp3, "%d",signinf.si_signo) ;             
                         sprintf(tmp4, "%p",signinf.si_addr) ;                                          
-                        waddstr(win , "child stopped : ") ;                
-                        waddstr(win, tmp2  ) ;   
-                        waddstr(win , " (") ;                
-                        waddstr(win, tmp3  ) ;   
-                        waddstr(win , ") at adress 0x") ;                
-                        waddstr(win, tmp4  ) ;                                                  
-                        new_main_line(win) ;                        
+                        waddstr(inter->main_window[0] , "child stopped : ") ;                
+                        waddstr(inter->main_window[0], tmp2  ) ;   
+                        waddstr(inter->main_window[0] , " (") ;                
+                        waddstr(inter->main_window[0], tmp3  ) ;   
+                        waddstr(inter->main_window[0] , ") at adress 0x") ;                
+                        waddstr(inter->main_window[0], tmp4  ) ;                                                  
+                        new_main_line(inter->main_window[0]) ;                        
                         //printf("\n child stopped : %s (%d) at adress 0x%p\n",strsignal(signinf.si_signo),signinf.si_signo,signinf.si_addr);
 
                         // TODO: toggle when the parser will not do a loop ( to fix)
@@ -376,13 +438,13 @@ void *spawn_thread(WINDOW *win){
                 }
 
 	    	}
-	    	waddstr(win, "Programme lance") ; 
-	    	new_main_line(win) ; 	
+	    	waddstr(inter->main_window[0], "Programme lance") ; 
+	    	new_main_line(inter->main_window[0]) ; 	
 	    
 	    pthread_exit(NULL) ; 
 }
 
-void parse(WINDOW *win, vec_t *input){
+void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 	    waddstr(win , "\n vous avew saisi :") ; 
 	    new_main_line(win) ;  
 	    waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
@@ -393,9 +455,10 @@ void parse(WINDOW *win, vec_t *input){
 	    
 	    pthread_t thread ; 
 	    int thr = 1 ; 
-	    pthread_create(&thread, NULL, spawn_thread, (WINDOW *)win);
-	    //pthread_join(thread , NULL) ; 
-	    usleep(1000000) ; 
+	    pthread_create(&thread, NULL, spawn_thread, inter);
+	    pthread_join(thread , NULL) ; 
+        wrefresh(win);
+	    //usleep(1000000) ; 
 	    
 	    
 	    /*
@@ -422,16 +485,16 @@ void parse(WINDOW *win, vec_t *input){
 	    
 	    //simple threading example to launch fork
 	    
-	    while (strToken != (char *)NULL){
+	    //while (strToken != (char *)NULL){
 	    	//waddstr(win,strToken) ;
 	    	//new_main_line(win);  
-	    	strToken = strtok (NULL, sep) ; 
-	    }			
+	    //	strToken = strtok (NULL, sep) ; 
+	    //}			
 	    
 
 }
 
-int keyboard_input(WINDOW *win, vec_t *input){
+int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
 	int key ; 
     while(( key = getch())){
 
@@ -447,7 +510,7 @@ int keyboard_input(WINDOW *win, vec_t *input){
 	    //waddstr(win , "\n vous avew saisi : \n") ; 
 	    //waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
 	    //waddstr(win , "\n") ; 
-	    parse(win, input) ; 
+	    parse(inter, win, input) ; 
 	    vec_clear(input) ; // apres envoi au parseur, onvide le vec 
 	    	    
 	}
@@ -469,7 +532,7 @@ int keyboard_input(WINDOW *win, vec_t *input){
 }
 
 // this is the way the main window is drawn
-int show_window_start(WINDOW *win, WINDOW *main_win, vec_t *input){
+int show_window_start(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
     keypad(win, FALSE);
     box(win, 0, 0) ; 
     //attron(A_BLINK); 
@@ -535,7 +598,7 @@ int show_window_start(WINDOW *win, WINDOW *main_win, vec_t *input){
 	wrefresh(main_win) ; 
 
 
-    c = keyboard_input(main_win, input) ; 
+    c = keyboard_input(inter, main_win, input) ; 
     
     
 
@@ -547,86 +610,30 @@ int show_window_start(WINDOW *win, WINDOW *main_win, vec_t *input){
 }
 
 
-vec_t* generate_processes(void){
-   // test p
-    // first main process
-    struct process_t p1 = {  
-        .pid = 2, 
-        .ppid = 1, 
-        .gid = 4399,
-        .status = 1, 
-        .num_threads = 2, 
-        .memory = 329848
-    }; 
-    // second main process
-    struct process_t p2 = {  
-        .pid = 3, 
-        .ppid = 1, 
-        .gid = 4399,
-        .status = 1, 
-        .num_threads = 2, 
-        .memory = 329848
-    }; 
-    // processes attached to second main process
-    struct process_t p3 = {  
-        .pid = 4, 
-        .ppid = 3, 
-        .gid = 765,
-        .status = 1, 
-        .num_threads = 1, 
-        .memory = 4344
-    };     
 
-    struct process_t p4 = {  
-        .pid = 5, 
-        .ppid = 3, 
-        .gid = 76,
-        .status = 1, 
-        .num_threads = 1, 
-        .memory = 143
-    }; 
-    struct process_t p5 = {  
-        .pid = 6, 
-        .ppid = 3, 
-        .gid = 543,
-        .status = 1, 
-        .num_threads = 1, 
-        .memory = 98
-    }; 
-
-    vec_t* vp = vec_new( sizeof(struct process_t)) ; 
-    vec_push( vp , &p1) ; 
-    vec_push( vp , &p2) ; 
-    vec_push( vp , &p3) ; 
-    vec_push( vp , &p4) ; 
-    vec_push( vp , &p5) ; 
-
-    return vp ;  
-}
-
-int show_window_processes(WINDOW *win, WINDOW *main_win, vec_t *vp , vec_t *input){
-    box(win, 0, 0) ;  
+int show_window_processes(struct Interface *inter, vec_t *vp){
+    box(inter->right_window[1], 0, 0) ;  
     update_panels();
     refresh();
     refresh();
     int c ;
     mvaddstr(1, 1, "show window processes");
     refresh();
-    mvwaddstr(win, 2, 1, "processes panel");
-    wrefresh(win);
+    mvwaddstr(inter->right_window[1], 2, 1, "processes panel");
+    wrefresh(inter->right_window[1]);
 
 
     // affichage des processes
-    wclear(win); 
-    box(win, 0, 0) ; 
-    wrefresh(win) ; 
+    wclear(inter->right_window[1]); 
+    box(inter->right_window[1], 0, 0) ; 
+    wrefresh(inter->right_window[1]) ; 
 
     char *entity_name[] = { "PID", "PPID", "GID", "status", "threads", "Memory", (char *)NULL, } ; 
     char *reduced_entity_name[] = { "PID", "PPID", "GID", "stat.", "th.", "Mem.", (char *)NULL, } ; 
     // first line : legendary line
     // other lines : show each processes of vec.
     int ncol, nrow ; 
-    getmaxyx(win, nrow, ncol) ; // get the specific window size
+    getmaxyx(inter->right_window[1], nrow, ncol) ; // get the specific window size
     int nentity_col = 6 ; 
     int width = ncol / nentity_col ; 
     int max_width = 10 ; 
@@ -637,22 +644,22 @@ int show_window_processes(WINDOW *win, WINDOW *main_win, vec_t *vp , vec_t *inpu
 
  
 
-    wattron(win, COLOR_PAIR(1));
+    wattron(inter->right_window[1], COLOR_PAIR(1));
     char *symbol[1] = {" "} ; 
     for (int i = 0 ; i < ncol - 2 ; i++){
-        mvwaddstr(win, 1,i + 1, symbol[0]) ;
+        mvwaddstr(inter->right_window[1], 1,i + 1, symbol[0]) ;
     }
     for (int i = 0 ; i < nentity_col; i++)
     {
         if (width > 7){
-            mvwaddstr(win, 1, 1 + width * i, entity_name[i]) ; 
+            mvwaddstr(inter->right_window[1], 1, 1 + width * i, entity_name[i]) ; 
         }
         else{
-            mvwaddstr(win, 1, 1 + width * i, reduced_entity_name[i]) ;            
+            mvwaddstr(inter->right_window[1], 1, 1 + width * i, reduced_entity_name[i]) ;            
         }
     }
-    wattroff(win, COLOR_PAIR(1));
-    wrefresh(win) ;
+    wattroff(inter->right_window[1], COLOR_PAIR(1));
+    wrefresh(inter->right_window[1]) ;
 
 
 // we want to have an arborescence between processes : sort them. 
@@ -662,26 +669,26 @@ int show_window_processes(WINDOW *win, WINDOW *main_win, vec_t *vp , vec_t *inpu
     char tmp[10] ; 
     for (int i = 0 ; i < vp->len ; i++){
             sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].pid) ; 
-            mvwaddstr(win, 2 + i, 1, tmp  ) ;   
+            mvwaddstr(inter->right_window[1], 2 + i, 1, tmp  ) ;   
             sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].ppid) ;               
-            mvwaddstr(win, 2 + i, 1 + width * 1, tmp  ) ;           
+            mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 1, tmp  ) ;           
             sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].gid) ;               
-            mvwaddstr(win, 2 + i, 1 + width * 2, tmp  ) ;     
+            mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 2, tmp  ) ;     
             sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].status) ;               
-            mvwaddstr(win, 2 + i, 1 + width * 3, tmp  ) ;     
+            mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 3, tmp  ) ;     
             sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].num_threads) ;               
-            mvwaddstr(win, 2 + i, 1 + width * 4, tmp  ) ;     
+            mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 4, tmp  ) ;     
             sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].memory) ;               
-            mvwaddstr(win, 2 + i, 1 + width * 5, tmp  ) ;                                                                                                      
+            mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 5, tmp  ) ;                                                                                                      
     }
-    wrefresh(win) ;
+    wrefresh(inter->right_window[1]) ;
     
 
 
 
     //show_process_list(vp) ; 
 vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ; 
-    c = keyboard_input(main_win, input2) ; 
+    c = keyboard_input(inter, inter->main_window[0], input2) ; 
     mvaddstr(1, 1, "exit window processes"); 
     refresh();
      return c ; 
@@ -689,7 +696,7 @@ vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;
 
 }
 
-int show_window_memory(WINDOW *win, WINDOW *main_win, vec_t *input){
+int show_window_memory(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
     box(win, 0, 0) ;  
     update_panels();
     int c ; 
@@ -699,14 +706,14 @@ int show_window_memory(WINDOW *win, WINDOW *main_win, vec_t *input){
     wrefresh(win);    
     
 vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;     
-    c = keyboard_input(main_win, input2) ; 
+    c = keyboard_input(inter, main_win, input2) ; 
     mvaddstr(1, 1, "exit window memory"); 
     refresh();
      return c ;    
 
 }
 
-int show_window_others(WINDOW *win, WINDOW *main_win, vec_t *input){
+int show_window_others(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
     box(win, 0, 0) ;  
     update_panels();
     mvaddstr(1, 1, "show window others");
@@ -784,7 +791,7 @@ int show_window_others(WINDOW *win, WINDOW *main_win, vec_t *input){
     int c ; 
     
 vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;     
-    c = keyboard_input(main_win, input2) ; 
+    c = keyboard_input(inter, main_win, input2) ; 
     mvaddstr(1, 1, "exit window others"); 
     refresh();
      return c ; 
@@ -845,7 +852,7 @@ int main(int argc, char **argv){
 	vec_t *input = vec_new( sizeof(char) ) ; 
 
     int c ;
-    c = show_window_start(inter.right_window[0], inter.main_window[0], input); // c est la touche d'interraction pressee
+    c = show_window_start(&inter, inter.right_window[0], inter.main_window[0], input); // c est la touche d'interraction pressee
     //TODO: utiliser l'execution conditionelle au debug (compil) des mvwaddnstr 
     // qui servent au debug uniquement
     mvwaddnstr(inter.right_window[0],1, 1,  "Bienvenue sur le menu d'execution\n", 35); // a titre de debug
