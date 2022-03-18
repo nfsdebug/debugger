@@ -229,10 +229,13 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws){
 }
 
 // rules for each individual window
-int show_window_start(struct Interface *inter, WINDOW *start, WINDOW *main, vec_t *input);
-int show_window_processes(struct Interface *inter, vec_t *vp);
-int show_window_memory(struct Interface *inter, WINDOW *memory, WINDOW *main, vec_t *input);
-int show_window_others(struct Interface *inter, WINDOW *others, WINDOW *main, vec_t *input);
+
+
+void refresh_window_start(struct Interface *inter);
+void refresh_window_processes(struct Interface *inter, vec_t *vp);
+void refresh_window_memory(struct Interface *inter);
+void refresh_window_others(struct Interface *inter);
+
 
 void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
     while(c != KEY_F(10)){
@@ -251,7 +254,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 refresh();                
                 update_panels();  
                 doupdate();       
-                c = show_window_start(inter, inter->right_window[0], inter->main_window[0], input) ; 
+                c = keyboard_input(inter, inter->main_window[0] , input)  ; 
                 break;
             //case 50:
             case KEY_F(2):             
@@ -265,7 +268,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 update_panels();
                 doupdate();                              
                 set_current_item(inter->my_menus, inter->my_items[1]);
-                c = show_window_processes(inter, vp) ;
+                c = keyboard_input(inter, inter->main_window[0], input)  ;
                 break;
             //case 51:
             case KEY_F(3):            
@@ -279,14 +282,14 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 update_panels();  
                 doupdate();                                     
                 set_current_item(inter->my_menus, inter->my_items[2]);
-                c =show_window_memory(inter, inter->right_window[2], inter->main_window[0], input) ;
+                c = keyboard_input(inter, inter->main_window[0], input)  ;
                 break;                
             //case 52:  
             case KEY_F(4):            
                 mvaddstr(1, 1, "F4 pressed ");   
                     refresh(); 
                 set_current_item(inter->my_menus, inter->my_items[3]);
-                c = show_window_others(inter, inter->right_window[3], inter->main_window[0], input) ;
+                c = keyboard_input(inter, inter->main_window[0], input) ;
                 break;
 /* 
             case 10:
@@ -407,7 +410,7 @@ void *spawn_thread(struct Interface *inter){
                 vec_t* vp = generate_processes() ; 
 
                 ((struct process_t*)vp->data)[0].pid = 4934780;
-                show_window_processes(inter, vp) ; 
+                refresh_window_processes(inter, vp) ; 
 
                 while(true){
                     ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
@@ -531,97 +534,21 @@ int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
 	return key ;
 }
 
-// this is the way the main window is drawn
-int show_window_start(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
-    keypad(win, FALSE);
-    box(win, 0, 0) ; 
-    //attron(A_BLINK); 
 
-    // ecrire les caracteres saisis autre que les touches fonctions. SI les touches fonctions sont saisies : on sort du while 
-    // et il faudrat retourner un code d'erreur 
-    int c ;
 
-    int id;
-    char text[1];
+
+void refresh_window_start(struct Interface *inter){
+    //box(inter->right_window[0]);
     mvaddstr(1, 1, "show window start");
     refresh();
-    mvwaddstr(win, 2, 1, "sart panel");
-    wrefresh(win);   
-
-// test de scroll
-    scrollok(main_win, TRUE) ; 
-    int i = 0 ; 
-    /*
-    while( i < 30){   
-
-        wprintw(main_win, "this is another line\n") ; 
-        wrefresh(main_win) ; 
-        i++;
-    }
-
-    while( i > 0){   
-
-        wprintw(main_win, "this is another loop line\n") ; 
-        wrefresh(main_win) ; 
-        i--;
-    }
-    */
- 
-    //int espace = 32 ;
-    //waddch(main_win, espace) ;  
-    wrefresh(main_win) ; 
-
-
-	// allocation of the buffer input with libvec
-	//char *single = (char *)malloc( sizeof(char) );
-	/* some test
-	char *input = (char *)malloc( 4 * sizeof(char) ) ; 
-	vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ; 
-	
-	int size_input = 2 ; 
-	for (int i = 0 ; i < 1 ; i+=3){
-		input[i] = 'a' ; 
-		input[i+1] = 'b' ; 	
-		input[i+2] = 'c' ;
-		input[i+3] = '\0' ;
-		((char*)input2->data)[0] = 'd' ; 
-		((char*)input2->data)[1] = 'e' ; 
-		((char*)input2->data)[2] = 'f' ; 
-		((char*)input2->data)[3] = '\0' ; 		
-		
-	} 	
-	*/
-	//waddstr(main_win , (const char *)&input[0]) ; 
-	//waddstr(main_win , (char *)(&input2->data)[0] ); 	
-	//free(input) ; 
-	//waddstr(main_win , &input[1]) ; 	
-	wrefresh(main_win) ; 
-
-
-    c = keyboard_input(inter, main_win, input) ; 
-    
-    
-
-    
-
-    mvaddstr(1, 1, "exit window start"); 
-    refresh();
-     return c ; 
+    mvwaddstr(inter->right_window[0], 2, 1, "start panel");
+    wrefresh(inter->right_window[0]);         
 }
 
-
-
-int show_window_processes(struct Interface *inter, vec_t *vp){
+void refresh_window_processes(struct Interface *inter, vec_t *vp ){
     box(inter->right_window[1], 0, 0) ;  
-    update_panels();
-    refresh();
-    refresh();
     int c ;
     mvaddstr(1, 1, "show window processes");
-    refresh();
-    mvwaddstr(inter->right_window[1], 2, 1, "processes panel");
-    wrefresh(inter->right_window[1]);
-
 
     // affichage des processes
     wclear(inter->right_window[1]); 
@@ -682,44 +609,23 @@ int show_window_processes(struct Interface *inter, vec_t *vp){
             mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 5, tmp  ) ;                                                                                                      
     }
     wrefresh(inter->right_window[1]) ;
-    
-
-
-
-    //show_process_list(vp) ; 
-vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ; 
-    c = keyboard_input(inter, inter->main_window[0], input2) ; 
-    mvaddstr(1, 1, "exit window processes"); 
-    refresh();
-     return c ; 
-
-
 }
 
-int show_window_memory(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
-    box(win, 0, 0) ;  
+void refresh_window_memory(struct Interface *inter){
+    box(inter->right_window[2], 0, 0) ;  
     update_panels();
     int c ; 
     mvaddstr(1, 1, "show window memory");
     refresh();
-    mvwaddstr(win, 2, 1, "memory panel");
-    wrefresh(win);    
-    
-vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;     
-    c = keyboard_input(inter, main_win, input2) ; 
-    mvaddstr(1, 1, "exit window memory"); 
-    refresh();
-     return c ;    
-
+    mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
+    wrefresh(inter->right_window[2]);    
 }
 
-int show_window_others(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
-    box(win, 0, 0) ;  
-    update_panels();
+void refresh_window_others(struct Interface *inter){
+
     mvaddstr(1, 1, "show window others");
     refresh();
-    //mvwaddstr(win, 2, 1, "others panel");
-    wrefresh(win);
+
 
     // we want to prijnt a specific part of the code where the bug occurs, or something else
     // protocole : we get a file, and a line 
@@ -727,7 +633,7 @@ int show_window_others(struct Interface *inter, WINDOW *win, WINDOW *main_win, v
     int line_to_print = 10; 
 
     int nrow, ncol ; 
-    getmaxyx(win, nrow, ncol) ; // get the specific window size 
+    getmaxyx(inter->right_window[2], nrow, ncol) ; // get the specific window size 
     nrow-- ;
     int midheight = (int)( nrow / 2 ) ; 
     int begin ; 
@@ -752,7 +658,7 @@ int show_window_others(struct Interface *inter, WINDOW *win, WINDOW *main_win, v
 
     fp = fopen("/home/sbstndbs/debugger/src/interface.c", "r") ;
     if (fp == NULL){
-        mvwaddstr(win, 1, 4, "cannot open the selected file...");
+        mvwaddstr(inter->right_window[2], 1, 4, "cannot open the selected file...");
     }
     int iline = 0 ; 
     int nline = 0 ; 
@@ -762,21 +668,21 @@ int show_window_others(struct Interface *inter, WINDOW *win, WINDOW *main_win, v
 
             // print the line
             sprintf(chline, "%d", iline + 1);
-            //wattron(win, COLOR_PAIR(1));  
-            mvwaddstr(win, 1 + nline, 1, chline) ;
-            //wattroff(win, COLOR_PAIR(1));  
+            //wattron(inter->right_window[2], COLOR_PAIR(1));  
+            mvwaddstr(inter->right_window[2], 1 + nline, 1, chline) ;
+            //wattroff(inter->right_window[2], COLOR_PAIR(1));  
 
             if(nline + begin == line_to_print){
                 char *symbol[1] = {" "} ; 
-                wattron(win, COLOR_PAIR(1));                  
+                wattron(inter->right_window[2], COLOR_PAIR(1));                  
                 for (int i = 0 ; i < ncol - 2 ; i++){
-                    mvwaddstr(win, 1 + nline, i + 2 + numdigits, symbol[0]) ;
+                    mvwaddstr(inter->right_window[2], 1 + nline, i + 2 + numdigits, symbol[0]) ;
                 }              
-                mvwaddstr(win, 1 + nline, 2 + numdigits, buff) ; 
-                wattroff(win, COLOR_PAIR(1));                                
+                mvwaddstr(inter->right_window[2], 1 + nline, 2 + numdigits, buff) ; 
+                wattroff(inter->right_window[2], COLOR_PAIR(1));                                
             }
             else{
-            mvwaddstr(win, 1 + nline, 2 + numdigits, buff) ; 
+            mvwaddstr(inter->right_window[2], 1 + nline, 2 + numdigits, buff) ; 
             }
             nline++;
         }     
@@ -785,12 +691,47 @@ int show_window_others(struct Interface *inter, WINDOW *win, WINDOW *main_win, v
     // close file
     fclose(fp) ;
 
-    box(win, 0, 0);
-    wrefresh(win) ;  
+    box(inter->right_window[2], 0, 0);
+    wrefresh(inter->right_window[2]) ;  
+}
 
-    int c ; 
-    
+
+
+// this is the way the main window is drawn
+int show_window_start(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
+    int c ;
+    c = keyboard_input(inter, main_win, input) ; 
+    mvaddstr(1, 1, "exit window start"); 
+    refresh();
+     return c ; 
+}
+
+
+
+int show_window_processes(struct Interface *inter, vec_t *vp){
+    int c ;
+   
+    //show_process_list(vp) ; 
+vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ; 
+    c = keyboard_input(inter, inter->main_window[0], input2) ; 
+    mvaddstr(1, 1, "exit window processes"); 
+    refresh();
+     return c ; 
+}
+
+int show_window_memory(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
+    int c ;   
 vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;     
+    c = keyboard_input(inter, main_win, input2) ; 
+    mvaddstr(1, 1, "exit window memory"); 
+    refresh();
+     return c ;    
+
+}
+
+int show_window_others(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
+    int c ; 
+    vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;     
     c = keyboard_input(inter, main_win, input2) ; 
     mvaddstr(1, 1, "exit window others"); 
     refresh();
@@ -832,7 +773,7 @@ int main(int argc, char **argv){
     setup_menu(&inter, &ws) ; 
 
     keypad(stdscr, TRUE);
-
+    scrollok(inter.main_window[0], TRUE) ; 
 
     refresh() ;
     update_panels() ;    
