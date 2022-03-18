@@ -5,6 +5,8 @@
 #include <sys/ioctl.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/ptrace.h>
+#include <signal.h>
 
 #include <panel.h>
 #include <menu.h>
@@ -320,12 +322,59 @@ void *spawn_thread(WINDOW *win){
 	    pid_t child_pid ; 
 	    int pid_status ; 
 	    child_pid = fork() ; 
-	    	char *argprog[] = {"/home/sbstndbs/debugger/target/mon_programme", "5433", (char *)NULL} ; 
+	    	//char *argprog[] = {"/home/sbstndbs/debugger/target/mon_programme", "5433", (char *)NULL} ; 
+	    	char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL} ;             
+
 	    	if (child_pid == 0){
+                if (ptrace(PTRACE_TRACEME,0,NULL,NULL) < 0) return printf("Error with ptrace, check the manual"),-2;                
 	    		execv(argprog[0], &argprog[0]) ; 
 	    	}
 	    	else{
-	    	wait(NULL);
+
+                int wait_status ; 
+                char tmp[10] ;
+                sprintf(tmp, "%d", (int)getpid()) ; 
+                waddstr(win , " PID : ") ;                
+                waddstr(win, tmp  ) ;   
+                new_main_line(win) ;
+                sprintf(tmp, "%d", (int)getppid()) ; 
+                waddstr(win , " PPID : ") ;                       
+                waddstr(win, tmp  ) ;   
+                new_main_line(win) ;
+                sprintf(tmp, "%d", (int)getgid()) ; 
+                waddstr(win , " GID : ") ;       
+                waddstr(win, tmp  ) ;   
+                new_main_line(win) ;
+                wrefresh(win);
+
+                while(true){
+                    ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
+                    waitpid(child_pid, &wait_status,0);       
+                    siginfo_t signinf;
+                    ptrace(PTRACE_GETSIGINFO,child_pid,NULL,&signinf);
+                    if(signinf.si_signo != 5)
+                    {
+                        char tmp2[100] ;
+                        char tmp3[100] ;
+                        char tmp4[100] ; 
+                        sprintf(tmp2, "%s",strsignal(signinf.si_signo)) ; 
+                        sprintf(tmp3, "%d",signinf.si_signo) ;             
+                        sprintf(tmp4, "%p",signinf.si_addr) ;                                          
+                        waddstr(win , "child stopped : ") ;                
+                        waddstr(win, tmp2  ) ;   
+                        waddstr(win , " (") ;                
+                        waddstr(win, tmp3  ) ;   
+                        waddstr(win , ") at adress 0x") ;                
+                        waddstr(win, tmp4  ) ;                                                  
+                        new_main_line(win) ;                        
+                        //printf("\n child stopped : %s (%d) at adress 0x%p\n",strsignal(signinf.si_signo),signinf.si_signo,signinf.si_addr);
+
+                        // TODO: toggle when the parser will not do a loop ( to fix)
+                        break;
+                    }
+
+                }
+
 	    	}
 	    	waddstr(win, "Programme lance") ; 
 	    	new_main_line(win) ; 	
@@ -342,14 +391,14 @@ void parse(WINDOW *win, vec_t *input){
 	    const char *sep = " " ; 
 	    char * strToken = strtok((char *)(&input->data)[0] , sep ) ; 
 	    
-	    //pthread_t thread ; 
-	    //int thr = 1 ; 
-	    //pthread_create(&thread, NULL, spawn_thread, (WINDOW *)win);
+	    pthread_t thread ; 
+	    int thr = 1 ; 
+	    pthread_create(&thread, NULL, spawn_thread, (WINDOW *)win);
 	    //pthread_join(thread , NULL) ; 
+	    usleep(1000000) ; 
 	    
 	    
-	    
-	    
+	    /*
 	    if ( strcmp(strToken, command[0]) ){
 	    	waddstr(win, "Lancement de l'execution") ; 
 	    	new_main_line(win) ; 
@@ -369,7 +418,7 @@ void parse(WINDOW *win, vec_t *input){
 	    	
 	    }
 	    
-	    
+	    */
 	    
 	    //simple threading example to launch fork
 	    
