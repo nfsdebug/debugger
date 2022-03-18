@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <sys/ptrace.h>
 #include <signal.h>
+#import <sys/user.h>
 
 #include <panel.h>
 #include <menu.h>
@@ -233,7 +234,7 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws){
 
 void refresh_window_start(struct Interface *inter);
 void refresh_window_processes(struct Interface *inter, vec_t *vp);
-void refresh_window_memory(struct Interface *inter);
+void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg);
 void refresh_window_others(struct Interface *inter);
 
 
@@ -436,6 +437,12 @@ void *spawn_thread(struct Interface *inter){
                 refresh();                   
   
 
+                struct user_regs_struct reg ; 
+                
+                char tmp2[100] ;
+                char tmp3[100] ;
+                char tmp4[100] ; 
+
                 while(true){
                     ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
                     waitpid(child_pid, &wait_status,0);       
@@ -462,6 +469,26 @@ void *spawn_thread(struct Interface *inter){
                         // TODO: toggle when the parser will not do a loop ( to fix)
                         break;
                     }
+
+                    ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
+                    show_specific_panel(inter, 4, 3);
+                    refresh_window_memory(inter, reg);
+                                                                                                                                                                                                                                                                                      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                 }
 
@@ -671,9 +698,9 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp ){
     wrefresh(inter->right_window[1]) ;
 }
 
-void refresh_window_memory(struct Interface *inter){
-
-    mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
+void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg ){
+    wclear(inter->right_window[2]);
+    //mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
     wrefresh(inter->right_window[2]);  
 
     box(inter->right_window[2], 0, 0) ;  
@@ -681,9 +708,84 @@ void refresh_window_memory(struct Interface *inter){
     int c ; 
     mvaddstr(1, 1, "show window memory");
     refresh();
-    mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
+    //mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
     box(inter->right_window[2], 0, 0); 
     wrefresh(inter->right_window[2]);    
+
+
+     char tmp2[20] ; 
+    sprintf(tmp2, "rax  0x%llx",reg.rax) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "rbx  0x%llx",reg.rbx) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "rcx  0x%llx",reg.rcx) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "rdx  0x%llx",reg.rdx) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "rdi  0x%llx",reg.rdi) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "rsi  0x%llx",reg.rsi) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "rbp  0x%llx",reg.rbp) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "rsp  0x%llx",reg.rsp) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "r8   0x%llx",reg.r8) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "r9   0x%llx",reg.r9) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "r10   0x%llx",reg.r10) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "r11  0x%llx",reg.r11) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "r12  0x%llx",reg.r12) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "r13  0x%llx",reg.r13) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "r14  0x%llx",reg.r14) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "r15  0x%llx",reg.r15) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;
+
+    sprintf(tmp2, "rip  0x%llx",reg.rip) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;           
+
+    box(inter->right_window[2], 0, 0); 
+    wrefresh(inter->right_window[2]); 
+
+
 }
 
 void refresh_window_others(struct Interface *inter){
@@ -858,7 +960,7 @@ int main(int argc, char **argv){
 
 
 	vec_t *input = vec_new( sizeof(char) ) ; 
-
+    struct user_regs_struct reg ; 
     int c ;
   
 
@@ -873,7 +975,7 @@ int main(int argc, char **argv){
     usleep(400000); 
 
     show_specific_panel(&inter, 4, 3);         
-    refresh_window_memory(&inter) ;  
+    refresh_window_memory(&inter, reg) ;  
     usleep(400000);      
 
     show_specific_panel(&inter, 4, 4); 
