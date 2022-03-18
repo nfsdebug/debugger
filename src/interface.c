@@ -235,7 +235,7 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws){
 void refresh_window_start(struct Interface *inter);
 void refresh_window_processes(struct Interface *inter, vec_t *vp);
 void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg);
-void refresh_window_others(struct Interface *inter);
+void refresh_window_code(struct Interface *inter);
 
 
 
@@ -431,7 +431,7 @@ void *spawn_thread(struct Interface *inter){
                 show_specific_panel(inter, 4, 1);  // be careful , main window in panel[0]    
                 refresh_window_start(inter);
                 show_specific_panel(inter, 4, 4);  // be careful , main window in panel[0]                   
-                refresh_window_others(inter);
+                refresh_window_code(inter);
                 //wrefresh(inter->right_window[0]);
 
                 refresh();                   
@@ -788,7 +788,7 @@ void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg 
 
 }
 
-void refresh_window_others(struct Interface *inter){
+void refresh_window_code(struct Interface *inter){
     wclear(inter->right_window[3]);
     mvaddstr(1, 1, "show window others");
     refresh();
@@ -898,7 +898,7 @@ vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;
 
 }
 
-int show_window_others(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
+int show_window_code(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
     int c ; 
     vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;     
     c = keyboard_input(inter, main_win, input2) ; 
@@ -979,7 +979,7 @@ int main(int argc, char **argv){
     usleep(400000);      
 
     show_specific_panel(&inter, 4, 4); 
-    refresh_window_others(&inter) ; 
+    refresh_window_code(&inter) ; 
     usleep(400000);    
 
     show_specific_panel(&inter, 4, 1); 
