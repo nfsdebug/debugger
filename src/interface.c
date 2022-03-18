@@ -7,7 +7,7 @@
 #include <pthread.h>
 #include <sys/ptrace.h>
 #include <signal.h>
-#import <sys/user.h>
+#include <sys/user.h>
 
 #include <panel.h>
 #include <menu.h>
@@ -16,8 +16,8 @@
 
 
 
-char *choice_panel[] = { "Start", "Processes", "Memory", "Code", (char *)NULL, } ; 
-char *panel_func[] = { " ", " ", " ", " ", (char *)NULL, } ; 
+char *choice_panel[] = { "Help", "Processes", "Memory", "Code", "Elf", (char *)NULL, } ; 
+char *panel_func[] = { " ", " ", " ", " ", " ", (char *)NULL, } ; 
 char *command[] = { "exec", "value", "adress", "reg",   (char *)NULL} ;
 
 
@@ -113,14 +113,20 @@ vec_t* generate_processes(void){
 // start_interface
 struct Interface{
     // first : windows
+
+    int number_right_window  ; 
+    int number_left_window  ; 
+    
+
     WINDOW *main_window[1] ;
-    WINDOW *right_window[4] ; 
+    WINDOW *right_window[5] ; 
     WINDOW *title_window[1] ; 
     WINDOW *selector_window[1] ;  
-    PANEL *my_panels[7] ;
+    PANEL *my_panels[1 + 5 + 2] ;
     ITEM **my_items ; 
     MENU *my_menus ; 
     ITEM *cur_item ; 
+    
 } ;
 
 struct Window_size{
@@ -179,8 +185,8 @@ struct All_window_size compute_size_window(void){
 
 void setup_selector(struct Interface *inter){
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]) ; 
+    //n_choice = 6 ; 
     inter->my_items = (ITEM **)calloc(n_choice  , sizeof(ITEM *)) ; 
-
     for (int i = 0 ; i < n_choice ; i++){
         inter->my_items[i] = new_item(panel_func[i], choice_panel[i]);
     }
@@ -190,7 +196,8 @@ void setup_selector(struct Interface *inter){
 }
 
 void setup_window(struct Interface *inter, struct All_window_size *ws){
-    for (int i = 0 ; i < 4 ; i++){
+    inter->number_right_window = 5 ; 
+    for (int i = 0 ; i < 5 ; i++){
         inter->right_window[i] = newwin(ws->right.dx, ws->right.dy, ws->right.x, ws->right.y) ; 
     }
     inter->main_window[0] = newwin(ws->main.dx, ws->main.dy, ws->main.x, ws->main.y) ; 
@@ -200,7 +207,7 @@ void setup_window(struct Interface *inter, struct All_window_size *ws){
 
 void draw_box(struct Interface *inter){
      box(inter->main_window[0], 0, 0) ;     
-    for (int i = 0 ; i < 4 ; i++){
+    for (int i = 0 ; i < 5 ; i++){
         box(inter->right_window[i], 0, 0) ;     
     }   
    
@@ -208,15 +215,15 @@ void draw_box(struct Interface *inter){
 
 void setup_panel(struct Interface *inter){
     inter->my_panels[0] = new_panel(inter->main_window[0]) ;    
-     for(int i = 0 ; i < 4 ; i++){
+     for(int i = 0 ; i < 5 ; i++){
         inter->my_panels[i+1] = new_panel(inter->right_window[i]) ;
     }
-    inter->my_panels[5] = new_panel(inter->title_window[0]) ;
-    inter->my_panels[6] = new_panel(inter->selector_window[0]) ;   
+    inter->my_panels[6 ] = new_panel(inter->title_window[0]) ;
+    inter->my_panels[7 ] = new_panel(inter->selector_window[0]) ;   
 }
 
 void setup_title(struct Interface *inter){
-    char title[] = "NCurses debugger v0.1" ;
+    char title[] = "NCurses debugger v0.2" ;
     mvwprintw(inter->title_window[0], 0, 0, "%s", title) ;     
 }
 
@@ -236,7 +243,7 @@ void refresh_window_start(struct Interface *inter);
 void refresh_window_processes(struct Interface *inter, vec_t *vp);
 void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg);
 void refresh_window_code(struct Interface *inter);
-
+void refresh_window_elf(struct Interface *inter);
 
 
 void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id){
@@ -245,7 +252,7 @@ void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id
         hide_panel(inter->my_panels[i]) ; 
     }
 
-    for (int i = panel_id + 1 ; i < panel_amount+1; i++){
+    for (int i = panel_id + 1 ; i < panel_amount +1; i++){
         hide_panel(inter->my_panels[i]) ;      
     }
     show_panel(inter->my_panels[panel_id]) ;  
@@ -257,7 +264,7 @@ void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id
 
 void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
 
-    int panel_amount = 4 ;
+    int panel_amount = 5 ;
     // !!!!!
 
     while(c != KEY_F(10)){
@@ -308,6 +315,17 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 wrefresh(inter->right_window[3]);     
                 c = keyboard_input(inter, inter->main_window[0], input) ;
                 break;
+            //case 53:  
+            case KEY_F(5):            
+                mvaddstr(1, 1, "F5 pressed ");   
+                refresh(); 
+                show_specific_panel(inter, panel_amount, 5);  // be careful , main window in panel[0]                      
+                refresh();        
+                update_panels();  
+                doupdate();  
+                wrefresh(inter->right_window[4]);     
+                c = keyboard_input(inter, inter->main_window[0], input) ;
+                break;                
 /* 
             case 10:
                 // interprate the commande
@@ -364,7 +382,7 @@ void new_main_line(WINDOW *win){
 
 
 int function_key(WINDOW *win, int key){
-        if ((key == KEY_F(1)) || (key == KEY_F(2)) || (key == KEY_F(3)) || (key == KEY_F(4))){
+        if ((key == KEY_F(1)) || (key == KEY_F(2)) || (key == KEY_F(3)) || (key == KEY_F(4)) || (key == KEY_F(5))){
             //waddch(main_win, espace) ; 
             mvaddstr(1,1,"specialkey") ;             
             wrefresh(win);
@@ -428,9 +446,9 @@ void *spawn_thread(struct Interface *inter){
 
                 ((struct process_t*)vp->data)[0].pid = 4934780;
 
-                show_specific_panel(inter, 4, 1);  // be careful , main window in panel[0]    
+                show_specific_panel(inter, 5, 1);  // be careful , main window in panel[0]    
                 refresh_window_start(inter);
-                show_specific_panel(inter, 4, 4);  // be careful , main window in panel[0]                   
+                show_specific_panel(inter, 5, 4);  // be careful , main window in panel[0]                   
                 refresh_window_code(inter);
                 //wrefresh(inter->right_window[0]);
 
@@ -471,23 +489,9 @@ void *spawn_thread(struct Interface *inter){
                     }
 
                     ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
-                    show_specific_panel(inter, 4, 3);
+                    show_specific_panel(inter, 5, 3);
                     refresh_window_memory(inter, reg);
                                                                                                                                                                                                                                                                                       
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
                 }
@@ -864,6 +868,14 @@ void refresh_window_code(struct Interface *inter){
     wrefresh(inter->right_window[3]) ;  
 }
 
+void refresh_window_elf(struct Interface *inter){
+    box(inter->right_window[4], 0, 0);
+    mvaddstr(1, 1, "show window start");
+    refresh();
+    mvwaddstr(inter->right_window[4], 2, 1, "start panel");
+    box(inter->right_window[4], 0, 0);    
+    wrefresh(inter->right_window[4]);         
+}
 
 
 // this is the way the main window is drawn
@@ -875,42 +887,6 @@ int show_window_start(struct Interface *inter, WINDOW *win, WINDOW *main_win, ve
      return c ; 
 }
 
-
-
-int show_window_processes(struct Interface *inter, vec_t *vp){
-    int c ;
-   
-    //show_process_list(vp) ; 
-vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ; 
-    c = keyboard_input(inter, inter->main_window[0], input2) ; 
-    mvaddstr(1, 1, "exit window processes"); 
-    refresh();
-     return c ; 
-}
-
-int show_window_memory(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
-    int c ;   
-vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;     
-    c = keyboard_input(inter, main_win, input2) ; 
-    mvaddstr(1, 1, "exit window memory"); 
-    refresh();
-     return c ;    
-
-}
-
-int show_window_code(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
-    int c ; 
-    vec_t *input2 = vec_with_capacity( 100 , sizeof(char)) ;     
-    c = keyboard_input(inter, main_win, input2) ; 
-    mvaddstr(1, 1, "exit window others"); 
-    refresh();
-     return c ; 
-
-}
-
-void show_process_list(vec_t vp){
-
-}
 
 
 
@@ -966,23 +942,27 @@ int main(int argc, char **argv){
 
        
  
-    show_specific_panel(&inter, 4, 1); 
+    show_specific_panel(&inter, 5, 1); 
     refresh_window_start(&inter) ;
     usleep(400000);
 
-    show_specific_panel(&inter, 4, 2);       
+    show_specific_panel(&inter, 5, 2);       
     refresh_window_processes(&inter, vp) ;
     usleep(400000); 
 
-    show_specific_panel(&inter, 4, 3);         
+    show_specific_panel(&inter, 5, 3);         
     refresh_window_memory(&inter, reg) ;  
     usleep(400000);      
 
-    show_specific_panel(&inter, 4, 4); 
+    show_specific_panel(&inter, 5, 4); 
     refresh_window_code(&inter) ; 
-    usleep(400000);    
+    usleep(400000);   
 
-    show_specific_panel(&inter, 4, 1); 
+    show_specific_panel(&inter, 5, 5); 
+    refresh_window_elf(&inter) ; 
+    usleep(400000);         
+
+    show_specific_panel(&inter, 5, 1); 
 
 
 
