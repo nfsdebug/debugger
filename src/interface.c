@@ -17,7 +17,7 @@
 
 char *choice_panel[] = { "Start", "Processes", "Memory", "Others", (char *)NULL, } ; 
 char *panel_func[] = { " ", " ", " ", " ", (char *)NULL, } ; 
-char *command[] = { "exe", "value", "adress", "reg",   (char *)NULL} ;
+char *command[] = { "exec", "value", "adress", "reg",   (char *)NULL} ;
 
 
 
@@ -478,17 +478,55 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 	    waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
 	    new_main_line(win) ;  
 	    // split method from internet hint
-	    const char *sep = " " ; 
-	    char * strToken = strtok((char *)(&input->data)[0] , sep ) ; 
-	    
-	    pthread_t thread ; 
-	    int thr = 1 ; 
-	    pthread_create(&thread, NULL, spawn_thread, inter);
-	    pthread_join(thread , NULL) ; 
-        wrefresh(win);
-	    //usleep(1000000) ; 
-	    
-	    
+	    const char delim[2] = " " ; 
+
+        /////////////////
+        // etape de recuperation de l'input
+        /////////////////
+
+        char *token ;
+        char *parsed[20] ; // we do not consider more than 20 args...
+
+	    token = strtok((char *)(&input->data)[0] , delim ) ; 
+        parsed[0] = malloc(strlen(token) * sizeof(char));
+        strcpy(parsed[0], token);
+        int i = 0 ; 
+        while( token != NULL){
+        token = strtok(NULL, delim);
+        if (token != NULL){
+            i++;
+            parsed[i] = malloc( strlen(token) * sizeof(char) + 1);
+            strcpy(parsed[i] , token);
+        }
+        }	    
+
+        ///////////////////
+        // etape de parsing
+        //////////////////
+
+        if (strcmp(command[0], parsed[0]) == 0){
+            waddstr(win , "\n EXEC :") ; 
+            new_main_line(win) ; 
+            pthread_t thread ; 
+            int thr = 1 ; 
+            pthread_create(&thread, NULL, spawn_thread, inter);
+            pthread_join(thread , NULL) ; 
+            wrefresh(win);
+        }else{
+	    waddstr(win , "\n NOTHING") ; 
+	    new_main_line(win) ; 
+        }        
+
+        ///////////////////
+        // deallocation
+        //////////////////
+
+        for (int j = i ; j >= 0 ; j--){
+            free(parsed[j]);
+        }
+
+
+
 	    /*
 	    if ( strcmp(strToken, command[0]) ){
 	    	waddstr(win, "Lancement de l'execution") ; 
@@ -506,18 +544,10 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 
 	    	waddstr(win, "Programme lance") ; 
 	    	new_main_line(win) ; 	    	
-	    	
+	    
 	    }
-	    
-	    */
-	    
-	    //simple threading example to launch fork
-	    
-	    //while (strToken != (char *)NULL){
-	    	//waddstr(win,strToken) ;
-	    	//new_main_line(win);  
-	    //	strToken = strtok (NULL, sep) ; 
-	    //}			
+	    	*/
+	
 	    
 
 }
