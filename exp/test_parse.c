@@ -40,14 +40,10 @@ int main(int argc, char **argv){
         printf("La valeur enregistree est |%s|\n", parsed[j]);
     }
 
-
-
-
     ///////////////////
     // etape de parsing
     //////////////////
     printf("La premiere commande est |%s|\n", command[0]);
-
 
     char tmp1[4] = "exec";
     char tmp2[4] = "exec";
@@ -59,7 +55,6 @@ int main(int argc, char **argv){
         printf("NOTHING\n");
     }
 
-
     ///////////////////
     // deallocation
     //////////////////
@@ -67,6 +62,7 @@ int main(int argc, char **argv){
         free(parsed[j]);
     }
 
+    return 1 ; 
 }
 
 
