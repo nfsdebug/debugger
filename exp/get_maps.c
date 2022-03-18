@@ -54,8 +54,8 @@ int main(int argc, char **argv){
             char_adress[j] = buff[j] ; 
         }
 
-        for (int i = 0 ; i < length_char_adress ; i++){
-            array[i] = hex2int(char_adress[ length_char_adress - 1 - i]) ;         
+        for (int j = 0 ; j < length_char_adress ; j++){
+            array[j] = hex2int(char_adress[ length_char_adress - 1 - j]) ;         
         }
         unsigned long long result = letoull(array, length_char_adress);
         printf("le resultat de ma fonction est %llu\n", result) ; 
