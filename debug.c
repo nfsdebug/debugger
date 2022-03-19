@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 
                         long long bef = (ptrace(PTRACE_PEEKDATA, child, (void *)adr, 0) & ~0xff) | 0xcc;
 
-                         ptrace(PTRACE_POKEDATA, child, (void *)adr, (void *)bef);
+                        ptrace(PTRACE_POKEDATA, child, (void *)adr, (void *)bef);
                     }
                 }
             }
@@ -142,6 +142,33 @@ int main(int argc, char **argv)
             }
         }
 
+        //Simple management of memory
+        else if (strcasestr(cmd, "memory"))
+        {
+            if (strcasestr(cmd, "read"))
+            {
+                char *string = cmd;
+                // Extract the first token
+                char *token = strtok(string, " ");
+                // get the adress (second in the string)
+                token = strtok(NULL, " ");
+                token = strtok(NULL, " ");
+
+                printf("%lx\n", ptrace(PTRACE_PEEKDATA, child, token, NULL));
+            }
+            else if (strcasestr(cmd, "write"))
+            {
+                char *string = cmd;
+                // Extract the first token
+                char *token = strtok(string, " ");
+                // get the adress (second in the string)
+                token = strtok(NULL, " ");
+                char *token2 = strtok(NULL, " ");
+                token = strtok(NULL, " ");
+
+                ptrace(PTRACE_PEEKDATA, child, token2, token, NULL);
+            }
+        }
         // Section with registers
         if (strcasecmp(cmd, "register"))
         {
