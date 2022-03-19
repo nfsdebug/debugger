@@ -17,7 +17,7 @@
 
 
 
-#include "deb.h"
+//#include "deb.h"
 
 
 char *choice_panel[] = { "Help", "Processes", "Memory", "Code", "Elf", (char *)NULL, } ; 
