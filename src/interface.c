@@ -473,16 +473,47 @@ void print_pid(WINDOW *win, struct process_t *pid, int info){
 
 void show_libraries(WINDOW *win, struct process_t *pid){
     // this function is for print the loaded libraries from /proc/pid/maps
-    char buffpid[10] ;
-    char buffpath[30] ; 
+    char *buffpid = (char*)malloc( 10 * sizeof(char)) ;
+    char *buffpath = (char*)malloc( 30 * sizeof(char)) ; 
+    char *buffline = (char*)malloc( 1000 * sizeof(char));
+    char **loaded_libs = malloc( 1000 * sizeof(char *)) ; 
+
     sprintf(buffpid, "%d", pid->pid) ; 
+    waddstr(win, " \n maps localisation :");
     sprintf(buffpath, "/proc/%s/maps", buffpid);
     waddstr(win, buffpath) ; 
-    //FILE *fp = fopen(buffpath, "r") ; 
-    //if (!fp){
-    //    waddstr(win, "impossible d'afficher les librairies chargees\n ");
-    //}
-    //fclose(fp); 
+    FILE *fp = fopen(buffpath, "r") ; 
+    if (!fp){
+        waddstr(win, "impossible d'afficher les librairies chargees\n ");
+    }
+    //now we want to show loaded libraries
+    size_t line_buf_size = 0;
+    int i = 0 ; 
+    while (getline(&buffline, &line_buf_size , fp )> -1){
+        loaded_libs[i] = malloc(( line_buf_size + 1 ) * sizeof(char)) ;         
+        strcpy( loaded_libs[i], buffline);
+        i++;
+    }
+    loaded_libs[i] = malloc(( line_buf_size + 1 ) * sizeof(char)) ;     
+    strcpy( loaded_libs[i], buffline);
+
+    for (int j = 0 ; j < i ; j++){
+        waddstr(win, " \n ");    
+        waddstr(win, loaded_libs[j]) ; 
+        waddstr(win, " \n ");
+    }
+    // method to get the libs - little parser
+
+
+    fclose(fp); 
+
+    free(buffpid) ; 
+    free(buffpath);
+    free(buffline);
+    for (int j = 0 ; j < 1000 ; j++){
+        free(loaded_libs[j]);
+    }
+    free(loaded_libs);
 }
 
 
@@ -587,13 +618,19 @@ void *spawn_thread(void* input){
         char tmp3[100] ;
         char tmp4[100] ; 
         unsigned long long number_of_instructions = 0 ; 
+        int loop = 0 ; 
         while(true){
+            loop++;
             if (opt_deb.singlestep == 1){
                 ptrace(PTRACE_SINGLESTEP, child_pid, 0, 0);
                 number_of_instructions++;
             }
             else{
                 ptrace(PTRACE_SYSCALL, child_pid, 0, 0);                
+            }
+
+            if (loop == 1){
+                show_libraries(process_win, &process_child);
             }
 
             //waddstr(i->inter->main_window[0], tmp  ) ; 
@@ -617,7 +654,6 @@ void *spawn_thread(void* input){
                 refresh_window_memory(i->inter, reg);     
             }
         }
-        //show_libraries(process_win, &process_child);
     }
     pthread_exit(NULL) ;
 }
@@ -1117,23 +1153,23 @@ int main(int argc, char **argv){
  
     show_specific_panel(&inter, 5, 1); 
     refresh_window_start(&inter) ;
-    usleep(400000);
+    usleep(100000);
 
     show_specific_panel(&inter, 5, 2);       
     refresh_window_processes(&inter, vp) ;
-    usleep(400000); 
+    usleep(100000); 
 
     show_specific_panel(&inter, 5, 3);         
     refresh_window_memory(&inter, reg) ;  
-    usleep(400000);      
+    usleep(100000);      
 
     show_specific_panel(&inter, 5, 4); 
     refresh_window_code(&inter) ; 
-    usleep(400000);   
+    usleep(100000);   
 
     show_specific_panel(&inter, 5, 5); 
     refresh_window_elf(&inter) ; 
-    usleep(400000);         
+    usleep(100000);         
 
     show_specific_panel(&inter, 5, 1); 
 
