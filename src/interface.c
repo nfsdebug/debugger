@@ -440,22 +440,36 @@ void print_parsed(WINDOW *win, struct input_thread *i){
         }
 }
 
-void print_pid(WINDOW *win){
-        char tmp[10] ;
-        sprintf(tmp, "%d", (int)getpid()) ; 
-        waddstr(win , " Tracer PID : ") ;                
-        waddstr(win, tmp  ) ;   
-        new_main_line(win) ;
-        sprintf(tmp, "%d", (int)getppid()) ; 
-        waddstr(win , " Tracer PPID : ") ;                       
-        waddstr(win, tmp  ) ;   
-        new_main_line(win) ;
-        sprintf(tmp, "%d", (int)getgid()) ; 
-        waddstr(win , " Tracer GID : ") ;       
-        waddstr(win, tmp  ) ;   
-        new_main_line(win) ;
-        refresh();    
+void get_pid(struct process_t *pid){
+    pid->pid = (int)getpid() ; 
+    pid->ppid = (int)getppid() ; 
+    pid->gid = (int)getgid() ; 
+
 }
+
+void print_pid(WINDOW *win, struct process_t *pid, int info){
+    if (info == 0){
+        waddstr(win , "Process fils : \n ") ;                      
+    }
+    else{
+        waddstr(win , "Process père : \n ") ;                      
+    }
+    char tmp[10] ;
+    sprintf(tmp, "%d", pid->pid) ; 
+    waddstr(win , " Tracer PID : ") ;                
+    waddstr(win, tmp  ) ;   
+    new_main_line(win) ;
+    sprintf(tmp, "%d", pid->ppid) ; 
+    waddstr(win , " Tracer PPID : ") ;                       
+    waddstr(win, tmp  ) ;   
+    new_main_line(win) ;
+    sprintf(tmp, "%d", pid->gid) ; 
+    waddstr(win , " Tracer GID : ") ;       
+    waddstr(win, tmp  ) ;   
+    new_main_line(win) ;
+    refresh();    
+}
+
 
 
 void print_siginfo(WINDOW *win, siginfo_t *signinf){
@@ -514,19 +528,32 @@ void *spawn_thread(void* input){
     int pid_status ; 
     child_pid = fork() ; 
 
+    struct process_t process_child ; 
+    struct process_t process_father ; 
+
+
     char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL} ;    
     char *argprog2[] =    {"./test", "5433", (char *)NULL} ;      
 
     if (child_pid == 0){
         // PTRACE
-        if (ptrace(PTRACE_TRACEME,0,NULL,NULL) < 0) return printf("Error with ptrace, check the manual"),-2;                
+        get_pid(&process_child) ;         
+        if (ptrace(PTRACE_TRACEME,0,NULL,NULL) < 0) return printf("Error with ptrace, check the manual"),-2;  
+  
+    }
+    usleep(100000);
+    if (child_pid != 0){
+        get_pid(&process_father) ; 
+        print_pid(main_win, &process_father, 1) ; 
+        print_pid(main_win, &process_child, 0);         
+    }      
+    if (child_pid == 0){           
         //execv(argprog[0], &argprog[0]) ; 
         execvp(argprog2[0], argprog2) ;                 
         //execvp(i->args[0],&(i->args[0]));
     }
     else{
-        int wait_status ; 
-        print_pid(main_win);
+        int wait_status ;        
         vec_t* vp = generate_processes() ; 
 
         //modification of the pid 
@@ -551,8 +578,6 @@ void *spawn_thread(void* input){
             else{
                 ptrace(PTRACE_SYSCALL, child_pid, 0, 0);                
             }
-            waddstr(i->inter->main_window[0], "Programme lance") ; 
-            new_main_line(i->inter->main_window[0]) ; 
 
             //waddstr(i->inter->main_window[0], tmp  ) ; 
             //new_main_line(i->inter->main_window[0]) ;
