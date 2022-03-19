@@ -406,7 +406,15 @@ int enter_key(WINDOW *win, int key){
 }
 
 
-void *spawn_thread(struct Interface *inter){
+struct input_thread{
+    struct Interface *inter; 
+    vec_t *input ;
+    int size_arg ; 
+};
+
+
+void *spawn_thread(struct input_thread *input){
+        waddstr(input->inter->main_window[0] , "\n in spawn thread :") ; 
 	    //waddstr(inter->main_window[0] , "bienvenue dans le thread") ; 
 	    //new_main_line(inter->main_window[0]) ;  	
 	    
@@ -428,28 +436,28 @@ void *spawn_thread(struct Interface *inter){
                 int wait_status ; 
                 char tmp[10] ;
                 sprintf(tmp, "%d", (int)getpid()) ; 
-                waddstr(inter->main_window[0] , " PID : ") ;                
-                waddstr(inter->main_window[0], tmp  ) ;   
-                new_main_line(inter->main_window[0]) ;
+                waddstr(input->inter->main_window[0] , " PID : ") ;                
+                waddstr(input->inter->main_window[0], tmp  ) ;   
+                new_main_line(input->inter->main_window[0]) ;
                 sprintf(tmp, "%d", (int)getppid()) ; 
-                waddstr(inter->main_window[0] , " PPID : ") ;                       
-                waddstr(inter->main_window[0], tmp  ) ;   
-                new_main_line(inter->main_window[0]) ;
+                waddstr(input->inter->main_window[0] , " PPID : ") ;                       
+                waddstr(input->inter->main_window[0], tmp  ) ;   
+                new_main_line(input->inter->main_window[0]) ;
                 sprintf(tmp, "%d", (int)getgid()) ; 
-                waddstr(inter->main_window[0] , " GID : ") ;       
-                waddstr(inter->main_window[0], tmp  ) ;   
-                new_main_line(inter->main_window[0]) ;
+                waddstr(input->inter->main_window[0] , " GID : ") ;       
+                waddstr(input->inter->main_window[0], tmp  ) ;   
+                new_main_line(input->inter->main_window[0]) ;
                 refresh();
             
 
                 vec_t* vp = generate_processes() ; 
 
-                ((struct process_t*)vp->data)[0].pid = 4934780;
+                ((struct process_t*)input->input->data)[0].pid = 4934780;
 
-                show_specific_panel(inter, 5, 1);  // be careful , main window in panel[0]    
-                refresh_window_start(inter);
-                show_specific_panel(inter, 5, 4);  // be careful , main window in panel[0]                   
-                refresh_window_code(inter);
+                show_specific_panel(input->inter, 5, 1);  // be careful , main window in panel[0]    
+                refresh_window_start(input->inter);
+                show_specific_panel(input->inter, 5, 4);  // be careful , main window in panel[0]                   
+                refresh_window_code(input->inter);
                 //wrefresh(inter->right_window[0]);
 
                 refresh();                   
@@ -474,14 +482,14 @@ void *spawn_thread(struct Interface *inter){
                         sprintf(tmp2, "%s",strsignal(signinf.si_signo)) ; 
                         sprintf(tmp3, "%d",signinf.si_signo) ;             
                         sprintf(tmp4, "%p",signinf.si_addr) ;                                          
-                        waddstr(inter->main_window[0] , "child stopped : ") ;                
-                        waddstr(inter->main_window[0], tmp2  ) ;   
-                        waddstr(inter->main_window[0] , " (") ;                
-                        waddstr(inter->main_window[0], tmp3  ) ;   
-                        waddstr(inter->main_window[0] , ") at adress 0x") ;                
-                        waddstr(inter->main_window[0], tmp4  ) ;                                                  
-                        new_main_line(inter->main_window[0]) ;
-                        wrefresh(inter->main_window[0]) ;                       
+                        waddstr(input->inter->main_window[0] , "child stopped : ") ;                
+                        waddstr(input->inter->main_window[0], tmp2  ) ;   
+                        waddstr(input->inter->main_window[0] , " (") ;                
+                        waddstr(input->inter->main_window[0], tmp3  ) ;   
+                        waddstr(input->inter->main_window[0] , ") at adress 0x") ;                
+                        waddstr(input->inter->main_window[0], tmp4  ) ;                                                  
+                        new_main_line(input->inter->main_window[0]) ;
+                        wrefresh(input->inter->main_window[0]) ;                       
                         //printf("\n child stopped : %s (%d) at adress 0x%p\n",strsignal(signinf.si_signo),signinf.si_signo,signinf.si_addr);
 
                         // TODO: toggle when the parser will not do a loop ( to fix)
@@ -489,19 +497,22 @@ void *spawn_thread(struct Interface *inter){
                     }
 
                     ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
-                    show_specific_panel(inter, 5, 3);
-                    refresh_window_memory(inter, reg);
+                    show_specific_panel(input->inter, 5, 3);
+                    refresh_window_memory(input->inter, reg);
                                                                                                                                                                                                                                                                                       
 
 
                 }
 
 	    	}
-	    	waddstr(inter->main_window[0], "Programme lance") ; 
-	    	new_main_line(inter->main_window[0]) ; 	
+	    	waddstr(input->inter->main_window[0], "Programme lance") ; 
+	    	new_main_line(input->inter->main_window[0]) ; 	
 	    
 	    pthread_exit(NULL) ; 
 }
+
+
+
 
 void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 	    waddstr(win , "\n vous avew saisi :") ; 
@@ -530,7 +541,11 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
             strcpy(parsed[i] , token);
         }
         }	    
-
+        int size_arg = i ; 
+        struct input_thread it ; 
+        it.size_arg = size_arg ; 
+        it.input = input ; 
+        it.inter = inter; 
         ///////////////////
         // etape de parsing
         //////////////////
@@ -540,7 +555,8 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
             new_main_line(win) ; 
             pthread_t thread ; 
             int thr = 1 ; 
-            pthread_create(&thread, NULL, spawn_thread, inter);
+            pthread_create(&thread, NULL, spawn_thread, &it);
+            waddstr(win , "\n create :") ; 
             pthread_join(thread , NULL) ; 
             wrefresh(win);
         }else{
