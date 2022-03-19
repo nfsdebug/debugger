@@ -19,7 +19,7 @@
 char *choice_panel[] = { "Help", "Processes", "Memory", "Code", "Elf", (char *)NULL, } ; 
 char *panel_func[] = { " ", " ", " ", " ", " ", (char *)NULL, } ; 
 char *command[] = { "exec", "value", "adress", "reg",   (char *)NULL} ;
-
+char *options[] = { "-a", "-b", "-c", "-d",   (char *)NULL} ;
 
 
 int NumDigits(int n){
@@ -408,13 +408,31 @@ int enter_key(WINDOW *win, int key){
 
 struct input_thread{
     struct Interface *inter; 
-    vec_t *input ;
-    int size_arg ; 
+    char **args ;
+    char **opts ;
+    int size_args ; 
+    int size_opts ; 
 };
 
 
-void *spawn_thread(struct input_thread *input){
-        waddstr(input->inter->main_window[0] , "\n in spawn thread :") ; 
+void *spawn_thread(void* input){
+        struct input_thread *i = input;
+
+
+        for (int j = 0 ; j < i->size_args+1 ; j++){
+	        waddstr(i->inter->main_window[0] , "\n vous avew saisi  les arguments :") ;            
+            waddstr(i->inter->main_window[0] , i->args[j]) ;
+            
+        }
+        new_main_line(i->inter->main_window[0]) ;        
+        for (int j = 0 ; j < i->size_opts ; j++){
+            waddstr(i->inter->main_window[0] , "\n vous avew saisi les options  :") ;
+            waddstr(i->inter->main_window[0] , i->opts[j]) ;          
+        }
+
+
+        //waddstr(i->inter->main_window[0] , "\n in spawn thread :") ;
+        
 	    //waddstr(inter->main_window[0] , "bienvenue dans le thread") ; 
 	    //new_main_line(inter->main_window[0]) ;  	
 	    
@@ -425,39 +443,44 @@ void *spawn_thread(struct input_thread *input){
 	    int pid_status ; 
 	    child_pid = fork() ; 
 	    	//char *argprog[] = {"/home/sbstndbs/debugger/target/mon_programme", "5433", (char *)NULL} ; 
-	    	char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL} ;             
+	    	char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL} ;    
+            char *argprog2[] =    {"./test", "5433", (char *)NULL} ; 
+           //char *arg[] = i->args ; 
+            //char arg2 = &arg;       
 
 	    	if (child_pid == 0){
                 if (ptrace(PTRACE_TRACEME,0,NULL,NULL) < 0) return printf("Error with ptrace, check the manual"),-2;                
-	    		execv(argprog[0], &argprog[0]) ; 
+	    		//execv(argprog[0], &argprog[0]) ; 
+	    		execvp(argprog2[0], argprog2) ;                 
+                //execvp(i->args[0],i->args);
 	    	}
 	    	else{
 
                 int wait_status ; 
                 char tmp[10] ;
                 sprintf(tmp, "%d", (int)getpid()) ; 
-                waddstr(input->inter->main_window[0] , " PID : ") ;                
-                waddstr(input->inter->main_window[0], tmp  ) ;   
-                new_main_line(input->inter->main_window[0]) ;
+                waddstr(i->inter->main_window[0] , " PID : ") ;                
+                waddstr(i->inter->main_window[0], tmp  ) ;   
+                new_main_line(i->inter->main_window[0]) ;
                 sprintf(tmp, "%d", (int)getppid()) ; 
-                waddstr(input->inter->main_window[0] , " PPID : ") ;                       
-                waddstr(input->inter->main_window[0], tmp  ) ;   
-                new_main_line(input->inter->main_window[0]) ;
+                waddstr(i->inter->main_window[0] , " PPID : ") ;                       
+                waddstr(i->inter->main_window[0], tmp  ) ;   
+                new_main_line(i->inter->main_window[0]) ;
                 sprintf(tmp, "%d", (int)getgid()) ; 
-                waddstr(input->inter->main_window[0] , " GID : ") ;       
-                waddstr(input->inter->main_window[0], tmp  ) ;   
-                new_main_line(input->inter->main_window[0]) ;
+                waddstr(i->inter->main_window[0] , " GID : ") ;       
+                waddstr(i->inter->main_window[0], tmp  ) ;   
+                new_main_line(i->inter->main_window[0]) ;
                 refresh();
             
 
                 vec_t* vp = generate_processes() ; 
 
-                ((struct process_t*)input->input->data)[0].pid = 4934780;
+                //((struct process_t*)input->input->data)[0].pid = 4934780;
 
-                show_specific_panel(input->inter, 5, 1);  // be careful , main window in panel[0]    
-                refresh_window_start(input->inter);
-                show_specific_panel(input->inter, 5, 4);  // be careful , main window in panel[0]                   
-                refresh_window_code(input->inter);
+                show_specific_panel(i->inter, 5, 1);  // be careful , main window in panel[0]    
+                refresh_window_start(i->inter);
+                show_specific_panel(i->inter, 5, 4);  // be careful , main window in panel[0]                   
+                refresh_window_code(i->inter);
                 //wrefresh(inter->right_window[0]);
 
                 refresh();                   
@@ -482,14 +505,14 @@ void *spawn_thread(struct input_thread *input){
                         sprintf(tmp2, "%s",strsignal(signinf.si_signo)) ; 
                         sprintf(tmp3, "%d",signinf.si_signo) ;             
                         sprintf(tmp4, "%p",signinf.si_addr) ;                                          
-                        waddstr(input->inter->main_window[0] , "child stopped : ") ;                
-                        waddstr(input->inter->main_window[0], tmp2  ) ;   
-                        waddstr(input->inter->main_window[0] , " (") ;                
-                        waddstr(input->inter->main_window[0], tmp3  ) ;   
-                        waddstr(input->inter->main_window[0] , ") at adress 0x") ;                
-                        waddstr(input->inter->main_window[0], tmp4  ) ;                                                  
-                        new_main_line(input->inter->main_window[0]) ;
-                        wrefresh(input->inter->main_window[0]) ;                       
+                        waddstr(i->inter->main_window[0] , "child stopped : ") ;                
+                        waddstr(i->inter->main_window[0], tmp2  ) ;   
+                        waddstr(i->inter->main_window[0] , " (") ;                
+                        waddstr(i->inter->main_window[0], tmp3  ) ;   
+                        waddstr(i->inter->main_window[0] , ") at adress 0x") ;                
+                        waddstr(i->inter->main_window[0], tmp4  ) ;                                                  
+                        new_main_line(i->inter->main_window[0]) ;
+                        wrefresh(i->inter->main_window[0]) ;                       
                         //printf("\n child stopped : %s (%d) at adress 0x%p\n",strsignal(signinf.si_signo),signinf.si_signo,signinf.si_addr);
 
                         // TODO: toggle when the parser will not do a loop ( to fix)
@@ -497,18 +520,18 @@ void *spawn_thread(struct input_thread *input){
                     }
 
                     ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
-                    show_specific_panel(input->inter, 5, 3);
-                    refresh_window_memory(input->inter, reg);
+                    show_specific_panel(i->inter, 5, 3);
+                    refresh_window_memory(i->inter, reg);
                                                                                                                                                                                                                                                                                       
 
 
                 }
 
 	    	}
-	    	waddstr(input->inter->main_window[0], "Programme lance") ; 
-	    	new_main_line(input->inter->main_window[0]) ; 	
+	    	waddstr(i->inter->main_window[0], "Programme lance") ; 
+	    	new_main_line(i->inter->main_window[0]) ; 	
 	    
-	    pthread_exit(NULL) ; 
+	    pthread_exit(NULL) ;
 }
 
 
@@ -516,47 +539,96 @@ void *spawn_thread(struct input_thread *input){
 
 void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 	    waddstr(win , "\n vous avew saisi :") ; 
-	    new_main_line(win) ;  
+	    new_main_line(win) ;         
 	    waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
 	    new_main_line(win) ;  
-	    // split method from internet hint
+       
 	    const char delim[2] = " " ; 
 
         /////////////////
         // etape de recuperation de l'input
         /////////////////
-
+  
         char *token ;
-        char *parsed[20] ; // we do not consider more than 20 args...
+        char *parsed[20] ; // we do not consider more than 20 args...      
+        char *opts[20];
+        char *args[20] ; 
+
+        int i_p = 0 ; // nombre d'occurence
+        int i_o = 0 ; 
+        int i_a = 0 ; 
 
 	    token = strtok((char *)(&input->data)[0] , delim ) ; 
         parsed[0] = malloc(strlen(token) * sizeof(char));
+        i_p++ ;
         strcpy(parsed[0], token);
-        int i = 0 ; 
+
         while( token != NULL){
-        token = strtok(NULL, delim);
-        if (token != NULL){
-            i++;
-            parsed[i] = malloc( strlen(token) * sizeof(char) + 1);
-            strcpy(parsed[i] , token);
-        }
+            token = strtok(NULL, delim);
+            if (token != NULL){
+                i_p++;
+                parsed[i_p-1] = malloc( strlen(token) * sizeof(char) + 1);
+                strcpy(parsed[i_p-1] , token);
+            }
         }	    
-        int size_arg = i ; 
-        struct input_thread it ; 
-        it.size_arg = size_arg ; 
-        it.input = input ; 
-        it.inter = inter; 
         ///////////////////
         // etape de parsing
         //////////////////
+        int n_options = 4 ; 
+        // get the options & the args 
+        int is_an_option ; 
+        for (int j = 1 ; j < i_p ; j++ ){
+            is_an_option = 0 ; 
+            for (int k = 0 ; k < n_options ; k++){
+                if (strcmp(options[k], parsed[j]) == 0){
+                    i_o++;
+                    is_an_option = 1 ; 
+                    opts[i_o-1] = malloc( (strlen(parsed[j]) + 1 )* sizeof(char)  ) ;
+                    strcpy(opts[i_o-1], parsed[j]); // copie de l'option 
+                }
+            }
+            if (is_an_option == 0){
+                i_a++;
+                args[i_a-1] = malloc( ( strlen(parsed[j]) + 1 ) *sizeof(char) );
+                strcpy(args[i_a-1], parsed[j]);
+            }
+            
+        }
+        char n[1] = "\0";
+        for (int j = i_a ; j < 20 ; j++){
+            args[j] = malloc( sizeof(char));
+            strcpy(args[i_a], n) ; // NULL a la fin
+            //args[i_a][0] = "\0" ;
+        }
+
+        // structure for the thread
+        struct input_thread  it ;
+        it.inter = inter ; 
+        it.size_args = i_a ; 
+        it.size_opts = i_o ;
+        it.opts = opts ; 
+        it.args = args ; 
+
+        for (int j = 0 ; j < i_a ; j++){
+	        waddstr(win , "\n vous avew saisi  les arguments :") ;            
+            waddstr(win , args[j]) ;
+            
+        }
+        new_main_line(win) ;        
+        for (int j = 0 ; j < i_o ; j++){
+            waddstr(win , "\n vous avew saisi les options  :") ;
+            waddstr(win , opts[j]) ;          
+        }
+
+
 
         if (strcmp(command[0], parsed[0]) == 0){
+                // its an exec .....
             waddstr(win , "\n EXEC :") ; 
             new_main_line(win) ; 
             pthread_t thread ; 
             int thr = 1 ; 
             pthread_create(&thread, NULL, spawn_thread, &it);
-            waddstr(win , "\n create :") ; 
             pthread_join(thread , NULL) ; 
             wrefresh(win);
         }else{
@@ -568,7 +640,7 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
         // deallocation
         //////////////////
 
-        for (int j = i ; j >= 0 ; j--){
+        for (int j = i_p-1 ; j >= 0 ; j--){
             free(parsed[j]);
         }
 
