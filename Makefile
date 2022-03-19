@@ -6,11 +6,12 @@ run: debug test
 	./debug test
 
 test: test.c 
-	gcc -no-pie -g test.c -o test
-
+	gcc -g -gdwarf-2 test.c -o test
+lib: lib/utilities.h lib/utilities.c
+	gcc  -o utilities.o -c lib/utilities.c 
 # TODO fix lib error
-debug: debug.c test.c
-	gcc -Wall -Wextra -g debug.c lib/linenoise.c -o debug -ldwarf -lunwind -lelf 
+debug: debug.c test lib
+	gcc -Wall -Wextra -g debug.c utilities.o -o debug -ldwarf
 
 clean:
 	rm -rf *.o *.out test debug history.txt
