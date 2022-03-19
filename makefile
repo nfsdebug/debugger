@@ -11,7 +11,7 @@ EXP = exp
 
 all : $(TARGET)/interface $(TARGET)/test_process $(TARGET)/mon_programme $(TARGET)/test
 
-$(TARGET)/interface :  $(SRC)/interface.c 
+$(TARGET)/interface :  $(SRC)/interface.c
 	gcc  -L./$(VEC) -Wl,-rpath=./$(VEC) $< -o $@  -lvec -lncursest -lpanelt -lmenut -lformt	-pthread -lpthread
 
 $(TARGET)/test_process :  $(EXP)/test_process.c

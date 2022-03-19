@@ -37,8 +37,9 @@ int main(int argc, char ** argv)
 
 	//printf("1\n");
 
-	//printf("2\n");	
+	printf("2\n");	
 	int var = 3;
+	//sleep(10);
 
 	raise(SIGSEGV);
 	

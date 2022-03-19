@@ -512,7 +512,7 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     for (int j = 0 ; j < i ; j++){
 
 
-
+    waddstr(win, line[j]) ; 
         token = strtok((char *)line[j], delim) ;
         parsed_line[0] = malloc(strlen(token) * sizeof(char)) ; 
         strcpy(parsed_line[0] , token) ; 
@@ -523,9 +523,10 @@ void show_libraries(WINDOW *win, struct process_t *pid){
                 index++;
 
 
-
                 parsed_line[index] = malloc( strlen(token) * sizeof(char) + 1);
                 strcpy(parsed_line[index] , token);
+                
+                //waddstr(win, "\n"); 
 
                 strncpy(comp, parsed_line[index], 1) ; 
 
@@ -686,7 +687,7 @@ void *spawn_thread(void* input){
             }
 
             if (loop == 1){
-                show_libraries(process_win, &process_child);
+                
             }
 
             //waddstr(i->inter->main_window[0], tmp  ) ; 
@@ -710,6 +711,7 @@ void *spawn_thread(void* input){
                 refresh_window_memory(i->inter, reg);     
             }
         }
+show_libraries(process_win, &process_child);        
     }
     pthread_exit(NULL) ;
 }
