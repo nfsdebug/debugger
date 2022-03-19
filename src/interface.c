@@ -8,6 +8,7 @@
 #include <sys/ptrace.h>
 #include <signal.h>
 #include <sys/user.h>
+#include <proc/readproc.h> // get ppid from pid 
 
 #include <panel.h>
 #include <menu.h>
@@ -456,18 +457,32 @@ void print_pid(WINDOW *win, struct process_t *pid, int info){
     }
     char tmp[10] ;
     sprintf(tmp, "%d", pid->pid) ; 
-    waddstr(win , " Tracer PID : ") ;                
+    waddstr(win , "  PID : ") ;                
     waddstr(win, tmp  ) ;   
     new_main_line(win) ;
     sprintf(tmp, "%d", pid->ppid) ; 
-    waddstr(win , " Tracer PPID : ") ;                       
+    waddstr(win , "  PPID : ") ;                       
     waddstr(win, tmp  ) ;   
     new_main_line(win) ;
     sprintf(tmp, "%d", pid->gid) ; 
-    waddstr(win , " Tracer GID : ") ;       
+    waddstr(win , "  GID : ") ;       
     waddstr(win, tmp  ) ;   
     new_main_line(win) ;
     refresh();    
+}
+
+void show_libraries(WINDOW *win, struct process_t *pid){
+    // this function is for print the loaded libraries from /proc/pid/maps
+    char buffpid[10] ;
+    char buffpath[30] ; 
+    sprintf(buffpid, "%d", pid->pid) ; 
+    sprintf(buffpath, "/proc/%s/maps", buffpid);
+    waddstr(win, buffpath) ; 
+    //FILE *fp = fopen(buffpath, "r") ; 
+    //if (!fp){
+    //    waddstr(win, "impossible d'afficher les librairies chargees\n ");
+    //}
+    //fclose(fp); 
 }
 
 
@@ -519,6 +534,7 @@ void config_debugger(struct input_thread *in, struct option_debugger *opt_deb){
 void *spawn_thread(void* input){
     struct input_thread *i = input;
     WINDOW *main_win = i->inter->main_window[0] ; 
+    WINDOW *process_win = i->inter->right_window[1] ; 
     print_parsed(i->inter->main_window[0], i) ; 
 
     struct option_debugger opt_deb ; 
@@ -533,7 +549,8 @@ void *spawn_thread(void* input){
 
 
     char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL} ;    
-    char *argprog2[] =    {"./test", "5433", (char *)NULL} ;      
+    char *argprog2[] =    {"./test", "5433", (char *)NULL} ;
+
 
     if (child_pid == 0){
         // PTRACE
@@ -541,9 +558,9 @@ void *spawn_thread(void* input){
         if (ptrace(PTRACE_TRACEME,0,NULL,NULL) < 0) return printf("Error with ptrace, check the manual"),-2;  
   
     }
-    usleep(100000);
     if (child_pid != 0){
-        get_pid(&process_father) ; 
+        process_child.pid = child_pid ;  
+        get_pid(&process_father) ;        
         print_pid(main_win, &process_father, 1) ; 
         print_pid(main_win, &process_child, 0);         
     }      
@@ -600,6 +617,7 @@ void *spawn_thread(void* input){
                 refresh_window_memory(i->inter, reg);     
             }
         }
+        //show_libraries(process_win, &process_child);
     }
     pthread_exit(NULL) ;
 }
