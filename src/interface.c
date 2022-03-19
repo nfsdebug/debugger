@@ -476,12 +476,16 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     char *buffpid = (char*)malloc( 10 * sizeof(char)) ;
     char *buffpath = (char*)malloc( 30 * sizeof(char)) ; 
     char *buffline = (char*)malloc( 1000 * sizeof(char));
-    char **loaded_libs = malloc( 1000 * sizeof(char *)) ; 
+    int size_line = 1000 ; 
+    int size_loaded_libs = 1000 ; 
+    char **line = malloc( size_line * sizeof(char *)) ; 
+    char **loaded_libs = malloc( size_loaded_libs * sizeof(char *));
 
     sprintf(buffpid, "%d", pid->pid) ; 
     waddstr(win, " \n maps localisation :");
     sprintf(buffpath, "/proc/%s/maps", buffpid);
     waddstr(win, buffpath) ; 
+    waddstr(win, " \n ");
     FILE *fp = fopen(buffpath, "r") ; 
     if (!fp){
         waddstr(win, "impossible d'afficher les librairies chargees\n ");
@@ -490,30 +494,82 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     size_t line_buf_size = 0;
     int i = 0 ; 
     while (getline(&buffline, &line_buf_size , fp )> -1){
-        loaded_libs[i] = malloc(( line_buf_size + 1 ) * sizeof(char)) ;         
-        strcpy( loaded_libs[i], buffline);
+        line[i] = malloc(( line_buf_size + 1 ) * sizeof(char)) ;         
+        strcpy( line[i], buffline);
         i++;
     }
-    loaded_libs[i] = malloc(( line_buf_size + 1 ) * sizeof(char)) ;     
-    strcpy( loaded_libs[i], buffline);
+    line[i] = malloc(( line_buf_size + 1 ) * sizeof(char)) ;     
+    strcpy( line[i], buffline);
 
+    const char delim[2] = " " ;
+    char slash[2] = "/\0";
+    char comp[2] = "\0\0"; 
+    
+    char *token ;
+    char *parsed_line[10] ; 
+    
+    int number_loaded_lib = 0 ; 
     for (int j = 0 ; j < i ; j++){
-        waddstr(win, " \n ");    
-        waddstr(win, loaded_libs[j]) ; 
-        waddstr(win, " \n ");
+
+
+
+        token = strtok((char *)line[j], delim) ;
+        parsed_line[0] = malloc(strlen(token) * sizeof(char)) ; 
+        strcpy(parsed_line[0] , token) ; 
+        int index = 0 ; 
+        while( token != NULL){
+            token = strtok(NULL, delim);
+            if (token != NULL){
+                index++;
+
+
+
+                parsed_line[index] = malloc( strlen(token) * sizeof(char) + 1);
+                strcpy(parsed_line[index] , token);
+
+                strncpy(comp, parsed_line[index], 1) ; 
+
+                if ( strcmp( comp, slash ) == 0){    
+                    //search if the loadd library already saved
+                    int already_saved = 0 ; 
+                    for (int k = 0 ; k < number_loaded_lib ; k++){
+                        if ( strcmp( loaded_libs[k] , parsed_line[index]) == 0){
+                            already_saved = 1 ; 
+                        }
+                    }     
+                    // si le groupe commence par un backslash --> c'est une lib
+                    if (already_saved == 0){
+                    //if (true){
+                        loaded_libs[number_loaded_lib] = malloc(( 100 + 1 ) * sizeof(char)) ; 
+                        strcpy(loaded_libs[number_loaded_lib] , parsed_line[index]) ; 
+                        number_loaded_lib++;                        
+                    }
+                }
+            }  
+        }	
     }
     // method to get the libs - little parser
-
+    waddstr(win, "\n Loaded libraries : \n "); 
+    for (int j = 0 ; j < number_loaded_lib ; j++){   
+        waddstr(win, loaded_libs[j]) ; 
+        waddstr(win, " ");       
+    }
+    box(win, 0, 0);
+    wrefresh(win);
 
     fclose(fp); 
 
     free(buffpid) ; 
     free(buffpath);
     free(buffline);
-    for (int j = 0 ; j < 1000 ; j++){
+    for (int j = 0 ; j < size_loaded_libs ; j++){
         free(loaded_libs[j]);
     }
+    for (int j = 0 ; j < size_line ; j++){
+        free(line[j]);
+    }    
     free(loaded_libs);
+    free(line);
 }
 
 
