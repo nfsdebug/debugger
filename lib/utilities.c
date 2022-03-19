@@ -196,7 +196,7 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     if (dwarf_get_TAG_name(tag, &tag_name) != DW_DLV_OK)
         printf("Error in dwarf_get_TAG_name\n");
 
-    printf("DW_TAG_subprogram: '%s'\n", die_name);
+    //printf("DW_TAG_subprogram: '%s'\n", die_name);
 
     if (dwarf_attrlist(die, &attrs, &attrcount, &err) != DW_DLV_OK)
         printf("Error in dwarf_attlist\n");
@@ -212,7 +212,7 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         else if (attrcode == DW_AT_high_pc)
             dwarf_formaddr(attrs[i], &highpc, 0);
     }
-    printf("%d\n", count_func);
+    //printf("%d\n", count_func);
 
     if (tag == DW_TAG_subprogram)
     {

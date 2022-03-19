@@ -5,6 +5,8 @@
 #include <unistd.h>
 
 
+int globalvariable;
+
 void foo(int b);
 
 
@@ -30,6 +32,14 @@ void sigh(int sig)
 }
 
 
+void funcdetest()
+{
+	printf("salut je suis ici \n");
+	printf(" puis encore ici ?\n");
+	raise(SIGSEGV);
+
+}
+
 
 int main(int argc, char ** argv)
 {
@@ -39,6 +49,12 @@ int main(int argc, char ** argv)
 
 	printf("2\n");	
 	int var = 3;
+
+	funcdetest();
+
+	printf("en dehors\n");
+
+	printf("Ok\n");
 
 	raise(SIGSEGV);
 	

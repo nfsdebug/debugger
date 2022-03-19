@@ -55,6 +55,13 @@ int main(int argc, char **argv)
 
         get_dbg(argv[1]);
 
+        // Get program offset
+        long long prog_offset;
+
+        char fname[128];
+        sprintf(fname, "/proc/%d/maps", child);
+        FILE *f = fopen(fname, "rb");
+        fscanf(f, "%llx", &prog_offset);
         // Print proc information
         printf("PID: %d\n", getpid());
         printf("GID: %d\n", getgid());
@@ -94,6 +101,44 @@ int main(int argc, char **argv)
 
                 // TODO: toggle when the parser will not do a loop ( to fix)
                 // break;
+            }
+        }
+
+        // If the user entered "b, break" then he want to setup a breakpoint
+        if (strcasecmp(cmd, "b"))
+        {
+            char *string = cmd;
+            char *token = strtok(string, " ");
+            if (strcasecmp(cmd, "func"))
+            {
+
+                token = strtok(NULL, " ");
+
+                for (int i = 0; i < count_func; i++)
+                {
+                    if (strcasestr(token, func[i].name))
+                    {
+
+                        Dwarf_Addr adr = func[i].lowpc + prog_offset;
+
+                        // Add 3 to the adress
+
+                        long long bef = (ptrace(PTRACE_PEEKDATA, child, (void *)adr, 0) & ~0xff) | 0xcc;
+
+                         ptrace(PTRACE_POKEDATA, child, (void *)adr, (void *)bef);
+                    }
+                }
+            }
+            else
+            {
+                char *string = cmd;
+                token = strtok(string, " ");
+                token = strtok(NULL, " ");
+                printf("DEBUG:\tSetting a breakpoint on adress %s\n", token);
+                // Add 3 to the adress
+                u_int64_t w3 = (ptrace(PTRACE_PEEKDATA, child, token, 0) & ~0xff) | 0xcc;
+                if (ptrace(PTRACE_POKEDATA, child, token, w3) < 0)
+                    printf("Wrong adress for the breakpoint");
             }
         }
 
