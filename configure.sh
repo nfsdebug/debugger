@@ -11,4 +11,6 @@ cd ncurses-6.3/
 make all
 sudo make install
 cd ../
+mkdir target
 make 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:.ext/vec
