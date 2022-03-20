@@ -653,11 +653,18 @@ void *spawn_thread(void* input){
         get_pid(&process_father) ;        
         print_pid(main_win, &process_father, 1) ; 
         print_pid(main_win, &process_child, 0);         
-    }      
+    }  
+    int is_executed = 1 ;     
     if (child_pid == 0){                          
         execvp(i->args[0], i->args);
+        is_executed = 0 ; 
+        _exit(-1);
+        // is_executed set to -1 if execvp returned an error
     }
-    else{
+    if (is_executed == 0){
+        waddstr(main_win , "\n Issue : cannot trace this program") ; 
+    }
+    if ( (child_pid != 0) & (is_executed != 0)){
         int wait_status ;        
         vec_t* vp = generate_processes() ; 
 
