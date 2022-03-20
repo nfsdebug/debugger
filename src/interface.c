@@ -767,7 +767,7 @@ void *spawn_thread(void* input){
 
         // add breakpoint
         if (i->have_breakpoint){
-            if(i->is_function == 1){
+            if(i->is_function == 0){
                     sprintf(tmp2, "DEBUG:\tSetting a breakpoint on adress %s\n", i->breakpoint_adress);
                     waddstr(main_win, tmp2) ; 
                     // Add 3 to the adress
