@@ -10,10 +10,10 @@ Hence, there is two versions of the projet. We decided to separate into to files
 
 Here is the protocole for the installation : 
 
- - for the terminal version
- - The NCurses version is started with the command `bash configure`. This will install  the thread-safe NCurses version, and to install the lib_vec tool from @gabrl. You need to install `libdwarf-dev` and `libunwind-ptrace`  as well. Hence, the application is started with `target/interface`. Yhe Help panel show you how to use the tool. You can enter for example `exec ./test`.
+ - The termnal version required to launch `make`. The tool is launched with the command `./debug YourApp`;
+ - The NCurses version is started with the command `bash configure.sh`. This will install  the thread-safe NCurses version, and to install the lib_vec tool from @gabrl. You need to install `libdwarf-dev` and `libunwind-ptrace`  as well. Hence, the application is started with `target/interface`. Yhe Help panel show you how to use the tool. You can enter for example `exec ./test`. Note that you should load the vec library with the command `export LD_LIBRARY_PATH=/home/YourUserName/debugger/ext/vec`.
 
 
-
+Note : The NCurses tool is experimental and its dehaviour depends on the plateform you use. 
 
 
