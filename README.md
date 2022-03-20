@@ -1,0 +1,12 @@
+# Usages
+- continue 
+- b <adress> -> Create a breakpoint on a certain adress obtened from the objdump ( the program ad itself the offset) 
+- b func <function_name> -> Create a breapoint from a name function ( doesn't work if there's no -g flag)
+- backtrace -> Get the backtrace
+- memory 
+    - write -> Write the content on a certain address
+    - read -> Read the content on a certain address
+- register
+    - dump -> Print all registers addresses
+    - write <register> <content> -> Change the content for a certain register
+    - read <register-> Print the content of a register

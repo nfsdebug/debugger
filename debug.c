@@ -104,7 +104,7 @@ int main(int argc, char **argv)
             char *token = strtok(string, " ");
             token = strtok(NULL, " ");
 
-            printf("token = %s\n", token);
+            //  printf("token = %s\n", token);
 
             if (!strcasecmp(token, "func"))
             {
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
             else
             {
 
-                printf("%s\n", token);
+                // printf("%s\n", token);
                 Dwarf_Addr adr = strtoll(token, NULL, 16) + prog_offset;
 
                 printf("DEBUG:\tSetting a breakpoint on adress %llx\n", adr);
@@ -469,38 +469,70 @@ int main(int argc, char **argv)
             } while (ret > 0);
         }
 
-            /*  struct user_regs_struct reg;
-              ptrace(PTRACE_GETREGS, child, NULL, &reg);
+        /*  struct user_regs_struct reg;
+          ptrace(PTRACE_GETREGS, child, NULL, &reg);
 
-              printf("rip = %llx , %llx offset = %llx\n", reg.rip,  ptrace(PTRACE_PEEKDATA, child, reg.rip, 0),prog_offset);
+          printf("rip = %llx , %llx offset = %llx\n", reg.rip,  ptrace(PTRACE_PEEKDATA, child, reg.rip, 0),prog_offset);
 
-              sleep(800000);*/
+          sleep(800000);*/
 
-            // if (WIFSTOPPED(wait_status))
-            while (1)
+        // if (WIFSTOPPED(wait_status))
+        while (1)
+        {
+            if (WIFEXITED(wait_status) || WIFSIGNALED(wait_status))
+                break;
+
+            siginfo_t signinf;
+            ptrace(PTRACE_GETSIGINFO, child, NULL, &signinf);
+            if (WIFSTOPPED(wait_status))
             {
-                if (WIFEXITED(wait_status) || WIFSIGNALED(wait_status))
-                    break;
 
-                siginfo_t signinf;
-                ptrace(PTRACE_GETSIGINFO, child, NULL, &signinf);
-                if (WIFSTOPPED(wait_status))
+                // If it's not a breakpoint made by ptrace, it's an error from the child
+                //  if (signinf.si_signo != 5)
                 {
+                    printf("\n child stopped : %s (%d) at adress %llx \n", strsignal(signinf.si_signo), signinf.si_signo, (long long unsigned)signinf.si_addr);
+                    unw_word_t ip, start_ip = 0, sp, off;
+                    int n = 0, ret;
+                    unw_cursor_t c;
+                    char buf[512];
+                    size_t len;
+                    ret = unw_init_remote(&c, as, ui);
 
-                    // If it's not a breakpoint made by ptrace, it's an error from the child
-                  //  if (signinf.si_signo != 5)
+                    do
                     {
-                        printf("\n child stopped : %s (%d) at adress %llx \n", strsignal(signinf.si_signo), signinf.si_signo, (long long unsigned)signinf.si_addr);
-                        break;
-                    }
-                } 
-                ptrace(PTRACE_SINGLESTEP, child, 0, 0);
-                waitpid(child, &wait_status, 0);
+                        if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
+                            printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
+
+                        if (n == 0)
+                            start_ip = ip;
+
+                        buf[0] = '\0';
+                        unw_get_proc_name(&c, buf, sizeof(buf), &off);
+
+                        printf("Nom du proc : %s\n", buf);
+
+                        if (off)
+                        {
+                            len = strlen(buf);
+                            if (len >= sizeof(buf) - 32)
+                                len = sizeof(buf) - 32;
+                            sprintf(buf + len, "+0x%lx", (unsigned long)off);
+                        }
+                        printf(" - %-32s \n", buf);
+
+                        ret = unw_step(&c);
+                        printf("\n");
+
+                    } while (ret > 0);
+                    break;
+                }
             }
+            ptrace(PTRACE_SINGLESTEP, child, 0, 0);
+            waitpid(child, &wait_status, 0);
+        }
 
-            //  scanf("%[^\n]",cmd);
+        //  scanf("%[^\n]",cmd);
 
-            // return;
-        
+        // return;
     }
 }
