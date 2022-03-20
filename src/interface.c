@@ -10,6 +10,20 @@
 #include <sys/user.h>
 #include <proc/readproc.h> // get ppid from pid 
 
+
+#include <string.h>
+#include <libunwind-ptrace.h>
+#include <libunwind.h>
+#include "libdwarf.h"
+#include "dwarf.h"
+#include "utilities.h"
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <execinfo.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+
 #include <panel.h>
 #include <menu.h>
 #include <form.h>
@@ -190,6 +204,13 @@ struct All_window_size compute_size_window(void){
     return size ;
 
 };
+
+
+//struct Data {
+//    struct user_regs_struct reg ; 
+//
+//
+//};
 
 
 
@@ -621,6 +642,9 @@ void config_debugger(struct input_thread *in, struct option_debugger *opt_deb){
     }
 }
 
+
+static unw_addr_space_t as;
+static struct UPT_info *ui;
 void *spawn_thread(void* input){
     struct input_thread *i = input;
     WINDOW *main_win = i->inter->main_window[0] ; 
@@ -629,6 +653,8 @@ void *spawn_thread(void* input){
 
     struct option_debugger opt_deb ; 
     config_debugger(i, &opt_deb);
+
+    as = unw_create_addr_space(&_UPT_accessors, 0);
 
     pid_t child_pid ; 
     int pid_status ; 
@@ -652,7 +678,9 @@ void *spawn_thread(void* input){
         process_child.pid = child_pid ;  
         get_pid(&process_father) ;        
         print_pid(main_win, &process_father, 1) ; 
-        print_pid(main_win, &process_child, 0);         
+        print_pid(main_win, &process_child, 0);    
+        ui = _UPT_create(child_pid) ; 
+
     }  
     int is_executed = 1 ;     
     if (child_pid == 0){                          
@@ -665,16 +693,53 @@ void *spawn_thread(void* input){
         waddstr(main_win , "\n Issue : cannot trace this program") ; 
     }
     if ( (child_pid != 0) & (is_executed != 0)){
-        int wait_status ;        
+        int wait_status ;   
+        // fiona part   for dgb modified  
+        char *temp[] = {"./test\0" } ;
+        //get_dbg(i->args[0]);
+        get_dbg(temp[0]);
+        long long prog_offset ; 
+        char fname[128];
+        char buff[128];
+        char buff2[128]  ;
+        sprintf(fname, "/proc/%d/maps", child_pid);
+        FILE *f = fopen(fname, "rb");
+        fscanf(f, "%llx", &prog_offset);
+        // Print proc information
+        sprintf(buff, " PID: %d\n", getpid());
+        waddstr(main_win ,buff) ; 
+        sprintf(buff, " GID: %d\n", getgid());
+        waddstr(main_win ,buff) ; 
+        sprintf(buff, " PPID: %d\n", getppid());
+        waddstr(main_win ,buff) ; 
+        sprintf(buff, " Path : %s\n", realpath(i->args[0], NULL));
+        waddstr(main_win ,buff) ; 
+        sprintf(buff, " Offset = %llx\n", prog_offset);
+        waddstr(main_win ,buff) ; 
+
+        sprintf(buff, " Function count : %d\n", count_func);
+        waddstr(main_win ,buff) ; 
+
+        for (int i = 0; i < count_func; i++){
+            sprintf(buff, " Function : %s\n", func[i].name);
+            waddstr(main_win ,buff) ; 
+        }
+
+        for (int i = 0; i < count_var; i++){
+            sprintf(buff, " Variable  : %s dans func:", var[i].name);
+            waddstr(main_win ,buff) ;             
+            sprintf(buff, " %s\n ", var[i].funcname);
+            waddstr(main_win, buff );
+        }
+        // Wait for the program (first execution)
+
+        // end fiona part 
+        waitpid(child_pid, &wait_status, 0);
+
+
         vec_t* vp = generate_processes() ; 
 
-        //modification of the pid 
-        //((struct process_t*)i->input->data)[0].pid = 4934780;
-        //show_specific_panel(i->inter, 5, 1);  // be careful , main window in panel[0]    
-        //refresh_window_start(i->inter);
-        //show_specific_panel(i->inter, 5, 4);  // be careful , main window in panel[0]                   
-        //refresh_window_code(i->inter);
-        //wrefresh(inter->right_window[0]);
+
 
         struct user_regs_struct reg ; 
         char tmp[10] ;        
@@ -812,11 +877,12 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 
 
 
+
+        pthread_t thread ; 
         if (strcmp(command[0], parsed[0]) == 0){
                 // its an exec .....
             waddstr(win , "\n EXEC :") ; 
             new_main_line(win) ; 
-            pthread_t thread ; 
             int thr = 1 ; 
             pthread_create(&thread, NULL, spawn_thread, &it);
             pthread_join(thread , NULL) ; 
