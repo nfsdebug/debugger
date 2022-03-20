@@ -534,8 +534,8 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     int number_loaded_lib = 0 ; 
     for (int j = 0 ; j < i ; j++){
         // text all lines :
-        //waddstr(win, line[j]) ; 
-        //waddstr(win, " ");
+        waddstr(win, line[j]) ; 
+        waddstr(win, " ");
         token = strtok((char *)line[j], delim) ;
         parsed_line[0] = malloc(strlen(token) * sizeof(char)) ; 
         strcpy(parsed_line[0] , token) ; 
@@ -771,7 +771,7 @@ void *spawn_thread(void* input){
 
 
             ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);;
-
+            print_siginfo(main_win, &signinf, &reg);
             if(signinf.si_signo != 5)
             {
                 print_siginfo(main_win, &signinf, &reg);
@@ -1095,74 +1095,120 @@ void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg 
     wrefresh(inter->right_window[2]);    
 
 
-     char tmp2[20] ; 
-    sprintf(tmp2, "rax  0x%llx",reg.rax) ; 
+     char tmp2[30] ; 
+    sprintf(tmp2, "rax      0x%llx",reg.rax) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rbx  0x%llx",reg.rbx) ; 
+    sprintf(tmp2, "rbx      0x%llx",reg.rbx) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rcx  0x%llx",reg.rcx) ; 
+    sprintf(tmp2, "rcx      0x%llx",reg.rcx) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rdx  0x%llx",reg.rdx) ; 
+    sprintf(tmp2, "rdx      0x%llx",reg.rdx) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rdi  0x%llx",reg.rdi) ; 
+    sprintf(tmp2, "rdi      0x%llx",reg.rdi) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rsi  0x%llx",reg.rsi) ; 
+    sprintf(tmp2, "rsi      0x%llx",reg.rsi) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rbp  0x%llx",reg.rbp) ; 
+    sprintf(tmp2, "rbp      0x%llx",reg.rbp) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rsp  0x%llx",reg.rsp) ; 
+    sprintf(tmp2, "rsp      0x%llx",reg.rsp) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r8   0x%llx",reg.r8) ; 
+    sprintf(tmp2, "r8       0x%llx",reg.r8) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r9   0x%llx",reg.r9) ; 
+    sprintf(tmp2, "r9       0x%llx",reg.r9) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r10   0x%llx",reg.r10) ; 
+    sprintf(tmp2, "r10      0x%llx",reg.r10) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r11  0x%llx",reg.r11) ; 
+    sprintf(tmp2, "r11      0x%llx",reg.r11) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r12  0x%llx",reg.r12) ; 
+    sprintf(tmp2, "r12      0x%llx",reg.r12) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r13  0x%llx",reg.r13) ; 
+    sprintf(tmp2, "r13      0x%llx",reg.r13) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r14  0x%llx",reg.r14) ; 
+    sprintf(tmp2, "r14      0x%llx",reg.r14) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r15  0x%llx",reg.r15) ; 
+    sprintf(tmp2, "r15      0x%llx",reg.r15) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rip  0x%llx",reg.rip) ; 
+    sprintf(tmp2, "rip      0x%llx",reg.rip) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;           
+
+    sprintf(tmp2, "rdx      0x%llx",reg.rdx) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ; 
+
+
+    sprintf(tmp2, "eflags   0x%llx",reg.eflags) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ; 
+
+
+    sprintf(tmp2, "cs       0x%llx",reg.cs) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ; 
+
+    sprintf(tmp2, "orig_rax 0x%llx",reg.orig_rax) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ; 
+
+    sprintf(tmp2, "fs_b     0x%llx",reg.fs_base) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ; 
+
+    sprintf(tmp2, "gs_b     0x%llx",reg.gs_base) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;                 
+
+    sprintf(tmp2, "fs_a     0x%llx",reg.fs) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ; 
+
+    sprintf(tmp2, "gs_a     0x%llx",reg.gs) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;                 
+
+    sprintf(tmp2, "ss       0x%llx",reg.ss) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ; 
+
+    sprintf(tmp2, "ds       0x%llx",reg.ds) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ;                 
+
+    sprintf(tmp2, "es       0x%llx",reg.es) ; 
+    waddstr(inter->right_window[2], tmp2  ) ;                                                  
+    new_main_line(inter->right_window[2]) ; 
 
     box(inter->right_window[2], 0, 0); 
     wrefresh(inter->right_window[2]); 
