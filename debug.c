@@ -123,22 +123,24 @@ int main(int argc, char **argv)
                             long long bef = (ptrace(PTRACE_PEEKDATA, child, (void *)adr, 0) & ~0xff) | 0xcc;
 
                             ptrace(PTRACE_POKEDATA, child, (void *)adr, (void *)bef);
-                            ptrace(PTRACE_CONT, child, 0, 0);
-                            waitpid(child, &wait_status, 0);
+
                         }
                     }
                 }
                 else
                 {
-                    char *string = cmd;
-                    token = strtok(string, " ");
-                    token = strtok(NULL, " ");
-                    printf("DEBUG:\tSetting a breakpoint on adress %s\n", token);
+
+                    printf("%s\n",token);
+                    Dwarf_Addr adr = strtoll(token,NULL,16) + prog_offset;
+
+                    printf("DEBUG:\tSetting a breakpoint on adress %llx\n", adr);
                     // Add 3 to the adress
-                    u_int64_t w3 = (ptrace(PTRACE_PEEKDATA, child, token, 0) & ~0xff) | 0xcc;
-                    if (ptrace(PTRACE_POKEDATA, child, token, w3) < 0)
+                    u_int64_t w3 = (ptrace(PTRACE_PEEKDATA, child, adr, 0) & ~0xff) | 0xcc;
+                    if (ptrace(PTRACE_POKEDATA, child, adr, w3) < 0)
                         printf("Wrong adress for the breakpoint");
                 }
+                            ptrace(PTRACE_CONT, child, 0, 0);
+                            waitpid(child, &wait_status, 0);
             }
 
             // Simple management of memory
