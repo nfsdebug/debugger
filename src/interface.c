@@ -748,7 +748,7 @@ void *spawn_thread(void* input){
         char tmp4[100] ; 
         unsigned long long number_of_instructions = 0 ; 
         int loop = 0 ; 
-        while(true){
+        while(WIFSTOPPED(wait_status)){
             loop++;
             if (opt_deb.singlestep == 1){
                 ptrace(PTRACE_SINGLESTEP, child_pid, 0, 0);
@@ -784,7 +784,8 @@ void *spawn_thread(void* input){
                 refresh_window_memory(i->inter, reg);     
             }
         }
-            // backtrace point
+
+            // backtrace point 
             unw_word_t ip, start_ip = 0, sp, off;
             int n = 0, ret;
             unw_cursor_t c;
@@ -817,9 +818,11 @@ void *spawn_thread(void* input){
                     waddstr(main_win, "\n");
 
                 } while (ret > 0);
-show_libraries(process_win, &process_child);  
-free(buff);      
+            
+        //show_libraries(process_win, &process_child);  
+        free(buff);      
     }
+
     pthread_exit(NULL) ;
 }
 
@@ -828,7 +831,7 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 	    new_main_line(win) ;         
 	    waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
 	    new_main_line(win) ;  
-       
+
 	    const char delim[2] = " " ; 
 
         /////////////////
@@ -844,10 +847,17 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
         int i_o = 0 ; 
         int i_a = 0 ; 
 
-	    token = strtok((char *)(&input->data)[0] , delim ) ; 
-        parsed[0] = malloc(strlen(token) * sizeof(char));
-        i_p++ ;
-        strcpy(parsed[0], token);
+	    token = strtok((char *)(&input->data)[0] , delim ) ;
+        int is_valid = 1 ;   
+        if (token != NULL){  
+            parsed[0] = malloc(strlen(token) * sizeof(char));
+            i_p++ ;
+        strcpy(parsed[0], token);            
+        }
+        else{
+            is_valid = 0 ; 
+        }
+      
 
         while( token != NULL){
             token = strtok(NULL, delim);
@@ -913,18 +923,31 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 
 
         pthread_t thread ; 
-        if (strcmp(command[0], parsed[0]) == 0){
-                // its an exec .....
-            waddstr(win , "\n EXEC :") ; 
+        if (is_valid){
+            if ( (strcmp(command[0], parsed[0]) == 0) & (i_a > 0) ){
+                    // its an exec .....
+                waddstr(win , "\n EXEC :") ; 
+                new_main_line(win) ; 
+                int thr = 1 ; 
+                pthread_create(&thread, NULL, spawn_thread, &it);
+                pthread_join(thread , NULL) ; 
+                wrefresh(win);
+            }else{
+            waddstr(win , "\n NOTHING") ; 
             new_main_line(win) ; 
-            int thr = 1 ; 
-            pthread_create(&thread, NULL, spawn_thread, &it);
-            pthread_join(thread , NULL) ; 
-            wrefresh(win);
-        }else{
-	    waddstr(win , "\n NOTHING") ; 
-	    new_main_line(win) ; 
-        }        
+            is_valid = 0 ; 
+            }   
+        }  
+
+
+
+           
+        if(is_valid == 0 ){
+            waddstr(win , "Please enter a valid command... ") ;
+            new_main_line(win) ; 
+            waddstr(win , "Select Help panel for more information.") ;
+            new_main_line(win) ; 
+        }
 
         ///////////////////
         // deallocation
