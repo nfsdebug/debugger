@@ -703,7 +703,8 @@ void *spawn_thread(void* input){
 
     }  
     int is_executed = 1 ;     
-    if (child_pid == 0){                     
+    if (child_pid == 0){    
+            personality(ADDR_NO_RANDOMIZE);                 
         execvp(i->args[0], i->args);
         is_executed = 0 ; 
         _exit(-1);
@@ -714,7 +715,7 @@ void *spawn_thread(void* input){
     }
     if ( (child_pid != 0) & (is_executed != 0)){
         int wait_status ;   
-        get_dbg(i->args[0]);
+        get_dbg("test");
         if (count_func == 0)
             get_elf(i->args[0]);
         usleep(1000000);
@@ -754,6 +755,7 @@ void *spawn_thread(void* input){
             sprintf(buff, "%s\n", var[i].funcname);
             waddstr(main_win, buff );
         }
+
         // Wait for the program (first execution)
         waitpid(child_pid, &wait_status, 0);
  
@@ -798,7 +800,7 @@ void *spawn_thread(void* input){
                 }
             }
         }
-        while(WIFSTOPPED(wait_status)){
+        while(!WIFSTOPPED(wait_status)){
             loop++;
             if (opt_deb.singlestep == 1){
                 ptrace(PTRACE_SINGLESTEP, child_pid, 0, 0);
