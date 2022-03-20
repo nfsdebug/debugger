@@ -24,7 +24,7 @@ $(TARGET)/mon_programme:  $(SRC)/mon_programme.c
 	gcc $< -o $@ 	
 
 $(TARGET)/test:  $(SRC)/test.c
-	gcc $< -gdwarf-2  -o $@ 		
+	gcc $< -g -gdwarf-2  -o $@ 		
 
 clean:
 	rm target/* 

@@ -23,6 +23,9 @@
 #include "dwarf.h"
 #include "utilities.h"
 
+#include <elf.h>
+#include <sys/mman.h>
+
 #define MAX_FUNCTIONS 100
 
 struct functions_s *func;
@@ -31,7 +34,9 @@ static int dienumber = 0;
 
 struct variable_s *var;
 int count_var = 0;
-
+        /*Dwarf_Unsigned *lineno_ar;
+        Dwarf_Addr *lineaddr_ar ;
+        Dwarf_Signed nlines;*/
 void get_dbg(char *name)
 {
     func = malloc(sizeof(struct functions_s) * MAX_FUNCTIONS);
@@ -98,7 +103,7 @@ void get_dbg(char *name)
         }
         if (res == DW_DLV_NO_ENTRY)
         {
-            printf("DONE\n");
+            //printf("DONE\n");
             return;
         }
 
@@ -175,6 +180,8 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
                int level,
                char *name)
 {
+    Dwarf_Error error = 0;
+    Dwarf_Error *errp = 0;
 
     char *die_name = 0;
     const char *tag_name = 0;
@@ -183,36 +190,85 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     Dwarf_Attribute *attrs;
     Dwarf_Addr lowpc, highpc;
     Dwarf_Signed attrcount, i;
+        Dwarf_Line *lines;
+
+        Dwarf_Addr lineaddr;
+        Dwarf_Unsigned lineno;
     int rc = dwarf_diename(die, &die_name, &err);
 
     if (rc == DW_DLV_ERROR)
         printf("Error in dwarf_diename\n");
     else if (rc == DW_DLV_NO_ENTRY)
         return;
+    // Get all lines
+           int n;
+       /*Dwarf_Line *lines;
+        Dwarf_Signed nlines;
+        Dwarf_Addr lineaddr;
+        Dwarf_Unsigned lineno;*/
 
+
+       
+  //  printf("ça rentre ?\n");
+
+        /*  if( dwarf_srclines(die, &lines, &nlines, errp) == DW_DLV_OK)
+            {
+                        lineno_ar = calloc(sizeof(Dwarf_Unsigned),MAX_FUNCTIONS);
+        lineaddr_ar = calloc(sizeof(Dwarf_Addr),MAX_FUNCTIONS);
+           for (n = 0; n < nlines; n++) {
+               if (dwarf_linesrc(lines[n], &name, &error))
+                printf("Error in dwarf_whatform , level %d \n",level);
+
+               if (dwarf_lineno(lines[n], &lineno, &error))
+                printf("Error in dwarf_whatform , level %d \n",level);
+                printf("ok? %d\n",lineno);
+                lineno_ar[n] = lineno;
+               if (dwarf_lineaddr(lines[n], &lineaddr, &error))
+                printf("Error in dwarf_whatform , level %d \n",level);
+                lineaddr_ar[n] = lineaddr;
+                         // printf(" Ligne : %s %d %llx %d\n",name,lineno,lineaddr_ar[n],nlines);
+
+               }
+            } 
+        printf("Nbr lignes : %d\n",nlines);*/
     if (dwarf_tag(die, &tag, &err) != DW_DLV_OK)
         printf("Error in dwarf_tag\n");
 
     if (dwarf_get_TAG_name(tag, &tag_name) != DW_DLV_OK)
         printf("Error in dwarf_get_TAG_name\n");
 
-    //printf("DW_TAG_subprogram: '%s'\n", die_name);
+    // printf("tag name = %s: '%s'\n", tag_name,die_name);
 
     if (dwarf_attrlist(die, &attrs, &attrcount, &err) != DW_DLV_OK)
         printf("Error in dwarf_attlist\n");
 
+    Dwarf_Unsigned line = 0;
+    Dwarf_Addr adresse ;
     for (i = 0; i < attrcount; ++i)
     {
 
         Dwarf_Half attrcode;
         if (dwarf_whatattr(attrs[i], &attrcode, &err) != DW_DLV_OK)
-            printf("Error in dwarf_whatattr\n");
+            //printf("Error in dwarf_whatattr\n");
         if (attrcode == DW_AT_low_pc)
             dwarf_formaddr(attrs[i], &lowpc, 0);
         else if (attrcode == DW_AT_high_pc)
             dwarf_formaddr(attrs[i], &highpc, 0);
+        else if (attrcode == DW_AT_decl_line)
+        {
+            dwarf_formudata(attrs[i], &line, 0);
+            /*  for (n = 0; n < 30; n++) {
+             //printf("Test ? %u %u\n",line,lineaddr_ar[n]);
+                 if ((line+1) == lineno_ar[n])
+                    adresse = lineaddr_ar[n];
+              }*/
+       
+        }
     }
-    //printf("%d\n", count_func);
+
+   // printf("Name %s ligne: %u adresse %llx\n", die_name, line,adresse);
+
+    // printf("%d\n", count_func);
 
     if (tag == DW_TAG_subprogram)
     {
@@ -221,7 +277,10 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         strcpy(func[count_func].name, die_name);
         func[count_func].lowpc = lowpc;
         func[count_func].highpc = highpc;
+        func[count_func].line = line;
+
         count_func++;
+       // printf("Name %s Low %llx, %llx High %llx\n", die_name, adresse,lowpc, highpc);
     }
     if (tag == DW_TAG_variable)
     {
@@ -230,6 +289,8 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         strcpy(var[count_var].name, die_name);
         var[count_var].lowpc = lowpc;
         var[count_var].highpc = highpc;
+        var[count_var].line = line;
+
         if (count_func == 0)
         {
             var[count_var].funcname = malloc(sizeof(char) * strlen("VAR_GLOBALE"));
@@ -244,4 +305,70 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
          var[count_var].func_var->name = func[count_func-1].name;*/
         count_var++;
     }
+}
+
+void get_elf(char *name)
+{
+    void *start = NULL;
+    int i, fd;
+    struct stat stat;
+    char *strtab;
+    int nb_symbols;
+
+    // ouverture du fichier (pour être mappé)
+    fd = open(name, O_RDONLY, 660);
+    if (fd < 0)
+        perror("open");
+
+    // récupération de la taille du fichier
+    fstat(fd, &stat);
+
+    // projection du fichier (MAP_SHARED importe peu ici)
+    start = mmap(0, stat.st_size, PROT_READ, MAP_FILE | MAP_SHARED, fd, 0);
+    if (start == MAP_FAILED)
+    {
+        perror("mmap");
+        abort();
+    }
+
+    Elf64_Ehdr *hdr = (Elf64_Ehdr *)start;
+    Elf64_Sym *symtab;
+
+    Elf64_Shdr *sections = (Elf64_Shdr *)((char *)start + hdr->e_shoff);
+
+    char **functions = malloc(sizeof(char **) * 100);
+    // parcours des sections
+    for (i = 0; i < hdr->e_shnum; i++)
+    {
+        // si la section courante est de type 'table de symbole'
+        if (sections[i].sh_type == SHT_SYMTAB)
+        {
+            symtab = (Elf64_Sym *)((char *)start + sections[i].sh_offset);
+            nb_symbols = sections[i].sh_size / sections[i].sh_entsize;
+            strtab = (char *)((char *)start + sections[sections[i].sh_link].sh_offset);
+        }
+    }
+
+    for (i = 0; i < nb_symbols; ++i)
+    {
+        // printf("Nom : %s types:  %hhu %u %llx\n", strtab + symtab[i].st_name, strtab +symtab[i].st_info,(uint16_t)(strtab +symtab[i].st_shndx),(strtab + symtab[i].st_value));
+        if (((unsigned char)(strtab + symtab[i].st_info) == 178))
+        {
+            func[count_func].name = (strtab + symtab[i].st_name);
+            func[count_func].highpc = (strtab + symtab[i].st_value);
+            func[count_func].lowpc = (strtab + symtab[i].st_value);
+
+            count_func++;
+        }
+        if ((unsigned char)(strtab + symtab[i].st_info) == 177)
+        {
+            var[count_var].name = (strtab + symtab[i].st_name);
+            var[count_var].highpc = (strtab + symtab[i].st_value);
+            var[count_var].lowpc = (strtab + symtab[i].st_value);
+            var[count_var].funcname = "ELF";
+
+            count_var++;
+        }
+    }
+    close(fd);
 }

@@ -8,6 +8,7 @@ struct functions_s
 {
     Dwarf_Addr lowpc;
     Dwarf_Addr highpc;
+    Dwarf_Unsigned line;
     char *name;
 };
 
@@ -15,6 +16,7 @@ struct variable_s
 {
     Dwarf_Addr lowpc;
     Dwarf_Addr highpc;
+    Dwarf_Unsigned line;
     char *name;
     char *funcname;
     // struct function_s* func_var;
@@ -36,5 +38,6 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
 
 void get_dbg(char *name);
 
+void get_elf(char *name);
 #else
 #endif
