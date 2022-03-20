@@ -457,16 +457,15 @@ struct input_thread{
 
 
 void print_parsed(WINDOW *win, struct input_thread *i){
+	    waddstr(win , "\n Arguments list :") ;       
         for (int j = 0 ; j < i->size_args+1 ; j++){
-	        waddstr(win , "\n vous avew saisi  les arguments :") ;            
             waddstr(win , i->args[j]) ;
-            
-        }
-        new_main_line(win) ;        
+        }       
+        waddstr(win , "\n Options list :") ;        
         for (int j = 0 ; j < i->size_opts ; j++){
-            waddstr(win , "\n vous avew saisi les options  :") ;
             waddstr(win , i->opts[j]) ;          
         }
+        waddstr(win , "\n\n ") ; 
 }
 
 void get_pid(struct process_t *pid){
@@ -613,7 +612,7 @@ void print_siginfo(WINDOW *win, siginfo_t *signinf, struct user_regs_struct *reg
     sprintf(tmp2, "%s",strsignal(signinf->si_signo)) ; 
     sprintf(tmp3, "%d",signinf->si_signo) ;             
     sprintf(tmp4, "%llx",reg->rip) ;                                          
-    waddstr(win , "child stopped : ") ;                
+    waddstr(win , "\n Child stopped : ") ;                
     waddstr(win, tmp2  ) ;   
     waddstr(win, " (") ;                
     waddstr(win, tmp3  ) ;   
@@ -667,7 +666,7 @@ void *spawn_thread(void* input){
 
     as = unw_create_addr_space(&_UPT_accessors, 0);
 
-    print_parsed(i->inter->main_window[0], i) ; 
+    //print_parsed(i->inter->main_window[0], i) ; 
 
     pid_t child_pid ; 
     int pid_status ; 
@@ -675,6 +674,7 @@ void *spawn_thread(void* input){
 
     struct process_t process_child ; 
     struct process_t process_father ; 
+    
 
 
     char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL} ;    
@@ -690,8 +690,8 @@ void *spawn_thread(void* input){
     if (child_pid != 0){
         process_child.pid = child_pid ;  
         get_pid(&process_father) ;        
-        print_pid(main_win, &process_father, 1) ; 
-        print_pid(main_win, &process_child, 0);    
+        //print_pid(main_win, &process_father, 1) ; 
+        //print_pid(main_win, &process_child, 0);    
         ui = _UPT_create(child_pid) ; 
 
     }  
@@ -718,6 +718,7 @@ void *spawn_thread(void* input){
         FILE *f = fopen(fname, "rb");
         fscanf(f, "%llx", &prog_offset);
         // Print proc information
+        /*
         sprintf(buff, " PID: %d\n", getpid());
         waddstr(main_win ,buff) ; 
         sprintf(buff, " GID: %d\n", getgid());
@@ -728,31 +729,26 @@ void *spawn_thread(void* input){
         waddstr(main_win ,buff) ; 
         sprintf(buff, " Offset = %llx\n", prog_offset);
         waddstr(main_win ,buff) ; 
+        */        
 
-        sprintf(buff, " Function count : %d\n", count_func);
+        waddstr(main_win ,"DWARD Analysis : \n") ; 
+        sprintf(buff, "  Function count : %d\n", count_func);
         waddstr(main_win ,buff) ; 
 
         for (int i = 0; i < count_func; i++){
-            sprintf(buff, " Function : %s\n", func[i].name);
+            sprintf(buff, "    Function : %s\n", func[i].name);
             waddstr(main_win ,buff) ; 
         }
 
         for (int i = 0; i < count_var; i++){
-            sprintf(buff, " Variable  : %s dans func:", var[i].name);
+            sprintf(buff, "    Variable  : %s dans func : ", var[i].name);
             waddstr(main_win ,buff) ;             
-            sprintf(buff, " %s\n ", var[i].funcname);
+            sprintf(buff, "%s\n", var[i].funcname);
             waddstr(main_win, buff );
         }
         // Wait for the program (first execution)
-
-        // end fiona part 
         waitpid(child_pid, &wait_status, 0);
-
-
-        vec_t* vp = generate_processes() ; 
-
-
-
+ 
         struct user_regs_struct reg ; 
         char tmp[10] ;        
         char tmp2[100] ;
@@ -760,7 +756,6 @@ void *spawn_thread(void* input){
         char tmp4[100] ; 
         unsigned long long number_of_instructions = 0 ; 
         int loop = 0 ; 
-
 
         // add breakpoint
         if (i->have_breakpoint){
@@ -803,7 +798,6 @@ void *spawn_thread(void* input){
             else{
                 ptrace(PTRACE_SYSCALL, child_pid, 0, 0);                
             }
-
             waitpid(child_pid, &wait_status,0);       
             siginfo_t signinf;
             ptrace(PTRACE_GETSIGINFO,child_pid,NULL,&signinf);
@@ -839,35 +833,43 @@ void *spawn_thread(void* input){
                     buf[0] = '\0';
                     unw_get_proc_name(&c, buf, sizeof(buf), &off);
 
-                    sprintf(buf2, " Nom du proc : %s\n", buf);
+                    sprintf(buf2, "  Proc name : %s\n", buf);
                     waddstr(main_win, buf2) ; 
                     if (off)
                     {
                         len = strlen(buf);
                         if (len >= sizeof(buf) - 32)
                             len = sizeof(buf) - 32;
-                        sprintf(buf + len, "+0x%lx", (unsigned long)off);
+                        sprintf(buf + len, " +0x%lx", (unsigned long)off);
                     }
-                    sprintf(buf2, " - %-32s \n", buf);
+                    sprintf(buf2, "    - %-32s \n", buf);
                     waddstr(main_win, buf2) ; 
                     ret = unw_step(&c);
                     waddstr(main_win, "\n");
 
                 } while (ret > 0);
             
-        refresh_window_memory(i->inter, reg);
-        show_libraries(process_win, &process_child, opt_deb.verbose);  
-        free(buff);      
-    }
 
+        //refresh_window_processes(i->inter,vp );
+        refresh_window_memory(i->inter, reg);
+ 
+        free(buff);  
+
+        vec_t *vp = vec_new(sizeof(struct process_t) ) ; 
+        vec_push( vp , &process_father) ; 
+        vec_push(vp, &process_child);   
+        refresh_window_processes(i->inter, vp);
+        show_libraries(process_win, &process_child, opt_deb.verbose);      
+        vec_clear(vp);          
+    }
     pthread_exit(NULL) ;
 }
 
 void parse(struct Interface *inter, WINDOW *win, vec_t *input){
-	    waddstr(win , "\n vous avew saisi :") ; 
-	    new_main_line(win) ;         
-	    waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
-	    new_main_line(win) ;  
+	    //waddstr(win , "\n vous avew saisi :") ; 
+	    //new_main_line(win) ;         
+	    //waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
+	    //new_main_line(win) ;  
 	    const char delim[2] = " " ; 
 
         /////////////////
@@ -976,7 +978,7 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
                 }
                 if (is_valid == 1){
                     for (int i = 0 ; i < i_a-2 ; i++){
-                            print_parsed(it.inter->main_window[0], &it) ; 
+                            //(it.inter->main_window[0], &it) ; 
                         strcpy(it.args[i], it.args[i + 2]) ; 
                     }    
                     it.size_args-=2 ;            
@@ -984,7 +986,7 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
                     it.args[i_a -1] = (char *)NULL ; 
                     it.args[i_a] = (char *)NULL ; 
                     usleep(1000000);                               
-                    print_parsed(it.inter->main_window[0], &it) ;                     
+                    //print_parsed(it.inter->main_window[0], &it) ;                     
                          
                     pthread_create(&thread, NULL, spawn_thread, &it);
                     pthread_join(thread , NULL) ; 
@@ -1092,17 +1094,18 @@ void refresh_window_start(struct Interface *inter){
 }
 
 void refresh_window_processes(struct Interface *inter, vec_t *vp ){
-    box(inter->right_window[1], 0, 0) ;  
+    
+    //box(inter->right_window[1], 0, 0) ;  
     int c ;
-    mvaddstr(1, 1, "show window processes");
+    //mvaddstr(1, 1, "show window processes");
 
-    mvwaddstr(inter->right_window[1], 2, 1, "process panel");
-    wrefresh(inter->right_window[1]);  
+    //mvwaddstr(inter->right_window[1], 2, 1, "process panel");
+    //wrefresh(inter->right_window[1]);  
 
     // affichage des processes
     wclear(inter->right_window[1]); 
-    box(inter->right_window[1], 0, 0) ; 
-    wrefresh(inter->right_window[1]) ; 
+    //box(inter->right_window[1], 0, 0) ; 
+    //wrefresh(inter->right_window[1]) ; 
 
     char *entity_name[] = { "PID", "PPID", "GID", "status", "threads", "Memory", (char *)NULL, } ; 
     char *reduced_entity_name[] = { "PID", "PPID", "GID", "stat.", "th.", "Mem.", (char *)NULL, } ; 
@@ -1135,6 +1138,7 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp ){
         }
     }
     wattroff(inter->right_window[1], COLOR_PAIR(1));   
+    box(inter->right_window[1], 0, 0);
     wrefresh(inter->right_window[1]) ;
 
 
@@ -1157,6 +1161,7 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp ){
             sprintf(tmp, "%d", ((struct process_t*)vp->data)[i].memory) ;               
             mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 5, tmp  ) ;                                                                                                      
     }
+    waddstr(inter->right_window[1],"\n - not all features have been implemented yet - ") ; 
     box(inter->right_window[1], 0, 0);    
     wrefresh(inter->right_window[1]) ;
 }
