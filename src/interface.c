@@ -652,10 +652,8 @@ void *spawn_thread(void* input){
         print_pid(main_win, &process_father, 1) ; 
         print_pid(main_win, &process_child, 0);         
     }      
-    if (child_pid == 0){           
-        //execv(argprog[0], &argprog[0]) ; 
-        execvp(argprog2[0], argprog2) ;                 
-        //execvp(i->args[0],&(i->args[0]));
+    if (child_pid == 0){                          
+        execvp(i->args[0], i->args);
     }
     else{
         int wait_status ;        
@@ -762,21 +760,23 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
                 if (strcmp(options[k], parsed[j]) == 0){
                     i_o++;
                     is_an_option = 1 ; 
-                    opts[i_o-1] = malloc( (strlen(parsed[j]) + 0)* sizeof(char)  ) ;
+                    opts[i_o-1] = malloc( (strlen(parsed[j]) + 1)* sizeof(char)  ) ;
                     strcpy(opts[i_o-1], parsed[j]); // copie de l'option 
                 }
             }
             if (is_an_option == 0){
                 i_a++;
-                args[i_a-1] = malloc( ( strlen(parsed[j]) + 0 ) *sizeof(char) );
+                args[i_a-1] = malloc( ( strlen(parsed[j]) + 1 ) *sizeof(char) );
                 strcpy(args[i_a-1], parsed[j]);
             }
             
         }
-        char n[1] = "\0";
+        char n[2] = "\0";
         for (int j = i_a ; j < 20 ; j++){
-            args[j] = malloc( sizeof(char));
-            strcpy(args[i_a], n) ; // NULL a la fin
+            args[j] = malloc( sizeof(char));            
+            args[j] = (char *)NULL ; 
+
+            //strcpy(args[i_a], n) ; // NULL a la fin
             //args[i_a][0] = "\0" ;
         }
 
@@ -788,9 +788,10 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
         it.opts = opts ; 
         it.args = args ; 
 
-        for (int j = 0 ; j < i_a ; j++){
-	        waddstr(win , "\n vous avew saisi  les arguments :") ;            
-            waddstr(win , args[j]) ;
+        for (int j = 0 ; j < i_a+1 ; j++){
+	        waddstr(win , "\n vous avew saisi  les arguments :") ;   
+            waddstr(win, "|") ;         
+            waddstr(win , args[j]) ;waddstr(win, "|") ;       
             
         }
         new_main_line(win) ;        
