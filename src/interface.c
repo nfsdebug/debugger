@@ -1,4 +1,5 @@
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -36,12 +37,12 @@
 
 char *choice_panel[] = { "Help", "Processes", "Memory", "Code", "Elf", (char *)NULL, } ; 
 char *panel_func[] = { " ", " ", " ", " ", " ", (char *)NULL, } ; 
-char *command[] = { "exec", "value", "adress", "reg",   (char *)NULL} ;
-char *options[] = { "-s", "-r", "-f", "-d",   (char *)NULL} ;
+char *command[] = { "exec", "breakpoint",  (char *)NULL} ;
+char *options[] = { "-s", "-r", "-f", "-v",   (char *)NULL} ;
 // -s : singlestep
 // -r : show reg
 // -f : get flags
-//
+// -v : verbose
 //
 //
 //
@@ -446,7 +447,11 @@ struct input_thread{
     char **args ;
     char **opts ;
     int size_args ; 
-    int size_opts ; 
+    int size_opts ;
+    int have_breakpoint ;  
+    int is_function ; 
+    char *breakpoint_function ; 
+    char *breakpoint_adress ; 
 };
 
 
@@ -620,7 +625,7 @@ struct option_debugger{
     int singlestep ;
     int get_reg  ;      
     int get_all_sig  ;
-
+    int verbose ; 
 };
 
 
@@ -628,17 +633,20 @@ void config_debugger(struct input_thread *in, struct option_debugger *opt_deb){
     opt_deb->singlestep = 0 ; 
     opt_deb->get_reg = 0 ; 
     opt_deb->get_all_sig = 0 ; 
+    opt_deb->verbose = 0 ;
     for (int i = 0 ; i < in->size_opts ; i++){
         if ( strcmp(options[0] , in->opts[i]) == 0 ){
             opt_deb->singlestep = 1 ; 
         }
-
         if ( strcmp(options[1] , in->opts[i]) == 0 ){
             opt_deb->get_reg = 1 ; 
         }
         if ( strcmp(options[2] , in->opts[i]) == 0 ){
             opt_deb->get_all_sig = 1 ; 
-        }                
+        }    
+        if ( strcmp(options[3] , in->opts[i]) == 0 ){
+            opt_deb->verbose = 1 ; 
+        }                       
     }
 }
 
@@ -655,6 +663,8 @@ void *spawn_thread(void* input){
     config_debugger(i, &opt_deb);
 
     as = unw_create_addr_space(&_UPT_accessors, 0);
+
+    print_parsed(i->inter->main_window[0], i) ; 
 
     pid_t child_pid ; 
     int pid_status ; 
@@ -683,7 +693,7 @@ void *spawn_thread(void* input){
 
     }  
     int is_executed = 1 ;     
-    if (child_pid == 0){                          
+    if (child_pid == 0){                     
         execvp(i->args[0], i->args);
         is_executed = 0 ; 
         _exit(-1);
@@ -694,10 +704,9 @@ void *spawn_thread(void* input){
     }
     if ( (child_pid != 0) & (is_executed != 0)){
         int wait_status ;   
-        // fiona part   for dgb modified  
-        //char *temp[] = {"./test\0" } ;
         get_dbg(i->args[0]);
-        //get_dbg(temp[0]);
+        //if (count_func == 0)
+        //    get_elf(i->args[1]);
         long long prog_offset ; 
         char fname[128];
         char *buff = malloc( 128 * sizeof(char));
@@ -748,6 +757,40 @@ void *spawn_thread(void* input){
         char tmp4[100] ; 
         unsigned long long number_of_instructions = 0 ; 
         int loop = 0 ; 
+
+
+        // add breakpoint
+        if (i->have_breakpoint){
+            if(i->is_function == 1){
+                for (int j = 0; j < count_func; j++)
+                {
+                    
+                    if (strcmp(i->breakpoint_function , func[j].name) == 0)
+                    {
+                        sprintf(tmp3, " function name : %s\n", func[j].name);
+                        waddstr(main_win, tmp3) ;
+                         sprintf(tmp3, " offset : %llx\n", prog_offset);
+                        waddstr(main_win, tmp3) ;
+                        sprintf(tmp3, " lowpc : %llx\n", func[j].lowpc);
+                        waddstr(main_win, tmp3) ;
+                        Dwarf_Addr adr = func[j].lowpc + prog_offset;
+                        // Add 3 to the adress
+                        long long bef = (ptrace(PTRACE_PEEKDATA, child_pid, (void *)adr, 0) & ~0xff) | 0xcc;
+                        sprintf(tmp3, " bef : %llx\n", bef);
+                        waddstr(main_win, tmp3) ; 
+                        ptrace(PTRACE_POKEDATA, child_pid, (void *)adr, (void *)bef);
+                    }
+                }
+            }
+            else{
+                    printf("DEBUG:\tSetting a breakpoint on adress %s\n", i->breakpoint_adress);
+                    // Add 3 to the adress
+                    u_int64_t w3 = (ptrace(PTRACE_PEEKDATA, child_pid, i->breakpoint_adress, 0) & ~0xff) | 0xcc;
+                    if (ptrace(PTRACE_POKEDATA, child_pid, i->breakpoint_adress, w3) < 0)
+                        printf("Wrong adress for the breakpoint");
+            }
+        }
+
         while(WIFSTOPPED(wait_status)){
             loop++;
             if (opt_deb.singlestep == 1){
@@ -758,33 +801,23 @@ void *spawn_thread(void* input){
                 ptrace(PTRACE_SYSCALL, child_pid, 0, 0);                
             }
 
-            if (loop == 1){
-                
-            }
-
-            //waddstr(i->inter->main_window[0], tmp  ) ; 
-            //new_main_line(i->inter->main_window[0]) ;
-
             waitpid(child_pid, &wait_status,0);       
             siginfo_t signinf;
             ptrace(PTRACE_GETSIGINFO,child_pid,NULL,&signinf);
-
-
             ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);;
-            print_siginfo(main_win, &signinf, &reg);
-            if(signinf.si_signo != 5)
-            {
-                print_siginfo(main_win, &signinf, &reg);
-                break;
-            }
+
             if ((number_of_instructions%10000 == 0) & opt_deb.singlestep == 1){
                 refresh_window_memory(i->inter, reg);
             }
             else{
                 refresh_window_memory(i->inter, reg);     
             }
+            if(signinf.si_signo != 5)
+            {
+                print_siginfo(main_win, &signinf, &reg);
+                break;
+            }
         }
-
             // backtrace point 
             unw_word_t ip, start_ip = 0, sp, off;
             int n = 0, ret;
@@ -819,7 +852,7 @@ void *spawn_thread(void* input){
 
                 } while (ret > 0);
             
-        //show_libraries(process_win, &process_child);  
+        show_libraries(process_win, &process_child);  
         free(buff);      
     }
 
@@ -831,7 +864,6 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 	    new_main_line(win) ;         
 	    waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
 	    new_main_line(win) ;  
-
 	    const char delim[2] = " " ; 
 
         /////////////////
@@ -894,9 +926,6 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
         for (int j = i_a ; j < 20 ; j++){
             args[j] = malloc( sizeof(char));            
             args[j] = (char *)NULL ; 
-
-            //strcpy(args[i_a], n) ; // NULL a la fin
-            //args[i_a][0] = "\0" ;
         }
 
         // structure for the thread
@@ -904,43 +933,64 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
         it.inter = inter ; 
         it.size_args = i_a ; 
         it.size_opts = i_o ;
+
         it.opts = opts ; 
         it.args = args ; 
-
-        for (int j = 0 ; j < i_a+1 ; j++){
-	        waddstr(win , "\n vous avew saisi  les arguments :") ;   
-            waddstr(win, "|") ;         
-            waddstr(win , args[j]) ;waddstr(win, "|") ;       
-            
-        }
-        new_main_line(win) ;        
-        for (int j = 0 ; j < i_o ; j++){
-            waddstr(win , "\n vous avew saisi les options  :") ;
-            waddstr(win , opts[j]) ;          
-        }
-
-
 
 
         pthread_t thread ; 
         if (is_valid){
+            /// for EXEC command ; simple execution
             if ( (strcmp(command[0], parsed[0]) == 0) & (i_a > 0) ){
-                    // its an exec .....
                 waddstr(win , "\n EXEC :") ; 
                 new_main_line(win) ; 
                 int thr = 1 ; 
+                it.opts = opts ; 
+                it.args = args ; 
                 pthread_create(&thread, NULL, spawn_thread, &it);
                 pthread_join(thread , NULL) ; 
                 wrefresh(win);
-            }else{
-            waddstr(win , "\n NOTHING") ; 
-            new_main_line(win) ; 
-            is_valid = 0 ; 
-            }   
+            }
+            /// for BREAKPOINT command : define an explicit breakpoint
+            if ( (strcmp(command[1], parsed[0]) == 0) & (i_a > 1) ){
+                waddstr(win , "\n BREAKPOINT :") ; 
+                new_main_line(win) ; 
+                int thr = 1 ; 
+                it.have_breakpoint = 1 ; 
+                if(strcmp(parsed[1], "function") == 0){               
+                    it.breakpoint_function = malloc(strlen(parsed[2]) * sizeof(char));    
+                    strcpy(it.breakpoint_function, parsed[2]) ;
+                    it.is_function = 1 ; 
+                }
+                else if(strcmp(parsed[1], "adress") == 0){
+                    it.breakpoint_adress = malloc(strlen(parsed[2]) * sizeof(char));                      
+                    strcpy(it.breakpoint_adress , parsed[2]) ;
+                    it.is_function = 0 ;  
+                }
+                else{
+                    is_valid = 0 ; 
+                }
+                if (is_valid == 1){
+                    for (int i = 0 ; i < i_a-2 ; i++){
+                            print_parsed(it.inter->main_window[0], &it) ; 
+                        strcpy(it.args[i], it.args[i + 2]) ; 
+                    }    
+                    it.size_args-=2 ;            
+                    it.args[i_a - 1] = (char *)NULL ;                              
+                    it.args[i_a -1] = (char *)NULL ; 
+                    it.args[i_a] = (char *)NULL ; 
+                    usleep(1000000);                               
+                    print_parsed(it.inter->main_window[0], &it) ;                     
+                         
+                    pthread_create(&thread, NULL, spawn_thread, &it);
+                    pthread_join(thread , NULL) ; 
+                    wrefresh(win);
+
+
+
+                }
+            }
         }  
-
-
-
            
         if(is_valid == 0 ){
             waddstr(win , "Please enter a valid command... ") ;
@@ -956,31 +1006,6 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
         for (int j = i_p-1 ; j >= 0 ; j--){
             free(parsed[j]);
         }
-
-
-
-	    /*
-	    if ( strcmp(strToken, command[0]) ){
-	    	waddstr(win, "Lancement de l'execution") ; 
-	    	new_main_line(win) ; 
-	    	
-	    	pid_t child_pid ; 
-	    	int pid_status ; 
-	    	child_pid = fork() ; 
-	    	char *argprog[] = {"/home/sbstndbs/debugger/target/mon_programme", "95433", (char *)NULL} ; 
-	    	char *arg[] = {"mon_programme", "9434543", (char *)NULL} ; 
-	    	if (child_pid == 0){
-	    		//execvp(arg[0], &arg[0]) ;
-	    		execv(argprog[0], &argprog[0]) ;  
-	    	}
-
-	    	waddstr(win, "Programme lance") ; 
-	    	new_main_line(win) ; 	    	
-	    
-	    }
-	    	*/
-	
-	    
 
 }
 
