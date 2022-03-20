@@ -220,11 +220,12 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     if (dwarf_get_TAG_name(tag, &tag_name) != DW_DLV_OK)
         printf("Error in dwarf_get_TAG_name\n");
 
-    // printf("DW_TAG_subprogram: '%s'\n", die_name);
+    // printf("tag name = %s: '%s'\n", tag_name,die_name);
 
     if (dwarf_attrlist(die, &attrs, &attrcount, &err) != DW_DLV_OK)
         printf("Error in dwarf_attlist\n");
 
+    unsigned line = 0;
     for (i = 0; i < attrcount; ++i)
     {
 
@@ -235,7 +236,12 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
             dwarf_formaddr(attrs[i], &lowpc, 0);
         else if (attrcode == DW_AT_high_pc)
             dwarf_formaddr(attrs[i], &highpc, 0);
+        else if (attrcode == DW_AT_decl_line)
+            dwarf_formudata(attrs[i], &line, 0);
     }
+
+    //  printf("Name %s ligne: %u\n", die_name, line);
+
     // printf("%d\n", count_func);
 
     if (tag == DW_TAG_subprogram)
@@ -245,6 +251,8 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         strcpy(func[count_func].name, die_name);
         func[count_func].lowpc = lowpc;
         func[count_func].highpc = highpc;
+        func[count_func].line = line;
+
         count_func++;
         //  printf("Name %s Low %llx, High %llx\n", die_name, lowpc, highpc);
     }
@@ -255,6 +263,8 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         strcpy(var[count_var].name, die_name);
         var[count_var].lowpc = lowpc;
         var[count_var].highpc = highpc;
+        var[count_var].line = line;
+
         if (count_func == 0)
         {
             var[count_var].funcname = malloc(sizeof(char) * strlen("VAR_GLOBALE"));
