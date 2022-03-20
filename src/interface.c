@@ -309,10 +309,10 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
         switch(c){
             //case 49:   
             case KEY_F(1):
-            mvaddstr(1, 1, "F1 pressed ");  
-                refresh();
+            //mvaddstr(1, 1, "F1 pressed ");  
+                //refresh();
                 show_specific_panel(inter, panel_amount, 1);  // be careful , main window in panel[0]  
-                refresh();                
+                //refresh();                
                 update_panels();  
                 doupdate();       
                 wrefresh(inter->right_window[0]);                   
@@ -320,10 +320,10 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 break;
             //case 50:
             case KEY_F(2):             
-            mvaddstr(1, 1, "F2 pressed ");    
-                refresh(); 
+            //mvaddstr(1, 1, "F2 pressed ");    
+                //refresh(); 
                 show_specific_panel(inter, panel_amount, 2);  // be careful , main window in panel[0]       
-                refresh();        
+                //refresh();        
                 update_panels();
                 doupdate();                
                 wrefresh(inter->right_window[1]);                                 
@@ -331,10 +331,10 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 break;
             //case 51:
             case KEY_F(3):            
-            mvaddstr(1, 1, "F3 pressed ");      
-                refresh();
+            //mvaddstr(1, 1, "F3 pressed ");      
+                //refresh();
                 show_specific_panel(inter, panel_amount, 3);  // be careful , main window in panel[0]        
-                refresh();        
+                //refresh();        
                 update_panels();  
                 doupdate();        
                 wrefresh(inter->right_window[2]);                                                
@@ -342,10 +342,10 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 break;                
             //case 52:  
             case KEY_F(4):            
-                mvaddstr(1, 1, "F4 pressed ");   
-                refresh(); 
+                //mvaddstr(1, 1, "F4 pressed ");   
+                //refresh(); 
                 show_specific_panel(inter, panel_amount, 4);  // be careful , main window in panel[0]                      
-                refresh();        
+                //refresh();        
                 update_panels();  
                 doupdate();  
                 wrefresh(inter->right_window[3]);     
@@ -353,10 +353,10 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
                 break;
             //case 53:  
             case KEY_F(5):            
-                mvaddstr(1, 1, "F5 pressed ");   
-                refresh(); 
+                //mvaddstr(1, 1, "F5 pressed ");   
+                //refresh(); 
                 show_specific_panel(inter, panel_amount, 5);  // be careful , main window in panel[0]                      
-                refresh();        
+                //refresh();        
                 update_panels();  
                 doupdate();  
                 wrefresh(inter->right_window[4]);     
@@ -431,7 +431,7 @@ int function_key(WINDOW *win, int key){
 
 int enter_key(WINDOW *win, int key){
         if (key == 10){ //enter key
-            mvaddstr(1,1,"enterkey") ; 
+            //mvaddstr(1,1,"enterkey") ; 
 	    new_main_line(win) ; 
 	    wrefresh(win); 
 	    return 1 ;
@@ -510,10 +510,10 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     char **loaded_libs = malloc( size_loaded_libs * sizeof(char *));
 
     sprintf(buffpid, "%d", pid->pid) ; 
-    waddstr(win, " \n maps localisation :");
+    waddstr(win, " \n\n  Maps localisation :  ");
     sprintf(buffpath, "/proc/%s/maps", buffpid);
     waddstr(win, buffpath) ; 
-    waddstr(win, " \n ");
+    waddstr(win, " \n\n");
     FILE *fp = fopen(buffpath, "r") ; 
     if (!fp){
         waddstr(win, "impossible d'afficher les librairies chargees\n ");
@@ -537,10 +537,11 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     char *parsed_line[10] ; 
     
     int number_loaded_lib = 0 ; 
+    waddstr(win, "  ");
     for (int j = 0 ; j < i ; j++){
         // text all lines :
         waddstr(win, line[j]) ; 
-        waddstr(win, " ");
+        waddstr(win, "  ");
         token = strtok((char *)line[j], delim) ;
         parsed_line[0] = malloc(strlen(token) * sizeof(char)) ; 
         strcpy(parsed_line[0] , token) ; 
@@ -578,10 +579,10 @@ void show_libraries(WINDOW *win, struct process_t *pid){
         }	
     }
     // method to get the libs - little parser
-    waddstr(win, "\n Loaded libraries : \n "); 
+    waddstr(win, "\n  Loaded libraries : \n\n  "); 
     for (int j = 0 ; j < number_loaded_lib ; j++){   
         waddstr(win, loaded_libs[j]) ; 
-        waddstr(win, " ");       
+        waddstr(win, "  ");       
     }
     box(win, 0, 0);
     wrefresh(win);
@@ -810,7 +811,7 @@ void *spawn_thread(void* input){
                 refresh_window_memory(i->inter, reg);
             }
             else{
-                refresh_window_memory(i->inter, reg);     
+                //refresh_window_memory(i->inter, reg);     
             }
             if(signinf.si_signo != 5)
             {
@@ -852,6 +853,7 @@ void *spawn_thread(void* input){
 
                 } while (ret > 0);
             
+        refresh_window_memory(i->inter, reg);
         show_libraries(process_win, &process_child);  
         free(buff);      
     }
@@ -1030,14 +1032,12 @@ int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
 	    	    
 	}
         else{
-            mvaddstr(1,1,"notspecialkey") ; 
+            //mvaddstr(1,1,"notspecialkey") ; 
             waddch(win, key) ; 
             //wprintw(main_win, temp) ; 
             doupdate();
             wrefresh(win);
- 
             vec_push(input, (char *)&key) ; 
- 
 
         }
         box(win, 0,0) ; 
@@ -1050,10 +1050,41 @@ int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
 
 
 void refresh_window_start(struct Interface *inter){
-    box(inter->right_window[0], 0, 0);
-    mvaddstr(1, 1, "show window start");
-    refresh();
-    mvwaddstr(inter->right_window[0], 2, 1, "start panel");
+    //box(inter->right_window[0], 0, 0);
+    //mvaddstr(1, 1, "show window start");
+    //refresh();
+    //mvwaddstr(inter->right_window[0], 2, 1, "start panel");
+    start_color() ; 
+    init_pair(1, COLOR_BLACK, COLOR_WHITE);  
+    waddstr(inter->right_window[0], "\n\n" ) ; 
+    wattron(inter->title_window[0], COLOR_PAIR(1));   
+    waddstr(inter->right_window[0], "  COMMANDS  : \n\n" ) ; 
+    wattroff(inter->title_window[0], COLOR_PAIR(1));   
+    waddstr(inter->right_window[0], "     exec : Standard execution until the bug \n\n" ) ;
+    waddstr(inter->right_window[0], "     breakpoint : Add a breakpoint to the code \n" ) ;  
+    waddstr(inter->right_window[0], "         breakpoint  function muFync\n" ) ;
+    waddstr(inter->right_window[0], "         breakpoint  adress 0x00000000\n\n" ) ;  
+    wattron(inter->title_window[0], COLOR_PAIR(1));    
+    waddstr(inter->right_window[0], "  EXEMPLES : \n\n" ) ;   
+    wattroff(inter->title_window[0], COLOR_PAIR(1));        
+    waddstr(inter->right_window[0], "     exec  ./main arg1 arg2 opt1 \n" ) ;    
+    waddstr(inter->right_window[0], "     breakcpoint function myFunc ./main arg1 arg2 opt1 \n\n" ) ;   
+    wattron(inter->title_window[0], COLOR_PAIR(1));   
+    waddstr(inter->right_window[0], "  OPTIONS  : \n\n" ) ; 
+    wattroff(inter->title_window[0], COLOR_PAIR(1));       
+    waddstr(inter->right_window[0], "     -s  :  single step execution \n" ) ;
+    waddstr(inter->right_window[0], "     -v  :  verbose \n\n" ) ;  
+    wattron(inter->title_window[0], COLOR_PAIR(1));   
+    waddstr(inter->right_window[0], "  KEYBOARD LAYOUT  : \n\n" ) ; 
+    wattroff(inter->title_window[0], COLOR_PAIR(1));       
+    waddstr(inter->right_window[0], "     F1 : Help \n" ) ;
+    waddstr(inter->right_window[0], "     F2 : Processes \n" ) ;    
+    waddstr(inter->right_window[0], "     F3 : Memory \n" ) ;
+    waddstr(inter->right_window[0], "     F4 : Code \n" ) ; 
+    waddstr(inter->right_window[0], "     F5 : Elf \n" ) ;
+    waddstr(inter->right_window[0], "     Enter : Select current input" ) ; 
+
+
     box(inter->right_window[0], 0, 0);    
     wrefresh(inter->right_window[0]);         
 }
@@ -1131,146 +1162,143 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp ){
 void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg ){
     wclear(inter->right_window[2]);
     //mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
-    wrefresh(inter->right_window[2]);  
+    //wrefresh(inter->right_window[2]);  
 
-    box(inter->right_window[2], 0, 0) ;  
+    //box(inter->right_window[2], 0, 0) ;  
     update_panels();
     int c ; 
-    mvaddstr(1, 1, "show window memory");
-    refresh();
+    //mvaddstr(1, 1, "show window memory");
+    //refresh();
     //mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
-    box(inter->right_window[2], 0, 0); 
-    wrefresh(inter->right_window[2]);    
+    //box(inter->right_window[2], 0, 0); 
+    //wrefresh(inter->right_window[2]);    
 
-
+    waddstr(inter->right_window[2], "\n\n  Register Visualisation \n\n "  ) ;
      char tmp2[30] ; 
-    sprintf(tmp2, "rax      0x%llx",reg.rax) ; 
+    sprintf(tmp2, " rax      0x%llx",reg.rax) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rbx      0x%llx",reg.rbx) ; 
+    sprintf(tmp2, " rbx      0x%llx",reg.rbx) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rcx      0x%llx",reg.rcx) ; 
+    sprintf(tmp2, " rcx      0x%llx",reg.rcx) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rdx      0x%llx",reg.rdx) ; 
+    sprintf(tmp2, " rdx      0x%llx",reg.rdx) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rdi      0x%llx",reg.rdi) ; 
+    sprintf(tmp2, " rdi      0x%llx",reg.rdi) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rsi      0x%llx",reg.rsi) ; 
+    sprintf(tmp2, " rsi      0x%llx",reg.rsi) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rbp      0x%llx",reg.rbp) ; 
+    sprintf(tmp2, " rbp      0x%llx",reg.rbp) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rsp      0x%llx",reg.rsp) ; 
+    sprintf(tmp2, " rsp      0x%llx",reg.rsp) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r8       0x%llx",reg.r8) ; 
+    sprintf(tmp2, " r8       0x%llx",reg.r8) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r9       0x%llx",reg.r9) ; 
+    sprintf(tmp2, " r9       0x%llx",reg.r9) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r10      0x%llx",reg.r10) ; 
+    sprintf(tmp2, " r10      0x%llx",reg.r10) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r11      0x%llx",reg.r11) ; 
+    sprintf(tmp2, " r11      0x%llx",reg.r11) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r12      0x%llx",reg.r12) ; 
+    sprintf(tmp2, " r12      0x%llx",reg.r12) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r13      0x%llx",reg.r13) ; 
+    sprintf(tmp2, " r13      0x%llx",reg.r13) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r14      0x%llx",reg.r14) ; 
+    sprintf(tmp2, " r14      0x%llx",reg.r14) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "r15      0x%llx",reg.r15) ; 
+    sprintf(tmp2, " r15      0x%llx",reg.r15) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;
 
-    sprintf(tmp2, "rip      0x%llx",reg.rip) ; 
+    sprintf(tmp2, " rip      0x%llx",reg.rip) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;           
 
-    sprintf(tmp2, "rdx      0x%llx",reg.rdx) ; 
+    sprintf(tmp2, " rdx      0x%llx",reg.rdx) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ; 
 
-
-    sprintf(tmp2, "eflags   0x%llx",reg.eflags) ; 
+    sprintf(tmp2, " eflags   0x%llx",reg.eflags) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ; 
 
-
-    sprintf(tmp2, "cs       0x%llx",reg.cs) ; 
+    sprintf(tmp2,  " cs       0x%llx",reg.cs) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ; 
 
-    sprintf(tmp2, "orig_rax 0x%llx",reg.orig_rax) ; 
+    sprintf(tmp2, " orig_rax 0x%llx",reg.orig_rax) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ; 
 
-    sprintf(tmp2, "fs_b     0x%llx",reg.fs_base) ; 
+    sprintf(tmp2, " fs_b     0x%llx",reg.fs_base) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ; 
 
-    sprintf(tmp2, "gs_b     0x%llx",reg.gs_base) ; 
+    sprintf(tmp2, " gs_b     0x%llx",reg.gs_base) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;                 
 
-    sprintf(tmp2, "fs_a     0x%llx",reg.fs) ; 
+    sprintf(tmp2, " fs_a     0x%llx",reg.fs) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ; 
 
-    sprintf(tmp2, "gs_a     0x%llx",reg.gs) ; 
+    sprintf(tmp2, " gs_a     0x%llx",reg.gs) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;                 
 
-    sprintf(tmp2, "ss       0x%llx",reg.ss) ; 
+    sprintf(tmp2, " ss       0x%llx",reg.ss) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ; 
 
-    sprintf(tmp2, "ds       0x%llx",reg.ds) ; 
+    sprintf(tmp2, " ds       0x%llx",reg.ds) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ;                 
 
-    sprintf(tmp2, "es       0x%llx",reg.es) ; 
+    sprintf(tmp2, " es       0x%llx",reg.es) ; 
     waddstr(inter->right_window[2], tmp2  ) ;                                                  
     new_main_line(inter->right_window[2]) ; 
 
     box(inter->right_window[2], 0, 0); 
     wrefresh(inter->right_window[2]); 
 
-
 }
 
 void refresh_window_code(struct Interface *inter){
     wclear(inter->right_window[3]);
-    mvaddstr(1, 1, "show window others");
-    refresh();
+    //mvaddstr(1, 1, "show window others");
+    //refresh();
 
     mvwaddstr(inter->right_window[3], 2, 1, "others panel");
-    wrefresh(inter->right_window[3]);  
+    //wrefresh(inter->right_window[3]);  
 
     // we want to prijnt a specific part of the code where the bug occurs, or something else
     // protocole : we get a file, and a line 
@@ -1341,10 +1369,10 @@ void refresh_window_code(struct Interface *inter){
 }
 
 void refresh_window_elf(struct Interface *inter){
-    box(inter->right_window[4], 0, 0);
-    mvaddstr(1, 1, "show window start");
-    refresh();
-    mvwaddstr(inter->right_window[4], 2, 1, "start panel");
+    //box(inter->right_window[4], 0, 0);
+    //mvaddstr(1, 1, "show window start");
+    //refresh();
+    //mvwaddstr(inter->right_window[4], 2, 1, "start panel");
     box(inter->right_window[4], 0, 0);    
     wrefresh(inter->right_window[4]);         
 }
@@ -1352,9 +1380,10 @@ void refresh_window_elf(struct Interface *inter){
 
 // this is the way the main window is drawn
 int show_window_start(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
+    refresh_window_start(inter); 
     int c ;
     c = keyboard_input(inter, main_win, input) ; 
-    mvaddstr(1, 1, "exit window start"); 
+    //mvaddstr(1, 1, "exit window start"); 
     refresh();
      return c ; 
 }
@@ -1417,39 +1446,40 @@ int main(int argc, char **argv){
 
        
  
-    show_specific_panel(&inter, 5, 1); 
-    refresh_window_start(&inter) ;
-    usleep(100000);
+    //show_specific_panel(&inter, 5, 1); 
+    //refresh_window_start(&inter) ;
+    //usleep(100000);
 
-    show_specific_panel(&inter, 5, 2);       
-    refresh_window_processes(&inter, vp) ;
-    usleep(100000); 
+    //show_specific_panel(&inter, 5, 2);       
+    //refresh_window_processes(&inter, vp) ;
+    //usleep(100000); 
 
-    show_specific_panel(&inter, 5, 3);         
-    refresh_window_memory(&inter, reg) ;  
-    usleep(100000);      
+    //show_specific_panel(&inter, 5, 3);         
+    //refresh_window_memory(&inter, reg) ;  
+    //usleep(100000);      
 
-    show_specific_panel(&inter, 5, 4); 
-    refresh_window_code(&inter) ; 
-    usleep(100000);   
+    //show_specific_panel(&inter, 5, 4); 
+    //refresh_window_code(&inter) ; 
+    //usleep(100000);   
 
-    show_specific_panel(&inter, 5, 5); 
-    refresh_window_elf(&inter) ; 
-    usleep(100000);         
+    //show_specific_panel(&inter, 5, 5); 
+    //refresh_window_elf(&inter) ; 
+    //usleep(100000);         
 
-    show_specific_panel(&inter, 5, 1); 
+    //show_specific_panel(&inter, 5, 1);
+
+    box(inter.main_window[0], 0, 0) ;
+    wrefresh(inter.main_window[0]);
 
 
 
     c = show_window_start(&inter, inter.right_window[0], inter.main_window[0], input); // c est la touche d'interraction pressee
     //TODO: utiliser l'execution conditionelle au debug (compil) des mvwaddnstr 
     // qui servent au debug uniquement
-    mvwaddnstr(inter.right_window[0],1, 1,  "Bienvenue sur le menu d'execution\n", 35); // a titre de debug
-    box(inter.right_window[0], 0, 0) ; 
-
+ 
     update_panels();
     doupdate();
-    refresh();    
+    //refresh();    
 
     loop_execution(&inter, vp, c, input) ; 
 
