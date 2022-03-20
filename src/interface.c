@@ -10,7 +10,7 @@
 #include <signal.h>
 #include <sys/user.h>
 #include <proc/readproc.h> // get ppid from pid 
-
+#include <sys/personality.h>
 
 #include <string.h>
 #include <libunwind-ptrace.h>
@@ -29,6 +29,9 @@
 #include <menu.h>
 #include <form.h>
 #include "../ext/vec/src/vec.h"
+
+static unw_addr_space_t as;
+static struct UPT_info *ui;
 
 
 
@@ -593,12 +596,15 @@ void show_libraries(WINDOW *win, struct process_t *pid, int verbose){
     free(buffpid) ; 
     free(buffpath);
     free(buffline);
-    for (int j = 0 ; j < number_loaded_lib ; j++){
+    for (int j = 0 ; j < number_loaded_lib + 1 ; j++){
         free(loaded_libs[j]);
     }
-    for (int j = 0 ; j < i ; j++){
+    for (int j = 0 ; j < i+1 ; j++){
         free(line[j]);
     }    
+    //for (int j = 0 ; j < index ; j++){
+        //free(parsed_line[j]);
+    //}      
     free(loaded_libs);
     free(line);
 }
@@ -683,6 +689,7 @@ void *spawn_thread(void* input){
 
     if (child_pid == 0){
         // PTRACE
+        personality(ADDR_NO_RANDOMIZE);
         get_pid(&process_child) ;         
         if (ptrace(PTRACE_TRACEME,0,NULL,NULL) < 0) return printf("Error with ptrace, check the manual"),-2;  
   
@@ -708,8 +715,9 @@ void *spawn_thread(void* input){
     if ( (child_pid != 0) & (is_executed != 0)){
         int wait_status ;   
         get_dbg(i->args[0]);
-        //if (count_func == 0)
-        //    get_elf(i->args[1]);
+        if (count_func == 0)
+            get_elf(i->args[0]);
+        usleep(1000000);
         long long prog_offset ; 
         char fname[128];
         char *buff = malloc( 128 * sizeof(char));
@@ -760,14 +768,23 @@ void *spawn_thread(void* input){
         // add breakpoint
         if (i->have_breakpoint){
             if(i->is_function == 1){
+                    sprintf(tmp2, "DEBUG:\tSetting a breakpoint on adress %s\n", i->breakpoint_adress);
+                    waddstr(main_win, tmp2) ; 
+                    // Add 3 to the adress
+                    Dwarf_Addr adr = strtoll(i->breakpoint_adress,NULL,16) + prog_offset;
+                    u_int64_t w3 = (ptrace(PTRACE_PEEKDATA, child_pid, adr, 0) & ~0xff) | 0xcc;
+                    if (ptrace(PTRACE_POKEDATA, child_pid, i->breakpoint_adress, w3) < 0){
+                        sprintf(tmp2, "Wrong adress for the breakpoint");
+                        waddstr(main_win, tmp2);
+                    }
+            }else{
                 for (int j = 0; j < count_func; j++)
-                {
-                    
+                {      
                     if (strcmp(i->breakpoint_function , func[j].name) == 0)
                     {
                         sprintf(tmp3, " function name : %s\n", func[j].name);
                         waddstr(main_win, tmp3) ;
-                         sprintf(tmp3, " offset : %llx\n", prog_offset);
+                            sprintf(tmp3, " offset : %llx\n", prog_offset);
                         waddstr(main_win, tmp3) ;
                         sprintf(tmp3, " lowpc : %llx\n", func[j].lowpc);
                         waddstr(main_win, tmp3) ;
@@ -780,15 +797,7 @@ void *spawn_thread(void* input){
                     }
                 }
             }
-            else{
-                    printf("DEBUG:\tSetting a breakpoint on adress %s\n", i->breakpoint_adress);
-                    // Add 3 to the adress
-                    u_int64_t w3 = (ptrace(PTRACE_PEEKDATA, child_pid, i->breakpoint_adress, 0) & ~0xff) | 0xcc;
-                    if (ptrace(PTRACE_POKEDATA, child_pid, i->breakpoint_adress, w3) < 0)
-                        printf("Wrong adress for the breakpoint");
-            }
         }
-
         while(WIFSTOPPED(wait_status)){
             loop++;
             if (opt_deb.singlestep == 1){
@@ -853,15 +862,17 @@ void *spawn_thread(void* input){
         //refresh_window_processes(i->inter,vp );
         refresh_window_memory(i->inter, reg);
  
-        free(buff);  
+         
 
         vec_t *vp = vec_new(sizeof(struct process_t) ) ; 
         vec_push( vp , &process_father) ; 
         vec_push(vp, &process_child);   
         refresh_window_processes(i->inter, vp);
         show_libraries(process_win, &process_child, opt_deb.verbose);      
-        vec_clear(vp);          
+        vec_clear(vp);    
+        free(buff);        
     }
+    
     pthread_exit(NULL) ;
 }
 
@@ -985,7 +996,7 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
                     it.args[i_a - 1] = (char *)NULL ;                              
                     it.args[i_a -1] = (char *)NULL ; 
                     it.args[i_a] = (char *)NULL ; 
-                    usleep(1000000);                               
+                                              
                     //print_parsed(it.inter->main_window[0], &it) ;                     
                          
                     pthread_create(&thread, NULL, spawn_thread, &it);
@@ -1012,6 +1023,12 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
         for (int j = i_p-1 ; j >= 0 ; j--){
             free(parsed[j]);
         }
+        for (int j = i_o-1 ; j >= 0 ; j--){
+            free(opts[j]);
+        }
+        for (int j = i_a-1 ; j >= 0 ; j--){
+            free(args[j]);
+        }               
 
 }
 
