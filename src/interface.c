@@ -499,7 +499,7 @@ void print_pid(WINDOW *win, struct process_t *pid, int info){
     refresh();    
 }
 
-void show_libraries(WINDOW *win, struct process_t *pid){
+void show_libraries(WINDOW *win, struct process_t *pid, int verbose){
     // this function is for print the loaded libraries from /proc/pid/maps
     char *buffpid = (char*)malloc( 10 * sizeof(char)) ;
     char *buffpath = (char*)malloc( 30 * sizeof(char)) ; 
@@ -540,8 +540,10 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     waddstr(win, "  ");
     for (int j = 0 ; j < i ; j++){
         // text all lines :
-        waddstr(win, line[j]) ; 
-        waddstr(win, "  ");
+        if ( verbose == 1){
+            waddstr(win, line[j]) ; 
+            waddstr(win, "  ");
+        }    
         token = strtok((char *)line[j], delim) ;
         parsed_line[0] = malloc(strlen(token) * sizeof(char)) ; 
         strcpy(parsed_line[0] , token) ; 
@@ -854,7 +856,7 @@ void *spawn_thread(void* input){
                 } while (ret > 0);
             
         refresh_window_memory(i->inter, reg);
-        show_libraries(process_win, &process_child);  
+        show_libraries(process_win, &process_child, opt_deb.verbose);  
         free(buff);      
     }
 
