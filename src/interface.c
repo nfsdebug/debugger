@@ -793,14 +793,19 @@ void *spawn_thread(void* input){
                         Dwarf_Addr adr = func[j].lowpc + prog_offset;
                         // Add 3 to the adress
                         long long bef = (ptrace(PTRACE_PEEKDATA, child_pid, (void *)adr, 0) & ~0xff) | 0xcc;
-                        sprintf(tmp3, " bef : %llx\n", bef);
+                        sprintf(tmp3, " Addresse avec offset : %llx\n", adr);
                         waddstr(main_win, tmp3) ; 
                         ptrace(PTRACE_POKEDATA, child_pid, (void *)adr, (void *)bef);
+                                        ptrace(PTRACE_SYSCALL, child_pid, 0, 0);  
+                                                    waitpid(child_pid, &wait_status,0);                     
                     }
                 }
             }
         }
-        while(!WIFSTOPPED(wait_status)){
+        while(1){
+        
+                            if (WIFEXITED(wait_status) || WIFSIGNALED(wait_status))
+                                break;
             loop++;
             if (opt_deb.singlestep == 1){
                 ptrace(PTRACE_SINGLESTEP, child_pid, 0, 0);
@@ -820,10 +825,13 @@ void *spawn_thread(void* input){
             else{
                 //refresh_window_memory(i->inter, reg);     
             }
-            if(signinf.si_signo != 5)
+       if (WIFSTOPPED(wait_status))
             {
-                print_siginfo(main_win, &signinf, &reg);
+           // if(signinf.si_signo != 5)
+            {
+                print_siginfo(main_win, &signinf, &reg);                
                 break;
+            }
             }
         }
             // backtrace point 
@@ -950,6 +958,7 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
         // structure for the thread
         struct input_thread  it ;
         it.inter = inter ; 
+        it.have_breakpoint=0;
         it.size_args = i_a ; 
         it.size_opts = i_o ;
 
