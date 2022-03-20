@@ -695,13 +695,13 @@ void *spawn_thread(void* input){
     if ( (child_pid != 0) & (is_executed != 0)){
         int wait_status ;   
         // fiona part   for dgb modified  
-        char *temp[] = {"./test\0" } ;
-        //get_dbg(i->args[0]);
-        get_dbg(temp[0]);
+        //char *temp[] = {"./test\0" } ;
+        get_dbg(i->args[0]);
+        //get_dbg(temp[0]);
         long long prog_offset ; 
         char fname[128];
         char buff[128];
-        char buff2[128]  ;
+        char buff2[512]  ;
         sprintf(fname, "/proc/%d/maps", child_pid);
         FILE *f = fopen(fname, "rb");
         fscanf(f, "%llx", &prog_offset);
@@ -784,6 +784,39 @@ void *spawn_thread(void* input){
                 refresh_window_memory(i->inter, reg);     
             }
         }
+            // backtrace point
+            unw_word_t ip, start_ip = 0, sp, off;
+            int n = 0, ret;
+            unw_cursor_t c;
+            char buf[512];
+            char buf2[520];
+            size_t len;
+            ret = unw_init_remote(&c, as, ui);
+            do{
+                    if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
+                        sprintf(buf, " unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
+                        waddstr(main_win, buf) ; 
+                    if (n == 0)
+                        start_ip = ip;
+
+                    buf[0] = '\0';
+                    unw_get_proc_name(&c, buf, sizeof(buf), &off);
+
+                    printf(buf2, " Nom du proc : %s\n", buf);
+                    waddstr(main_win, buf2) ; 
+                    if (off)
+                    {
+                        len = strlen(buf);
+                        if (len >= sizeof(buf) - 32)
+                            len = sizeof(buf) - 32;
+                        sprintf(buf + len, "+0x%lx", (unsigned long)off);
+                    }
+                    sprintf(buf2, " - %-32s \n", buf);
+                    waddstr(main_win, buf2) ; 
+                    ret = unw_step(&c);
+                    waddstr(main_win, "\n");
+
+                } while (ret > 0);
 show_libraries(process_win, &process_child);        
     }
     pthread_exit(NULL) ;
