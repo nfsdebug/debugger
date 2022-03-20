@@ -18,7 +18,7 @@ Here are some implemented functionalities :
  - loaded lib viewer and the associated ranges ;
  - backtrack viewer ;
  - breakpoint ;
- - DWARK knowledge ;
+ - DWARF knowledge ;
  - registers viewer ;
  - etc
 
