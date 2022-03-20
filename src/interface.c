@@ -176,7 +176,7 @@ struct All_window_size compute_size_window(void){
     size.main.dx = (int)(1.0 * w.ws_row) - 3  ,  size.main.dy = (int)(vertical_ratio * w.ws_col)  ; 
     size.right.dx = (int)(1.0 * w.ws_row) - 3  ,  size.right.dy = (int)((1.0 - vertical_ratio) * w.ws_col) - 3  ; 
     size.title.dx = 1 ; 
-    size.title.dy = 23 ;
+    size.title.dy = 29 ;
     size.selector.dx = 1 ; 
     size.selector.dy = (int)(1.0 * w.ws_col) - 1 ; 
 
@@ -233,8 +233,10 @@ void setup_panel(struct Interface *inter){
 }
 
 void setup_title(struct Interface *inter){
-    char title[] = "NCurses debugger v0.2" ;
-    mvwprintw(inter->title_window[0], 0, 0, "%s", title) ;     
+    char title[] = "    NCurses debugger v0.3    " ;
+    wattron(inter->title_window[0], COLOR_PAIR(1));   
+    mvwprintw(inter->title_window[0], 0, 0, "%s", title) ;   
+    wattroff(inter->title_window[0], COLOR_PAIR(1));     
 }
 
 void setup_menu(struct Interface *inter, struct All_window_size *ws){
@@ -511,8 +513,8 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     int number_loaded_lib = 0 ; 
     for (int j = 0 ; j < i ; j++){
 
-
-    waddstr(win, line[j]) ; 
+        waddstr(win, line[j]) ; 
+        waddstr(win, " ");
         token = strtok((char *)line[j], delim) ;
         parsed_line[0] = malloc(strlen(token) * sizeof(char)) ; 
         strcpy(parsed_line[0] , token) ; 
@@ -563,10 +565,10 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     free(buffpid) ; 
     free(buffpath);
     free(buffline);
-    for (int j = 0 ; j < size_loaded_libs ; j++){
+    for (int j = 0 ; j < number_loaded_lib ; j++){
         free(loaded_libs[j]);
     }
-    for (int j = 0 ; j < size_line ; j++){
+    for (int j = 0 ; j < i ; j++){
         free(line[j]);
     }    
     free(loaded_libs);
@@ -575,13 +577,13 @@ void show_libraries(WINDOW *win, struct process_t *pid){
 
 
 
-void print_siginfo(WINDOW *win, siginfo_t *signinf){
+void print_siginfo(WINDOW *win, siginfo_t *signinf, struct user_regs_struct *reg){
     char tmp2[100] ;
     char tmp3[100] ;
     char tmp4[100] ; 
     sprintf(tmp2, "%s",strsignal(signinf->si_signo)) ; 
     sprintf(tmp3, "%d",signinf->si_signo) ;             
-    sprintf(tmp4, "%p",signinf->si_addr) ;                                          
+    sprintf(tmp4, "%llx",reg->rip) ;                                          
     waddstr(win , "child stopped : ") ;                
     waddstr(win, tmp2  ) ;   
     waddstr(win, " (") ;                
@@ -694,14 +696,15 @@ void *spawn_thread(void* input){
             waitpid(child_pid, &wait_status,0);       
             siginfo_t signinf;
             ptrace(PTRACE_GETSIGINFO,child_pid,NULL,&signinf);
-            if(signinf.si_signo != 5)
-            {
-                print_siginfo(main_win, &signinf);
-                break;
-            }
+
 
             ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);;
 
+            if(signinf.si_signo != 5)
+            {
+                print_siginfo(main_win, &signinf, &reg);
+                break;
+            }
             if ((number_of_instructions%10000 == 0) & opt_deb.singlestep == 1){
                 refresh_window_memory(i->inter, reg);
             }
