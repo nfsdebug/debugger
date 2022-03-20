@@ -533,9 +533,9 @@ void show_libraries(WINDOW *win, struct process_t *pid){
     
     int number_loaded_lib = 0 ; 
     for (int j = 0 ; j < i ; j++){
-
-        waddstr(win, line[j]) ; 
-        waddstr(win, " ");
+        // text all lines :
+        //waddstr(win, line[j]) ; 
+        //waddstr(win, " ");
         token = strtok((char *)line[j], delim) ;
         parsed_line[0] = malloc(strlen(token) * sizeof(char)) ; 
         strcpy(parsed_line[0] , token) ; 
@@ -690,7 +690,7 @@ void *spawn_thread(void* input){
         // is_executed set to -1 if execvp returned an error
     }
     if (is_executed == 0){
-        waddstr(main_win , "\n Issue : cannot trace this program") ; 
+        //waddstr(main_win , "\n Issue : cannot trace this program") ; 
     }
     if ( (child_pid != 0) & (is_executed != 0)){
         int wait_status ;   
@@ -700,7 +700,7 @@ void *spawn_thread(void* input){
         //get_dbg(temp[0]);
         long long prog_offset ; 
         char fname[128];
-        char buff[128];
+        char *buff = malloc( 128 * sizeof(char));
         char buff2[512]  ;
         sprintf(fname, "/proc/%d/maps", child_pid);
         FILE *f = fopen(fname, "rb");
@@ -788,8 +788,8 @@ void *spawn_thread(void* input){
             unw_word_t ip, start_ip = 0, sp, off;
             int n = 0, ret;
             unw_cursor_t c;
-            char buf[512];
-            char buf2[520];
+            char buf[128];
+            char buf2[150];
             size_t len;
             ret = unw_init_remote(&c, as, ui);
             do{
@@ -802,7 +802,7 @@ void *spawn_thread(void* input){
                     buf[0] = '\0';
                     unw_get_proc_name(&c, buf, sizeof(buf), &off);
 
-                    printf(buf2, " Nom du proc : %s\n", buf);
+                    sprintf(buf2, " Nom du proc : %s\n", buf);
                     waddstr(main_win, buf2) ; 
                     if (off)
                     {
@@ -817,7 +817,8 @@ void *spawn_thread(void* input){
                     waddstr(main_win, "\n");
 
                 } while (ret > 0);
-show_libraries(process_win, &process_child);        
+show_libraries(process_win, &process_child);  
+free(buff);      
     }
     pthread_exit(NULL) ;
 }
@@ -1295,7 +1296,10 @@ int main(int argc, char **argv){
     setup_menu(&inter, &ws) ; 
 
     keypad(stdscr, TRUE);
-    scrollok(inter.main_window[0], TRUE) ; 
+    scrollok(inter.main_window[0], TRUE) ;
+    for (int i = 0 ; i < 5 ; i++){
+        scrollok(inter.right_window[i], TRUE) ; 
+    } 
 
     refresh() ;
     update_panels() ;    
