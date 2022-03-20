@@ -36,5 +36,6 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
 
 void get_dbg(char *name);
 
+void get_elf(char *name);
 #else
 #endif

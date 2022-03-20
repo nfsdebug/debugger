@@ -62,6 +62,10 @@ int main(int argc, char **argv)
 
         get_dbg(argv[1]);
 
+        //
+        if (count_func == 0)
+            get_elf(argv[1]);
+
         // Get program offset
         long long prog_offset;
 
@@ -418,6 +422,7 @@ int main(int argc, char **argv)
                     {
                         reg.es = atoi(token2);
                     }
+                    ptrace(PTRACE_SETREGS, child, NULL, &reg);
                 }
             }
             if (strcasestr(cmd, "backtrace"))
@@ -456,6 +461,12 @@ int main(int argc, char **argv)
 
                 } while (ret > 0);
             }
+            /*  struct user_regs_struct reg;
+              ptrace(PTRACE_GETREGS, child, NULL, &reg);
+
+              printf("rip = %llx , %llx offset = %llx\n", reg.rip,  ptrace(PTRACE_PEEKDATA, child, reg.rip, 0),prog_offset);
+
+              sleep(800000);*/
 
             if (WIFSTOPPED(wait_status))
             {

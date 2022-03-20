@@ -6,6 +6,7 @@ run: debug test lib
 	./debug test
 
 test: test.c 
+#	gcc test.c -o test
 	gcc -g -gdwarf-2 test.c -o test
 lib: lib/utilities.h lib/utilities.c
 	gcc  -o utilities.o -c lib/utilities.c 

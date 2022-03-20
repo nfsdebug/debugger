@@ -36,8 +36,9 @@ void funcdetest()
 {
 	printf("salut je suis ici \n");
 	printf(" puis encore ici ?\n");
-	raise(SIGSEGV);
-
+	kill(getpid(),SIGSEGV);
+	printf("salut je suis ici \n");
+	printf(" puis encore ici ?\n");	
 }
 
 
