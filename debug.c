@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
+#include <sys/personality.h>
 #include <string.h>
 #include <libunwind-ptrace.h>
 #include <libunwind.h>
@@ -43,6 +43,7 @@ int main(int argc, char **argv)
     // If it's the child, then it's the tracee
     if (child == 0)
     {
+        personality(ADDR_NO_RANDOMIZE);
         // Ptrace to follow the program
         if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) < 0)
             return printf("Error with ptrace, check the manual"), -2;
@@ -99,18 +100,20 @@ int main(int argc, char **argv)
             }
 
             // If the user entered "b, break" then he want to setup a breakpoint
-            if (strcasestr(cmd, "b"))
+            if (strcasecmp(cmd, "b"))
             {
                 char *string = cmd;
                 char *token = strtok(string, " ");
-                if (strcasecmp(cmd, "func"))
+                token = strtok(NULL, " ");
+
+                if (!strcasecmp(token, "func"))
                 {
 
                     token = strtok(NULL, " ");
 
                     for (int i = 0; i < count_func; i++)
                     {
-                        if (strcasestr(token, func[i].name))
+                        if (!strcasecmp(token, func[i].name))
                         {
 
                             Dwarf_Addr adr = func[i].lowpc + prog_offset;
@@ -120,6 +123,8 @@ int main(int argc, char **argv)
                             long long bef = (ptrace(PTRACE_PEEKDATA, child, (void *)adr, 0) & ~0xff) | 0xcc;
 
                             ptrace(PTRACE_POKEDATA, child, (void *)adr, (void *)bef);
+                            ptrace(PTRACE_CONT, child, 0, 0);
+                            waitpid(child, &wait_status, 0);
                         }
                     }
                 }
@@ -468,7 +473,7 @@ int main(int argc, char **argv)
 
               sleep(800000);*/
 
-            if (WIFSTOPPED(wait_status))
+            // if (WIFSTOPPED(wait_status))
             {
                 siginfo_t signinf;
                 ptrace(PTRACE_GETSIGINFO, child, NULL, &signinf);
@@ -477,6 +482,7 @@ int main(int argc, char **argv)
                 if (signinf.si_signo != 5)
                 {
                     printf("\n child stopped : %s (%d) at adress %llx \n", strsignal(signinf.si_signo), signinf.si_signo, (long long unsigned)signinf.si_addr);
+                    break;
                 }
 
                 scanf("%[^\n]", cmd);
