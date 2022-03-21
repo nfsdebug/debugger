@@ -9,7 +9,7 @@ EXP = exp
 
 
 
-all : $(TARGET)/utilities $(TARGET)/interface $(TARGET)/test_process $(TARGET)/mon_programme $(TARGET)/test
+all : $(TARGET)/utilities $(TARGET)/interface $(TARGET)/test_process $(TARGET)/mon_programme $(TARGET)/test $(TARGET)/new_tty
 
 $(TARGET)/utilities : $(SRC)/utilities.h $(SRC)/utilities.c
 	gcc -o $(TARGET)/utilities.o -c $(SRC)/utilities.c
@@ -24,7 +24,10 @@ $(TARGET)/mon_programme:  $(SRC)/mon_programme.c
 	gcc $< -o $@ 	
 
 $(TARGET)/test:  $(SRC)/test.c
-	gcc $< -g -gdwarf-2  -o $@ 		
+	gcc $< -g -gdwarf-2  -o $@ 	
+
+$(TARGET)/new_tty:  $(SRC)/new_tty.c
+	gcc $< -g -gdwarf-2  -o $@ 	 -lutil
 
 clean:
 	rm target/* 
