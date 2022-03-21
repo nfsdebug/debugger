@@ -11,7 +11,7 @@ Hence, there are two versions of the project. We decided to separate into two br
 Here is the protocol for the installation :
 
  - The terminal version required to launch `make`. The tool is launched with the command `./debug YourApp`;
- - The NCurses version is started with the command `bash configure.sh`. This will install  the thread-safe NCurses version, and to install the lib_vec tool from @dss_gabriel. You need to install `libdwarf-dev` and `libunwind-ptrace`  as well. Hence, the application is started with `target/interface`. The Help panel show you how to use the tool. You can enter, for example, `exec ./test`. Note that you should load the vec library with the command `export LD_LIBRARY_PATH=/home/YourUserName/debugger/ext/vec`.
+ - The NCurses version is started with the command `bash configure.sh`. This will install  the thread-safe NCurses version, and to install the lib_vec tool from @dss_gabriel. You need to install `libdwarf-dev` and `libunwind-ptrace`  as well. Hence, the application is started with `target/interface`.  Go to the `target` directory, then execute the interface with `./interface`.The Help panel show you how to use the tool. You can enter, for example, `exec ./test`. Note that you should load the vec library with the command `export LD_LIBRARY_PATH=/home/YourUserName/debugger/ext/vec`.
 
 Here are some implemented functionalities :
  - sighandler, which can know on what signal the traced program failed ;
