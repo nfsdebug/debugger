@@ -58,6 +58,8 @@ int main(int argc, char **argv)
     {
         ui = _UPT_create(child);
 
+        int breakpoint = 0;
+
         char cmd[80];
         int wait_status;
 
@@ -103,6 +105,7 @@ int main(int argc, char **argv)
             char *string = cmd;
             char *token = strtok(string, " ");
             token = strtok(NULL, " ");
+            breakpoint = 1;
 
             //  printf("token = %s\n", token);
 
@@ -488,7 +491,45 @@ int main(int argc, char **argv)
             {
 
                 // If it's not a breakpoint made by ptrace, it's an error from the child
-                //  if (signinf.si_signo != 5)
+                if (signinf.si_signo != 5)
+                {
+                    printf("\n child stopped : %s (%d) at adress %llx \n", strsignal(signinf.si_signo), signinf.si_signo, (long long unsigned)signinf.si_addr);
+                    unw_word_t ip, start_ip = 0, sp, off;
+                    int n = 0, ret;
+                    unw_cursor_t c;
+                    char buf[512];
+                    size_t len;
+                    ret = unw_init_remote(&c, as, ui);
+
+                    do
+                    {
+                        if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
+                            printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
+
+                        if (n == 0)
+                            start_ip = ip;
+
+                        buf[0] = '\0';
+                        unw_get_proc_name(&c, buf, sizeof(buf), &off);
+
+                        printf("Nom du proc : %s\n", buf);
+
+                        if (off)
+                        {
+                            len = strlen(buf);
+                            if (len >= sizeof(buf) - 32)
+                                len = sizeof(buf) - 32;
+                            sprintf(buf + len, "+0x%lx", (unsigned long)off);
+                        }
+                        printf(" - %-32s \n", buf);
+
+                        ret = unw_step(&c);
+                        printf("\n");
+
+                    } while (ret > 0);
+                    break;
+                }
+                else if ((signinf.si_signo == 5) && (breakpoint == 1))
                 {
                     printf("\n child stopped : %s (%d) at adress %llx \n", strsignal(signinf.si_signo), signinf.si_signo, (long long unsigned)signinf.si_addr);
                     unw_word_t ip, start_ip = 0, sp, off;
