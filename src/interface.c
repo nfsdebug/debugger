@@ -1534,6 +1534,7 @@ int main(int argc, char **argv)
     struct All_window_size ws = compute_size_window();
 
     initscr();
+    //newterm();
     cbreak();
     noecho();
     curs_set(0);
