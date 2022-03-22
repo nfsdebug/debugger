@@ -709,6 +709,10 @@ void config_debugger(struct input_thread *in, struct option_debugger *opt_deb){
 static unw_addr_space_t as;
 static struct UPT_info *ui;
 void *spawn_thread(void *input){
+    /**
+     * @brief This is the equivalent of the "main" function of a terminal based  ptracer. All the ptrace calls are made here. 
+     * - input is from the input_thread structure (interface, args, options, ...)
+     */
     struct input_thread *i = input;
     WINDOW *main_win = i->inter->main_window[0];
     WINDOW *process_win = i->inter->right_window[1];
@@ -719,8 +723,6 @@ void *spawn_thread(void *input){
 
     as = unw_create_addr_space(&_UPT_accessors, 0);
 
-    // print_parsed(i->inter->main_window[0], i) ;
-
     pid_t child_pid;
     int pid_status;
     child_pid = fork();
@@ -728,28 +730,25 @@ void *spawn_thread(void *input){
     struct process_t process_child;
     struct process_t process_father;
 
+    // old test 
     char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL};
     char *argprog2[] = {"./test", "5433", (char *)NULL};
-
-    if (child_pid == 0)
-    {
-        // PTRACE
+    //
+    // 
+    if (child_pid == 0){
+        // TRACEE 
         personality(ADDR_NO_RANDOMIZE);
         get_pid(&process_child);
         if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) < 0)
             return printf("Error with ptrace, check the manual"), -2;
     }
-    if (child_pid != 0)
-    {
+    if (child_pid != 0){
         process_child.pid = child_pid;
         get_pid(&process_father);
-        // print_pid(main_win, &process_father, 1) ;
-        // print_pid(main_win, &process_child, 0);
         ui = _UPT_create(child_pid);
     }
     int is_executed = 1;
-    if (child_pid == 0)
-    {
+    if (child_pid == 0){
         personality(ADDR_NO_RANDOMIZE);
         execvp(i->args[0], i->args);
         is_executed = 0;
@@ -763,30 +762,29 @@ void *spawn_thread(void *input){
     if ((child_pid != 0) & (is_executed != 0))
     {
         int wait_status;
-        get_dbg("test");
+        // try to get the args without the ./
+        // Note : don't work for smthing like 
+        // ../src/test
+        // solve : change at the level of get_dgb function
+        char *path_for_dbg = malloc( sizeof(strlen(i->args[0])) * sizeof(char)) ; 
+            strcpy(path_for_dbg, i->args[0] + 2);
+        char *buff = malloc(128 * sizeof(char));        
+        sprintf(buff, "    modified path : %s\n",path_for_dbg);
+        waddstr(main_win, buff);
+        wrefresh(main_win);
+        //
+        //get_dbg(path_for_dbg);
+        free(path_for_dbg);
         if (count_func == 0)
             get_elf(i->args[0]);
         usleep(1000000);
         long long prog_offset;
         char fname[128];
-        char *buff = malloc(128 * sizeof(char));
+
         char buff2[512];
         sprintf(fname, "/proc/%d/maps", child_pid);
         FILE *f = fopen(fname, "rb");
         fscanf(f, "%llx", &prog_offset);
-        // Print proc information
-        /*
-        sprintf(buff, " PID: %d\n", getpid());
-        waddstr(main_win ,buff) ;
-        sprintf(buff, " GID: %d\n", getgid());
-        waddstr(main_win ,buff) ;
-        sprintf(buff, " PPID: %d\n", getppid());
-        waddstr(main_win ,buff) ;
-        sprintf(buff, " Path : %s\n", realpath(i->args[0], NULL));
-        waddstr(main_win ,buff) ;
-        sprintf(buff, " Offset = %llx\n", prog_offset);
-        waddstr(main_win ,buff) ;
-        */
 
         waddstr(main_win, "DWARD Analysis : \n");
         sprintf(buff, "  Function count : %d\n", count_func);
