@@ -220,26 +220,31 @@ struct winsize compute_size_terminal(void){
 }
 
 struct All_window_size compute_size_window(void){
+    /**
+     * @brief Main function to determine for each NCurses window its size.
+     * - first : get the terminal size
+     * - second : compute each window size by giving horizontal and vertical ratios 
+     *          between main_window and right_window
+     * 
+     * - ratios are from 0 to 1. vertical_ratio is unused for now but we can easily 
+     *          add a third window to have 3 panels.
+     */
     struct All_window_size size;
-    struct winsize w = compute_size_terminal(); // get the size of the terminal
-    // ratios are fromn 0 to 1 and indicaters the relative position of delimiters
+    struct winsize w = compute_size_terminal(); 
+
     float vertical_ratio = 0.5;
     float horizontal_ratio = 0.6;
-    // compute the integer dimensions and positions of each windows
-    size.main.dx = (int)(1.0 * w.ws_row) - 3, size.main.dy = (int)(vertical_ratio * w.ws_col);
+
+    size.main.dx = (int)(1.0 * w.ws_row) - 3,  size.main.dy = (int)(vertical_ratio * w.ws_col);
     size.right.dx = (int)(1.0 * w.ws_row) - 3, size.right.dy = (int)((1.0 - vertical_ratio) * w.ws_col) - 3;
-    size.title.dx = 1;
-    size.title.dy = 29;
-    size.selector.dx = 1;
-    size.selector.dy = (int)(1.0 * w.ws_col) - 1;
+    size.title.dx = 1;                         size.title.dy = 29;
+    size.selector.dx = 1;                      size.selector.dy = (int)(1.0 * w.ws_col) - 1;
 
-    size.main.x = 2, size.main.y = 1;
-    size.right.x = 2, size.right.y = size.main.dy + 3;
-    size.title.x = 1;
-    size.title.y = (int)(w.ws_col / 2 - size.title.dy / 2);
+    size.main.x = 2,                           size.main.y = 1;
+    size.right.x = 2,                          size.right.y = size.main.dy + 3;
+    size.title.x = 1;                          size.title.y = (int)(w.ws_col / 2 - size.title.dy / 2);
     size.selector.x = (int)(1.0 * w.ws_row) - size.selector.dx;
-    size.selector.y = 1;
-
+                                               size.selector.y = 1;
     return size;
 };
 
@@ -258,38 +263,26 @@ int NumDigits(int n){
     return digits;
 }
 
-
-
-
-
-
-
-
-// struct Data {
-//     struct user_regs_struct reg ;
-//
-//
-// };
-
-void setup_selector(struct Interface *inter)
-{
+void setup_selector(struct Interface *inter){
+    /**
+     * @brief selector allocation. Called only one time
+     * - n_choice is the number of right panels used
+     */
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
-    // n_choice = 6 ;
     inter->my_items = (ITEM **)calloc(n_choice, sizeof(ITEM *));
-    for (int i = 0; i < n_choice; i++)
-    {
+    for (int i = 0; i < n_choice; i++){
         inter->my_items[i] = new_item(panel_func[i], choice_panel[i]);
     }
     inter->my_items[n_choice] = (ITEM *)NULL;
-
     inter->my_menus = new_menu((ITEM **)inter->my_items);
 }
 
-void setup_window(struct Interface *inter, struct All_window_size *ws)
-{
+void setup_window(struct Interface *inter, struct All_window_size *ws){
+    /**
+     * @brief window allocator. Called only one time after the Compute_size_window function
+     */
     inter->number_right_window = 5;
-    for (int i = 0; i < 5; i++)
-    {
+    for (int i = 0; i < 5; i++){
         inter->right_window[i] = newwin(ws->right.dx, ws->right.dy, ws->right.x, ws->right.y);
     }
     inter->main_window[0] = newwin(ws->main.dx, ws->main.dy, ws->main.x, ws->main.y);
@@ -297,36 +290,32 @@ void setup_window(struct Interface *inter, struct All_window_size *ws)
     inter->selector_window[0] = newwin(ws->selector.dx, ws->selector.dy, ws->selector.x, ws->selector.y);
 }
 
-void draw_box(struct Interface *inter)
-{
-    box(inter->main_window[0], 0, 0);
-    for (int i = 0; i < 5; i++)
-    {
-        box(inter->right_window[i], 0, 0);
-    }
-}
-
-void setup_panel(struct Interface *inter)
-{
+void setup_panel(struct Interface *inter){
+    /**
+     * @brief panel allocator. Called only one time.
+     */
     inter->my_panels[0] = new_panel(inter->main_window[0]);
-    for (int i = 0; i < 5; i++)
-    {
+    for (int i = 0; i < 5; i++){
         inter->my_panels[i + 1] = new_panel(inter->right_window[i]);
     }
     inter->my_panels[6] = new_panel(inter->title_window[0]);
     inter->my_panels[7] = new_panel(inter->selector_window[0]);
 }
 
-void setup_title(struct Interface *inter)
-{
+void setup_title(struct Interface *inter){
+    /**
+     * @brief title allocator. Called only one time.
+     */
     char title[] = "    NCurses debugger v0.3    ";
     wattron(inter->title_window[0], COLOR_PAIR(1));
     mvwprintw(inter->title_window[0], 0, 0, "%s", title);
     wattroff(inter->title_window[0], COLOR_PAIR(1));
 }
 
-void setup_menu(struct Interface *inter, struct All_window_size *ws)
-{
+void setup_menu(struct Interface *inter, struct All_window_size *ws){
+    /**
+     * @brief Menu allocator. Called only one time.
+     */
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
     set_menu_win(inter->my_menus, inter->selector_window[0]);
     set_menu_sub(inter->my_menus, derwin(inter->selector_window[0], ws->selector.dx, ws->selector.dy, 0, 0));
@@ -335,24 +324,36 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws)
     set_current_item(inter->my_menus, inter->my_items[0]);
 }
 
-// rules for each individual window
+void draw_box(struct Interface *inter){
+    /**
+     * @brief Draw the boxes of all panels. 
+     * This is in fact useless because the boxes are called after each refresh_window calls...
+     */
+    box(inter->main_window[0], 0, 0);
+    for (int i = 0; i < 5; i++){
+        box(inter->right_window[i], 0, 0);
+    }
+}
+
 
 void refresh_window_start(struct Interface *inter);
 void refresh_window_processes(struct Interface *inter, vec_t *vp);
 void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg);
 void refresh_window_code(struct Interface *inter);
 void refresh_window_elf(struct Interface *inter);
-
 int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input);
 
-void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id)
-{
+void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id){
+    /**
+     * @brief This function is called when the user want to select another window. Hence, 
+     * the selected panel is showed and the others are hided, and the selector is set to another name to.
+     * - Note that main_panel has no panel so there is an offset between my_items and the selector ID.
+     */
     set_current_item(inter->my_menus, inter->my_items[panel_id - 1]); // main_window has no panel
     for (int i = 1; i < panel_id; i++)
     {
         hide_panel(inter->my_panels[i]);
     }
-
     for (int i = panel_id + 1; i < panel_amount + 1; i++)
     {
         hide_panel(inter->my_panels[i]);
@@ -363,24 +364,23 @@ void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id
     doupdate();
 }
 
-void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input)
-{
+void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
+    /**
+     * @brief This is where the input is interpreted. 
+     * There are three cases :
+     * - The key is standard : letters, numbers like a, r or 5. So the corresponding character is added to the prompt
+     * - The key is a special key : F1, F2 etc. So the selected panel is shown
+     * - The key is ENter : The text is send to the parser and a new line is started
+     * - FUTURE : Add scroll / Pagedown Pageup to add scrolling support for windows.
+     */
 
     int panel_amount = 5;
-    // !!!!!
-
-    while (c != KEY_F(10))
-    {
+    while (c != KEY_F(10)){
         mvaddstr(1, 1, "while main");
         refresh();
-        switch (c)
-        {
-        // case 49:
+        switch (c){
         case KEY_F(1):
-            // mvaddstr(1, 1, "F1 pressed ");
-            // refresh();
             show_specific_panel(inter, panel_amount, 1); // be careful , main window in panel[0]
-            // refresh();
             update_panels();
             doupdate();
             wrefresh(inter->right_window[0]);
@@ -388,10 +388,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input)
             break;
         // case 50:
         case KEY_F(2):
-            // mvaddstr(1, 1, "F2 pressed ");
-            // refresh();
             show_specific_panel(inter, panel_amount, 2); // be careful , main window in panel[0]
-            // refresh();
             update_panels();
             doupdate();
             wrefresh(inter->right_window[1]);
@@ -399,10 +396,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input)
             break;
         // case 51:
         case KEY_F(3):
-            // mvaddstr(1, 1, "F3 pressed ");
-            // refresh();
             show_specific_panel(inter, panel_amount, 3); // be careful , main window in panel[0]
-            // refresh();
             update_panels();
             doupdate();
             wrefresh(inter->right_window[2]);
@@ -410,10 +404,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input)
             break;
         // case 52:
         case KEY_F(4):
-            // mvaddstr(1, 1, "F4 pressed ");
-            // refresh();
             show_specific_panel(inter, panel_amount, 4); // be careful , main window in panel[0]
-            // refresh();
             update_panels();
             doupdate();
             wrefresh(inter->right_window[3]);
@@ -421,100 +412,72 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input)
             break;
         // case 53:
         case KEY_F(5):
-            // mvaddstr(1, 1, "F5 pressed ");
-            // refresh();
             show_specific_panel(inter, panel_amount, 5); // be careful , main window in panel[0]
-            // refresh();
             update_panels();
             doupdate();
             wrefresh(inter->right_window[4]);
             c = keyboard_input(inter, inter->main_window[0], input);
             break;
-            /*
-                        case 10:
-                            // interprate the commande
-                            // void the field
-                            set_current_field(my_form, field[0]);
-                            form_driver(my_form, REQ_CLR_FIELD);
-                            break;
-                        case KEY_F(6):
-                            form_driver(my_form, REQ_DEL_PREV);
-                            break;
-                        case KEY_LEFT:
-                            form_driver(my_form, REQ_PREV_CHAR);
-                            break;
-
-                        case KEY_RIGHT:
-                            form_driver(my_form, REQ_NEXT_CHAR);
-                            break;
-
-                        default:
-                            form_driver(my_form, c) ;
-                            break;
-            */
-            /*
-            case 10:{ // enter
-                ITEM *cur ;
-                if (state == 1){
-                    hide_panel(my_panels[0]);
-                    state = 0 ;
-                }
-                else{
-                    show_panel(my_panels[0]);
-                    state = 1 ;
-                }
-                wclear(my_windows[0]) ;
-                //wprintw(my_windows[0], choice_panel[0]) ;
-                update_panels();
-                break ;
-            } */
-            break;
         }
-
         doupdate();
         refresh();
     }
 }
 
-void new_main_line(WINDOW *win)
-{
+void new_main_line(WINDOW *win){
+    /**
+     * @brief If the enter key is send, so the cursor is set to the next line with an additional space. 
+     * This is because the first character is taken by tje box character.
+     */
     wprintw(win, "\n");
     wprintw(win, " ");
     wrefresh(win);
 }
 
-int function_key(WINDOW *win, int key)
-{
-    if ((key == KEY_F(1)) || (key == KEY_F(2)) || (key == KEY_F(3)) || (key == KEY_F(4)) || (key == KEY_F(5)))
-    {
-        // waddch(main_win, espace) ;
+int function_key(WINDOW *win, int key){
+    /**
+     * @brief If a special function is selected, so send true
+     */
+    if ((key == KEY_F(1)) || (key == KEY_F(2)) || (key == KEY_F(3)) || (key == KEY_F(4)) || (key == KEY_F(5))){
         mvaddstr(1, 1, "specialkey");
         wrefresh(win);
         return 1;
     }
-    else
-    {
+    else{
         return 0;
     }
 }
 
-int enter_key(WINDOW *win, int key)
-{
-    if (key == 10)
-    { // enter key
-        // mvaddstr(1,1,"enterkey") ;
+int enter_key(WINDOW *win, int key){
+    /**
+     * @brief If the enter key (key == 10) is pressed, add a new line + send true.
+     * 
+     */
+    if (key == 10){ 
         new_main_line(win);
         wrefresh(win);
         return 1;
     }
-    else
-    {
+    else{
         return 0;
     }
 }
 
-struct input_thread
-{
+struct input_thread{
+    /**
+     * @brief the ptrace is encapsuled in a pthread. Hence, we need to 
+     * creat e an argument structure for that function.
+     * There are :
+     * - inter : interface structure
+     * - args : arguments from the parser
+     * - opts : options from the parser
+     * - size_args and size_opts to determine the length of the arguments and optiosn from the parser
+     * - have_breakpoint : true if the command is "breakpoint", false either
+     *          -is_function : true if the breakpoint is associated to a function. False if it is 
+     *              associated to an adress
+     *          - breakpoint_function :  function associated to the breakpoint
+     *          - breakpoint_adress : relative adress associated with the breakpoint
+     */
     struct Interface *inter;
     char **args;
     char **opts;
@@ -526,36 +489,40 @@ struct input_thread
     char *breakpoint_adress;
 };
 
-void print_parsed(WINDOW *win, struct input_thread *i)
-{
+void print_parsed(WINDOW *win, struct input_thread *i){
+    /**
+     * @brief print is main window the parsed text to control that the parser is 
+     * working well and to be sure what is sended to the ptrace function
+     */
     waddstr(win, "\n Arguments list :");
-    for (int j = 0; j < i->size_args + 1; j++)
-    {
+    for (int j = 0; j < i->size_args + 1; j++){
         waddstr(win, i->args[j]);
     }
     waddstr(win, "\n Options list :");
-    for (int j = 0; j < i->size_opts; j++)
-    {
+    for (int j = 0; j < i->size_opts; j++){
         waddstr(win, i->opts[j]);
     }
     waddstr(win, "\n\n ");
 }
 
-void get_pid(struct process_t *pid)
-{
+void get_pid(struct process_t *pid){
+    /**
+     * @brief Add to  specified process_t structure the pid, ppid and gid associated to the caller
+     */
     pid->pid = (int)getpid();
     pid->ppid = (int)getppid();
     pid->gid = (int)getgid();
 }
 
-void print_pid(WINDOW *win, struct process_t *pid, int info)
-{
-    if (info == 0)
-    {
+void print_pid(WINDOW *win, struct process_t *pid, int info){
+    /**
+     * @brief Show in a window in a standard mode the pid, ppid and gid of the 
+     * specified structure
+     */
+    if (info == 0){
         waddstr(win, "Process fils : \n ");
     }
-    else
-    {
+    else{
         waddstr(win, "Process père : \n ");
     }
     char tmp[10];
@@ -574,9 +541,14 @@ void print_pid(WINDOW *win, struct process_t *pid, int info)
     refresh();
 }
 
-void show_libraries(WINDOW *win, struct process_t *pid, int verbose)
-{
-    // this function is for print the loaded libraries from /proc/pid/maps
+void show_libraries(WINDOW *win, struct process_t *pid, int verbose){
+    /**
+     * @brief This function write the loaded libraries of a pid specified from process_t process. 
+     * This parse the /proc/<pid>/maps file 
+     * - we can select or not the verbose option. If verbnose is selected hence all the segments of the 
+     *      maps is shown.
+     */
+    // allocate buffers for character manipulation
     char *buffpid = (char *)malloc(10 * sizeof(char));
     char *buffpath = (char *)malloc(30 * sizeof(char));
     char *buffline = (char *)malloc(1000 * sizeof(char));
@@ -584,119 +556,109 @@ void show_libraries(WINDOW *win, struct process_t *pid, int verbose)
     int size_loaded_libs = 1000;
     char **line = malloc(size_line * sizeof(char *));
     char **loaded_libs = malloc(size_loaded_libs * sizeof(char *));
-
+    // print the mapos localisation is the dedicated window
     sprintf(buffpid, "%d", pid->pid);
     waddstr(win, " \n\n  Maps localisation :  ");
     sprintf(buffpath, "/proc/%s/maps", buffpid);
     waddstr(win, buffpath);
     waddstr(win, " \n\n");
+    // open the maps file 
     FILE *fp = fopen(buffpath, "r");
-    if (!fp)
-    {
+    if (!fp){
         waddstr(win, "impossible d'afficher les librairies chargees\n ");
     }
-    // now we want to show loaded libraries
-    size_t line_buf_size = 0;
-    int i = 0;
-    while (getline(&buffline, &line_buf_size, fp) > -1)
-    {
+    else{
+        // now we want to show loaded libraries We save line after line the maps file
+        size_t line_buf_size = 0;
+        int i = 0;
+        while (getline(&buffline, &line_buf_size, fp) > -1){
+            line[i] = malloc((line_buf_size + 1) * sizeof(char));
+            strcpy(line[i], buffline);
+            i++;
+        }
         line[i] = malloc((line_buf_size + 1) * sizeof(char));
         strcpy(line[i], buffline);
-        i++;
-    }
-    line[i] = malloc((line_buf_size + 1) * sizeof(char));
-    strcpy(line[i], buffline);
+        // we set the maps delimiter which is the space cgaracter
+        const char delim[2] = " ";
+        // we recognize a loaded library thanks to the slash character after a space
+        char slash[2] = "/\0";
+        char comp[2] = "\0\0";
 
-    const char delim[2] = " ";
-    char slash[2] = "/\0";
-    char comp[2] = "\0\0";
+        char *token;
+        char *parsed_line[10];
 
-    char *token;
-    char *parsed_line[10];
-
-    int number_loaded_lib = 0;
-    waddstr(win, "  ");
-    for (int j = 0; j < i; j++)
-    {
-        // text all lines :
-        if (verbose == 1)
-        {
-            waddstr(win, line[j]);
-            waddstr(win, "  ");
-        }
-        token = strtok((char *)line[j], delim);
-        parsed_line[0] = malloc(strlen(token) * sizeof(char));
-        strcpy(parsed_line[0], token);
-        int index = 0;
-        while (token != NULL)
-        {
-            token = strtok(NULL, delim);
-            if (token != NULL)
-            {
-                index++;
-
-                parsed_line[index] = malloc(strlen(token) * sizeof(char) + 1);
-                strcpy(parsed_line[index], token);
-
-                // waddstr(win, "\n");
-
-                strncpy(comp, parsed_line[index], 1);
-
-                if (strcmp(comp, slash) == 0)
-                {
-                    // search if the loadd library already saved
-                    int already_saved = 0;
-                    for (int k = 0; k < number_loaded_lib; k++)
-                    {
-                        if (strcmp(loaded_libs[k], parsed_line[index]) == 0)
-                        {
-                            already_saved = 1;
+        int number_loaded_lib = 0;
+        waddstr(win, "  ");
+        // for each line
+        for (int j = 0; j < i; j++){
+            // if verbose print the line
+            if (verbose == 1){
+                waddstr(win, line[j]);
+                waddstr(win, "  ");
+            }
+            token = strtok((char *)line[j], delim);
+            parsed_line[0] = malloc(strlen(token) * sizeof(char));
+            strcpy(parsed_line[0], token);
+            int index = 0;
+            // for each information, see if its a library path
+            while (token != NULL){
+                token = strtok(NULL, delim);
+                if (token != NULL){
+                    // this while if need to be improved...
+                    index++;
+                    parsed_line[index] = malloc(strlen(token) * sizeof(char) + 1);
+                    strcpy(parsed_line[index], token);
+                    strncpy(comp, parsed_line[index], 1);
+                    // if its a library path
+                    if (strcmp(comp, slash) == 0){
+                        // search if the loadd library already saved
+                        int already_saved = 0;
+                        // search if its an already finded library path
+                        for (int k = 0; k < number_loaded_lib; k++){
+                            if (strcmp(loaded_libs[k], parsed_line[index]) == 0){
+                                already_saved = 1;
+                            }
                         }
-                    }
-                    // si le groupe commence par un backslash --> c'est une lib
-                    if (already_saved == 0)
-                    {
-                        // if (true){
-                        loaded_libs[number_loaded_lib] = malloc((100 + 1) * sizeof(char));
-                        strcpy(loaded_libs[number_loaded_lib], parsed_line[index]);
-                        number_loaded_lib++;
+                        // si le groupe commence par un backslash --> c'est une lib
+                        if (already_saved == 0){
+                            // if (true){
+                            loaded_libs[number_loaded_lib] = malloc((100 + 1) * sizeof(char));
+                            strcpy(loaded_libs[number_loaded_lib], parsed_line[index]);
+                            number_loaded_lib++;
+                        }
                     }
                 }
             }
         }
+        // method to get the libs - little parser
+        waddstr(win, "\n  Loaded libraries : \n\n  ");
+        for (int j = 0; j < number_loaded_lib; j++){
+            waddstr(win, loaded_libs[j]);
+            waddstr(win, "  ");
+        }
+        box(win, 0, 0);
+        wrefresh(win);
+        fclose(fp);
+        for (int j = 0; j < number_loaded_lib + 1; j++){
+            free(loaded_libs[j]);
+        }
+        for (int j = 0; j < i + 1; j++){
+            free(line[j]);
+        }
     }
-    // method to get the libs - little parser
-    waddstr(win, "\n  Loaded libraries : \n\n  ");
-    for (int j = 0; j < number_loaded_lib; j++)
-    {
-        waddstr(win, loaded_libs[j]);
-        waddstr(win, "  ");
-    }
-    box(win, 0, 0);
-    wrefresh(win);
-
-    fclose(fp);
-
+    // free all the previous mallpc
     free(buffpid);
     free(buffpath);
     free(buffline);
-    for (int j = 0; j < number_loaded_lib + 1; j++)
-    {
-        free(loaded_libs[j]);
-    }
-    for (int j = 0; j < i + 1; j++)
-    {
-        free(line[j]);
-    }
-    // for (int j = 0 ; j < index ; j++){
-    // free(parsed_line[j]);
-    //}
     free(loaded_libs);
     free(line);
 }
 
-void print_siginfo(WINDOW *win, siginfo_t *signinf, struct user_regs_struct *reg)
-{
+void print_siginfo(WINDOW *win, siginfo_t *signinf, struct user_regs_struct *reg){
+    /**
+     * @brief Just a function to show the siginfo to the win 
+     * 
+     */
     char tmp2[100];
     char tmp3[100];
     char tmp4[100];
@@ -713,36 +675,32 @@ void print_siginfo(WINDOW *win, siginfo_t *signinf, struct user_regs_struct *reg
     wrefresh(win);
 }
 
-struct option_debugger
-{
+struct option_debugger{
+    /**
+     * @brief Structure to set booleans to each options which can be specified in the prompt
+     */
     int singlestep;
     int get_reg;
     int get_all_sig;
     int verbose;
 };
 
-void config_debugger(struct input_thread *in, struct option_debugger *opt_deb)
-{
+void config_debugger(struct input_thread *in, struct option_debugger *opt_deb){
     opt_deb->singlestep = 0;
     opt_deb->get_reg = 0;
     opt_deb->get_all_sig = 0;
     opt_deb->verbose = 0;
-    for (int i = 0; i < in->size_opts; i++)
-    {
-        if (strcmp(options[0], in->opts[i]) == 0)
-        {
+    for (int i = 0; i < in->size_opts; i++){
+        if (strcmp(options[0], in->opts[i]) == 0){
             opt_deb->singlestep = 1;
         }
-        if (strcmp(options[1], in->opts[i]) == 0)
-        {
+        if (strcmp(options[1], in->opts[i]) == 0){
             opt_deb->get_reg = 1;
         }
-        if (strcmp(options[2], in->opts[i]) == 0)
-        {
+        if (strcmp(options[2], in->opts[i]) == 0){
             opt_deb->get_all_sig = 1;
         }
-        if (strcmp(options[3], in->opts[i]) == 0)
-        {
+        if (strcmp(options[3], in->opts[i]) == 0){
             opt_deb->verbose = 1;
         }
     }
@@ -750,8 +708,7 @@ void config_debugger(struct input_thread *in, struct option_debugger *opt_deb)
 
 static unw_addr_space_t as;
 static struct UPT_info *ui;
-void *spawn_thread(void *input)
-{
+void *spawn_thread(void *input){
     struct input_thread *i = input;
     WINDOW *main_win = i->inter->main_window[0];
     WINDOW *process_win = i->inter->right_window[1];
