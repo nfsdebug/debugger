@@ -1,4 +1,3 @@
-
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +33,12 @@ static struct UPT_info *ui;
 
 //#include "deb.h"
 
+
 char *choice_panel[] = {
+    /**
+     * @brief  Contient la liste des noms des panneaux de droite disponibles. Ces noms apparaissent dans
+     * le selecteur du bas. 
+     */
     "Help",
     "Processes",
     "Memory",
@@ -42,7 +46,12 @@ char *choice_panel[] = {
     "Elf",
     (char *)NULL,
 };
+
 char *panel_func[] = {
+    /**
+     * @brief Liste des textes additionels des selecteurs. Laisss vide car on ne 
+     * souhaite pas utiliser d'autre texte que celui de choice_panel 
+     */
     " ",
     " ",
     " ",
@@ -50,48 +59,55 @@ char *panel_func[] = {
     " ",
     (char *)NULL,
 };
-char *command[] = {"exec", "breakpoint", (char *)NULL};
-char *options[] = {"-s", "-r", "-f", "-v", (char *)NULL};
-// -s : singlestep
-// -r : show reg
-// -f : get flags
-// -v : verbose
-//
-//
-//
 
-int NumDigits(int n)
-{
-    // this is a method to determine the lenght of the decimal representation of a nuumber
-    // stolen from stackoverflow
-    // @user:14637
-    int digits = 0;
-    while (n)
-    {
-        n /= 10;
-        ++digits;
-    }
-    return digits;
-}
+char *command[] = {
+    /**
+     * @brief Correspond aux commandes à entrer dans la zone de saisie. Voici les descriptifs :
+     * exec : execution simple,
+     * breakpoint : ajouter un breakpoint au sein du code.
+     */
+    "exec", 
+    "breakpoint",
+    (char *)NULL
+};
 
-// this code is for process printing through the interface
-// process structure
-struct process_t
-{
-    // state = 0 for killed , state = 1 for active, state = 2 for inactive
-    // this cnvention may change
+char *options[] = {
+    /**
+     * @brief correspond aux arguments à entrer dans la zone de saisie. Voici les descriptifs ; 
+     * -s : singlestep
+     * -r : show reg
+     * -f : get flags
+     * -v : verbose
+     */
+    "-s",
+    "-r",
+    "-f",
+    "-v",
+    (char *)NULL
+};
+
+
+struct process_t{
+    /**
+     * @brief stocke l'etat d'un processus en vue de l'afficher
+     * state = 0 for killed , state = 1 for active, state = 2 for inactive
+     * (this cnvention may change.)
+     * num_thread is the thread amount shared in the process
+     * memory is the mount of memory claimed by this process
+     */
     int status;
     int pid;
     int ppid;
     int gid;
-    int num_threads; // number of threads in the process
-    int memory;      // memory used by the process
+    int num_threads;
+    int memory;
 };
 
-vec_t *generate_processes(void)
-{
-    // test p
-    // first main process
+vec_t *generate_processes(void){
+    /**
+     * @brief permet de generer des processus en vue de tester son affichage dans la fenetre dediee
+     * --> regadrer "void refresh_window_processes"
+     */
     struct process_t p1 = {
         .pid = 2,
         .ppid = 1,
@@ -115,7 +131,6 @@ vec_t *generate_processes(void)
         .status = 1,
         .num_threads = 1,
         .memory = 4344};
-
     struct process_t p4 = {
         .pid = 5,
         .ppid = 3,
@@ -130,21 +145,30 @@ vec_t *generate_processes(void)
         .status = 1,
         .num_threads = 1,
         .memory = 98};
-
     vec_t *vp = vec_new(sizeof(struct process_t));
     vec_push(vp, &p1);
     vec_push(vp, &p2);
     vec_push(vp, &p3);
     vec_push(vp, &p4);
     vec_push(vp, &p5);
-
     return vp;
 }
 
-// start_interface
-struct Interface
-{
-    // first : windows
+
+struct Interface{
+    /**
+     * @brief Permet de stocker les entitees de l'interface NCurses :
+     * - number_right_window stockele nombre de fenetres de droites selectionnables ;
+     * - number_left_window stocke le nombre de fenetre de gauche 
+     * - main_window correspond a la fenetre de gauche
+     * - right_window correspond aux multiples fenetres de droites, 
+     * - title_window correspond au texte du haut (exemple : NCurses debugger)
+     * - selector_panel corespind au selecteur du bas contenant le nom de la fenetre
+     *   de droite en cours d'affichage
+     * - my_panels correspond au regroupement des fenetres au sein d'une structure panel. Les
+     *      panels permettent de gerer la superposition de fenetres dans risquer de creer d'artefacts d'affichage
+     * - cur_item permet d'indiquer quel est la case de selecteur affichee 
+     */
 
     int number_right_window;
     int number_left_window;
@@ -159,39 +183,43 @@ struct Interface
     ITEM *cur_item;
 };
 
-struct Window_size
-{
-    // x, y are top left positions of the window
-    // dx, dy are dimensions of the window
+struct Window_size{
+    /**
+     * @brief Permet de stocker les dimensions d'une fenetre
+     * - x, y, sont les coordonnees du coin superieur gauche
+     * - dx dy sont les hauteurs et les largeurs de la fenetre
+     */
     int x;
     int y;
     int dx;
     int dy;
 };
 
-struct All_window_size
-{
+struct All_window_size{
+    /**
+     * @brief Permet de stocker les dimensions de toutes les fenetres de l'espace d'affichage.
+     */
     struct Window_size main;
     struct Window_size right;
     struct Window_size title;
     struct Window_size selector;
 };
 
-struct Interface start_interface(void)
-{
+struct Interface start_interface(void){
     struct Interface inter;
     return inter;
 }
 
-struct winsize compute_size_terminal(void)
-{
+struct winsize compute_size_terminal(void){
+    /**
+     * @brief Permet de recuperer la taille du terminal d'apres le tty associée
+     */
     struct winsize w;
     ioctl(0, TIOCGWINSZ, &w);
     return w;
 }
 
-struct All_window_size compute_size_window(void)
-{
+struct All_window_size compute_size_window(void){
     struct All_window_size size;
     struct winsize w = compute_size_terminal(); // get the size of the terminal
     // ratios are fromn 0 to 1 and indicaters the relative position of delimiters
@@ -214,6 +242,28 @@ struct All_window_size compute_size_window(void)
 
     return size;
 };
+
+int NumDigits(int n){
+    /**
+     * @brief this is a method to determine the lenght of the decimal representation of a nuumber
+     * stolen from stackoverflow. This is for the code panel, to compute the lenght of the line code number - 
+     * for printing it to the left.
+     */
+    int digits = 0;
+    while (n)
+    {
+        n /= 10;
+        ++digits;
+    }
+    return digits;
+}
+
+
+
+
+
+
+
 
 // struct Data {
 //     struct user_regs_struct reg ;
