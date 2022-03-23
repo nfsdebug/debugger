@@ -936,6 +936,7 @@ void *spawn_thread(void *input){
         } while (ret > 0);
 
         // refresh_window_processes(i->inter,vp );
+        refresh_window_code(i->inter);
         refresh_window_memory(i->inter, reg);
 
         vec_t *vp = vec_new(sizeof(struct process_t));
@@ -1200,8 +1201,8 @@ void refresh_window_start(struct Interface *inter)
     wrefresh(inter->right_window[0]);
 }
 
-void refresh_window_processes(struct Interface *inter, vec_t *vp)
-{
+void refresh_window_processes(struct Interface *inter, vec_t *vp){
+    WINDOW *w = (WINDOW *)inter->right_window[1];
 
     // box(inter->right_window[1], 0, 0) ;
     int c;
@@ -1211,7 +1212,7 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp)
     // wrefresh(inter->right_window[1]);
 
     // affichage des processes
-    wclear(inter->right_window[1]);
+    wclear(w);
     // box(inter->right_window[1], 0, 0) ;
     // wrefresh(inter->right_window[1]) ;
 
@@ -1236,64 +1237,58 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp)
     // first line : legendary line
     // other lines : show each processes of vec.
     int ncol, nrow;
-    getmaxyx(inter->right_window[1], nrow, ncol); // get the specific window size
+    getmaxyx(w, nrow, ncol); // get the specific window size
     int nentity_col = 6;
     int width = ncol / nentity_col;
     int max_width = 10;
-    if (width > max_width)
-    {
+    if (width > max_width){
         width = 10;
     }
     // print the first title line
 
-    wattron(inter->right_window[1], COLOR_PAIR(1));
+    wattron(w, COLOR_PAIR(1));
     char *symbol[1] = {" "};
-    for (int i = 0; i < ncol - 2; i++)
-    {
-        mvwaddstr(inter->right_window[1], 1, i + 1, symbol[0]);
+    for (int i = 0; i < ncol - 2; i++){
+        mvwaddstr(w, 1, i + 1, symbol[0]);
     }
-    for (int i = 0; i < nentity_col; i++)
-    {
-        if (width > 7)
-        {
-            mvwaddstr(inter->right_window[1], 1, 1 + width * i, entity_name[i]);
+    for (int i = 0; i < nentity_col; i++){
+        if (width > 7){
+            mvwaddstr(w, 1, 1 + width * i, entity_name[i]);
         }
-        else
-        {
-            mvwaddstr(inter->right_window[1], 1, 1 + width * i, reduced_entity_name[i]);
+        else{
+            mvwaddstr(w, 1, 1 + width * i, reduced_entity_name[i]);
         }
     }
-    wattroff(inter->right_window[1], COLOR_PAIR(1));
-    box(inter->right_window[1], 0, 0);
-    wrefresh(inter->right_window[1]);
+    wattroff(w, COLOR_PAIR(1));
+    box(w, 0, 0);
+    wrefresh(w);
 
     // we want to have an arborescence between processes : sort them.
     //
 
     // print each process line
     char tmp[10];
-    for (int i = 0; i < vp->len; i++)
-    {
+    for (int i = 0; i < vp->len; i++){
         sprintf(tmp, "%d", ((struct process_t *)vp->data)[i].pid);
-        mvwaddstr(inter->right_window[1], 2 + i, 1, tmp);
+        mvwaddstr(w, 2 + i, 1, tmp);
         sprintf(tmp, "%d", ((struct process_t *)vp->data)[i].ppid);
-        mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 1, tmp);
+        mvwaddstr(w, 2 + i, 1 + width * 1, tmp);
         sprintf(tmp, "%d", ((struct process_t *)vp->data)[i].gid);
-        mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 2, tmp);
+        mvwaddstr(w, 2 + i, 1 + width * 2, tmp);
         sprintf(tmp, "%d", ((struct process_t *)vp->data)[i].status);
-        mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 3, tmp);
+        mvwaddstr(w, 2 + i, 1 + width * 3, tmp);
         sprintf(tmp, "%d", ((struct process_t *)vp->data)[i].num_threads);
-        mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 4, tmp);
+        mvwaddstr(w, 2 + i, 1 + width * 4, tmp);
         sprintf(tmp, "%d", ((struct process_t *)vp->data)[i].memory);
-        mvwaddstr(inter->right_window[1], 2 + i, 1 + width * 5, tmp);
+        mvwaddstr(w, 2 + i, 1 + width * 5, tmp);
     }
-    waddstr(inter->right_window[1], "\n - not all features have been implemented yet - ");
-    box(inter->right_window[1], 0, 0);
-    wrefresh(inter->right_window[1]);
+    waddstr(w, "\n - not all features have been implemented yet - ");
+    box(w, 0, 0);
+    wrefresh(w);
 }
 
-void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg)
-{
+void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg){
+    WINDOW *w = (WINDOW *)inter->right_window[2] ; 
     wclear(inter->right_window[2]);
     // mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
     // wrefresh(inter->right_window[2]);
@@ -1307,131 +1302,136 @@ void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg)
     // box(inter->right_window[2], 0, 0);
     // wrefresh(inter->right_window[2]);
 
-    waddstr(inter->right_window[2], "\n\n  Register Visualisation \n\n ");
+    waddstr(w, "\n\n  Register Visualisation \n\n ");
     char tmp2[30];
     sprintf(tmp2, " rax      0x%llx", reg.rax);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rbx      0x%llx", reg.rbx);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rcx      0x%llx", reg.rcx);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rdx      0x%llx", reg.rdx);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rdi      0x%llx", reg.rdi);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rsi      0x%llx", reg.rsi);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rbp      0x%llx", reg.rbp);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rsp      0x%llx", reg.rsp);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " r8       0x%llx", reg.r8);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " r9       0x%llx", reg.r9);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " r10      0x%llx", reg.r10);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " r11      0x%llx", reg.r11);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
-
+    waddstr(w, tmp2);
+    new_main_line(w);
     sprintf(tmp2, " r12      0x%llx", reg.r12);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " r13      0x%llx", reg.r13);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " r14      0x%llx", reg.r14);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " r15      0x%llx", reg.r15);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rip      0x%llx", reg.rip);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " rdx      0x%llx", reg.rdx);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " eflags   0x%llx", reg.eflags);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " cs       0x%llx", reg.cs);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " orig_rax 0x%llx", reg.orig_rax);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " fs_b     0x%llx", reg.fs_base);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " gs_b     0x%llx", reg.gs_base);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " fs_a     0x%llx", reg.fs);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " gs_a     0x%llx", reg.gs);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " ss       0x%llx", reg.ss);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " ds       0x%llx", reg.ds);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
 
     sprintf(tmp2, " es       0x%llx", reg.es);
-    waddstr(inter->right_window[2], tmp2);
-    new_main_line(inter->right_window[2]);
-
-    box(inter->right_window[2], 0, 0);
-    wrefresh(inter->right_window[2]);
+    waddstr(w, tmp2);
+    new_main_line(w);
+    box(w, 0, 0);
+    wrefresh(w);
 }
 
-void refresh_window_code(struct Interface *inter)
-{
-    wclear(inter->right_window[3]);
+void refresh_window_tree(struct Interface *inter){
+    WINDOW *w = (WINDOW *)inter->right_window[3] ; 
+    wclear(w);
+
+}
+
+void refresh_window_code(struct Interface *inter){
+    WINDOW *w = (WINDOW *)inter->right_window[3] ; 
+
+    wclear(w);
     // mvaddstr(1, 1, "show window others");
     // refresh();
 
-    mvwaddstr(inter->right_window[3], 2, 1, "others panel");
+    //mvwaddstr(inter->right_window[3], 2, 1, "others panel");
     // wrefresh(inter->right_window[3]);
 
     // we want to prijnt a specific part of the code where the bug occurs, or something else
@@ -1440,7 +1440,7 @@ void refresh_window_code(struct Interface *inter)
     int line_to_print = 10;
 
     int nrow, ncol;
-    getmaxyx(inter->right_window[3], nrow, ncol); // get the specific window size
+    getmaxyx(w, nrow, ncol); // get the specific window size
     nrow--;
     int midheight = (int)(nrow / 2);
     int begin;
@@ -1466,7 +1466,7 @@ void refresh_window_code(struct Interface *inter)
     fp = fopen("/home/sbstndbs/debugger/src/interface.c", "r");
     if (fp == NULL)
     {
-        mvwaddstr(inter->right_window[3], 1, 4, "cannot open the selected file...");
+        mvwaddstr(w, 1, 4, "cannot open the selected file...");
     }
     int iline = 0;
     int nline = 0;
@@ -1479,23 +1479,23 @@ void refresh_window_code(struct Interface *inter)
             // print the line
             sprintf(chline, "%d", iline + 1);
             // wattron(inter->right_window[3], COLOR_PAIR(1));
-            mvwaddstr(inter->right_window[3], 1 + nline, 1, chline);
+            mvwaddstr(w, 1 + nline, 1, chline);
             // wattroff(inter->right_window[3], COLOR_PAIR(1));
 
             if (nline + begin == line_to_print)
             {
                 char *symbol[1] = {" "};
-                wattron(inter->right_window[3], COLOR_PAIR(1));
+                wattron(w, COLOR_PAIR(1));
                 for (int i = 0; i < ncol - 2; i++)
                 {
-                    mvwaddstr(inter->right_window[3], 1 + nline, i + 2 + numdigits, symbol[0]);
+                    mvwaddstr(w, 1 + nline, i + 2 + numdigits, symbol[0]);
                 }
-                mvwaddstr(inter->right_window[3], 1 + nline, 2 + numdigits, buff);
-                wattroff(inter->right_window[3], COLOR_PAIR(1));
+                mvwaddstr(w, 1 + nline, 2 + numdigits, buff);
+                wattroff(w, COLOR_PAIR(1));
             }
             else
             {
-                mvwaddstr(inter->right_window[3], 1 + nline, 2 + numdigits, buff);
+                mvwaddstr(w, 1 + nline, 2 + numdigits, buff);
             }
             nline++;
         }
@@ -1504,23 +1504,22 @@ void refresh_window_code(struct Interface *inter)
     // close file
     fclose(fp);
 
-    box(inter->right_window[3], 0, 0);
-    wrefresh(inter->right_window[3]);
+    box(w, 0, 0);
+    wrefresh(w);
 }
 
-void refresh_window_elf(struct Interface *inter)
-{
+void refresh_window_elf(struct Interface *inter){
+    WINDOW *w = (WINDOW *)inter->right_window[4] ; 
     // box(inter->right_window[4], 0, 0);
     // mvaddstr(1, 1, "show window start");
     // refresh();
     // mvwaddstr(inter->right_window[4], 2, 1, "start panel");
-    box(inter->right_window[4], 0, 0);
-    wrefresh(inter->right_window[4]);
+    box(w, 0, 0);
+    wrefresh(w);
 }
 
 // this is the way the main window is drawn
-int show_window_start(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input)
-{
+int show_window_start(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
     refresh_window_start(inter);
     int c;
     c = keyboard_input(inter, main_win, input);
