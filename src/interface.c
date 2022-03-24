@@ -341,6 +341,7 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp);
 void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg);
 void refresh_window_code(struct Interface *inter);
 void refresh_window_elf(struct Interface *inter);
+void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UPT_info *ui );
 int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input);
 
 void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id){
@@ -374,6 +375,8 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
      * - FUTURE : Add scroll / Pagedown Pageup to add scrolling support for windows.
      */
 
+    WINDOW *mw = (WINDOW *)inter->main_window[0] ; 
+
     int panel_amount = 5;
     while (c != KEY_F(10)){
         mvaddstr(1, 1, "while main");
@@ -384,7 +387,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
             update_panels();
             doupdate();
             wrefresh(inter->right_window[0]);
-            c = keyboard_input(inter, inter->main_window[0], input);
+            c = keyboard_input(inter, mw, input);
             break;
         // case 50:
         case KEY_F(2):
@@ -392,7 +395,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
             update_panels();
             doupdate();
             wrefresh(inter->right_window[1]);
-            c = keyboard_input(inter, inter->main_window[0], input);
+            c = keyboard_input(inter, mw, input);
             break;
         // case 51:
         case KEY_F(3):
@@ -400,7 +403,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
             update_panels();
             doupdate();
             wrefresh(inter->right_window[2]);
-            c = keyboard_input(inter, inter->main_window[0], input);
+            c = keyboard_input(inter, mw, input);
             break;
         // case 52:
         case KEY_F(4):
@@ -408,7 +411,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
             update_panels();
             doupdate();
             wrefresh(inter->right_window[3]);
-            c = keyboard_input(inter, inter->main_window[0], input);
+            c = keyboard_input(inter, mw, input);
             break;
         // case 53:
         case KEY_F(5):
@@ -416,7 +419,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
             update_panels();
             doupdate();
             wrefresh(inter->right_window[4]);
-            c = keyboard_input(inter, inter->main_window[0], input);
+            c = keyboard_input(inter, mw, input);
             break;
         }
         doupdate();
@@ -899,8 +902,10 @@ void *spawn_thread(void *input){
                     break;
                 }
             }
-        }
+        }   
         // backtrace point
+
+        /*
         unw_word_t ip, start_ip = 0, sp, off;
         int n = 0, ret;
         unw_cursor_t c;
@@ -934,9 +939,12 @@ void *spawn_thread(void *input){
             waddstr(main_win, "\n");
 
         } while (ret > 0);
+        */
+       refresh_window_tree(i->inter, as, ui);
+
 
         // refresh_window_processes(i->inter,vp );
-        refresh_window_code(i->inter);
+        //refresh_window_code(i->inter);
         refresh_window_memory(i->inter, reg);
 
         vec_t *vp = vec_new(sizeof(struct process_t));
@@ -1418,16 +1426,64 @@ void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg)
     wrefresh(w);
 }
 
-void refresh_window_tree(struct Interface *inter){
+void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UPT_info *ui ){
     WINDOW *w = (WINDOW *)inter->right_window[3] ; 
     wclear(w);
+    unw_word_t ip, start_ip = 0, sp, off;
+    int n = 0, ret;
+    unw_cursor_t c;
+    char buf[128];
+    char buf2[150];
+    size_t len;
+    ret = unw_init_remote(&c, as, ui);
+
+    int index = 10 ; 
+    char *buffspace[] = {" ", (char *)NULL};
+
+    do{
+            if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
+                sprintf(buf, " unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
+            waddstr(w, buf);
+            if (n == 0)
+                start_ip = ip;
+            //buf[0] = '\0';
+            unw_get_proc_name(&c, buf, sizeof(buf), &off);
+
+            for (int vv = 0 ; vv < index ; vv++){
+                waddstr(w, buffspace[0]) ; 
+            }
+            index-- ; 
+            index--;
+
+            //sprintf(buf2, "  Proc name : %s\n", buf);
+            //waddstr(w, buf2);
+            sprintf(buf2, "%s\n", buf);
+            waddstr(w,buf2) ;
+            /* 
+            if (off){
+                len = strlen(buf);
+                if (len >= sizeof(buf) - 32)
+                    len = sizeof(buf) - 32;
+                //sprintf(buf + len, " +0x%lx", (unsigned long)off);
+            }
+            */
+            //sprintf(buf2, "    - %-32s \n", buf);
+            //waddstr(w, buf2);
+            ret = unw_step(&c);
+            waddstr(w, "\n");
+
+        } while (ret > 0);        
+
+    box(w, 0, 0) ; 
+    wrefresh(w); 
+
 
 }
 
 void refresh_window_code(struct Interface *inter){
     WINDOW *w = (WINDOW *)inter->right_window[3] ; 
 
-    wclear(w);
+    //wclear(w);
     // mvaddstr(1, 1, "show window others");
     // refresh();
 
