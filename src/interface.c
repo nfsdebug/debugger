@@ -343,7 +343,7 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp);
 void refresh_window_register(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg);
 void refresh_window_code(struct Interface *inter);
 void refresh_window_elf(struct Interface *inter);
-void refresh_window_memory(struct Interface *inter);
+void refresh_window_memory(struct Interface *inter, pid_t child_pid);
 void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UPT_info *ui );
 int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input);
 
@@ -554,6 +554,222 @@ void print_pid(WINDOW *win, struct process_t *pid, int info){
     refresh();
 }
 
+
+struct maps_info{
+    /**
+     * @brief Structure of the proc/pid/maps to do easier analysis on this data
+     * "start" & "stop" are the adress of the "name" data. "is_*" is from rwxp".
+     */
+    unsigned long long *start ;
+    unsigned long long *stop ; 
+    int *is_readable ; 
+    int *is_writable ; 
+    int *is_executable ; 
+    int *is_shared ;
+    int *is_private ; 
+    char **line ;
+    char **libs ; 
+    int number_lines ;
+    int number_libs ; 
+
+};
+
+struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
+    /**
+     * @brief get_maps is creating and filling the maps_info structure from the pid structure.
+     * Hence, the function opens the following proc maps file and read on it. 
+     *      We can place the old show_libraries function file parser on it.
+     */
+    WINDOW *win = (WINDOW *)inter->main_window[0] ; 
+    struct maps_info maps ; 
+    maps.start = malloc(sizeof(unsigned long long)) ; 
+    maps.stop = malloc(sizeof(unsigned long long)) ; 
+    maps.is_readable = malloc( sizeof(int) );
+    maps.is_writable = malloc( sizeof(int) );
+    maps.is_executable = malloc( sizeof(int) );
+    maps.is_shared = malloc( sizeof(int) );
+    maps.is_private = malloc( sizeof(int) );
+    maps.line = malloc( sizeof(char *) ) ; 
+    maps.libs = malloc( sizeof(char *) ) ;  
+    maps.number_libs = 0 ; 
+    maps.number_lines = 0 ;    
+
+    // memory allocation for string manipulation
+    char *buffpid = (char *)malloc(10 * sizeof(char));
+    char *buffpath = (char *)malloc(30 * sizeof(char));
+    char *buffline = (char *)malloc(1000 * sizeof(char));
+    char *buffadress = (char *)malloc(12 * sizeof(char));
+    char *buffchar = (char *)malloc(sizeof(char)) ; 
+    char *line = malloc(1000 * sizeof(char *));
+
+    // print the mapos localisation is the dedicated window
+    sprintf(buffpid, "%d", pid->pid);
+    waddstr(win, " \n\n  Maps localisation :  ");
+    sprintf(buffpath, "/proc/%s/maps", buffpid);
+    waddstr(win, buffpath);
+    waddstr(win, " \n\n");
+    // open the maps file 
+
+
+ waddstr(win, "  lecture du fichier...\n ");
+
+ 
+    FILE *fp = fopen(buffpath, "r");
+    if (!fp){
+        waddstr(win, "  XXX impossible d'afficher les librairies chargees XXX\n ");
+    }
+    else{
+
+        
+            waddstr(win, "  --> Lecture du /proc/pid/maps ... \n ");
+       // now we want to show loaded libraries We save line after line the maps file
+        size_t line_buf_size = 0;
+        maps.number_lines = 0;
+        while (getline(&buffline, &line_buf_size, fp) > -1){
+            maps.line[maps.number_lines] = malloc((line_buf_size + 1) * sizeof(char));
+            strcpy(maps.line[maps.number_lines], buffline);
+            maps.number_lines++;
+            maps.line = realloc( maps.line , (maps.number_lines + 1) * sizeof(char *) ) ;             
+        } 
+        maps.line[maps.number_lines] = malloc((line_buf_size + 1) * sizeof(char));
+        strcpy(maps.line[maps.number_lines], buffline);      
+        maps.number_lines++;
+
+      
+        // we set the maps delimiter which is the space cgaracter
+        const char delim[2] = " ";
+        // we recognize a loaded library thanks to the slash character after a space
+        char slash[2] = "/\0";
+        char comp[2] = "\0\0";
+
+        char *token;
+        
+ 
+
+        // for each lines of the proc maps
+        for (int j = 0; j < maps.number_lines; j++){
+            char *parsed_line[10];
+            strcpy(line, maps.line[j]) ; 
+            token = strtok((char *)line, delim);
+            // parsed line is the line splited by the separator " ".
+            // we are going to fullfill it
+            parsed_line[0] = malloc(strlen(token) * sizeof(char));
+            strcpy(parsed_line[0], token);
+            int index = 0;
+
+
+                for(int fu = 0 ; fu < maps.number_lines ; fu++){
+                //waddstr(win, maps.line[fu]);
+                //waddstr(win, "   \n\n");
+        } 
+
+
+            while (token != NULL){
+                token = strtok(NULL, delim);
+                if (token != NULL){
+                    index++;
+                    parsed_line[index] = malloc(strlen(token) * sizeof(char) + 1);
+                    strcpy(parsed_line[index], token);   // copy data
+
+                    strncpy(comp, parsed_line[index], 1);
+                    
+                    if (index == 1){
+                        // its the start-stop memory adress
+                        // we want to parse with the "-" separator 
+                        // proposition --> strncpy with 12 characters
+                        // BE CAREFUL : this is not portable !!!!!
+                        strncpy(buffadress , parsed_line[index], 12) ; 
+                        maps.start[j] = strtoull(buffadress, NULL, 0) ; 
+                        strncpy(buffadress , parsed_line[index]+13, 12) ; 
+                        maps.stop[j] = strtoull(buffadress, NULL, 0) ;                         
+                    }
+                    
+                    else if (index == 2){
+                        // its the rwxp information
+                        strncpy(buffchar, parsed_line[index], 1) ;
+                        if ( strcmp(buffchar, "r") == 1 ){
+                            maps.is_readable[j] = 1 ; 
+                        }
+                        strncpy(buffchar, parsed_line[index]+1, 1) ; 
+                        if ( strcmp(buffchar, "w") == 1 ){
+                            maps.is_writable[j] = 1 ; 
+                        }
+                        strncpy(buffchar, parsed_line[index]+2, 1) ;
+                        if ( strcmp(buffchar, "x") == 1 ){
+                            maps.is_executable[j] = 1 ; 
+                        }
+                        strncpy(buffchar, parsed_line[index]+3, 1) ; 
+                        if ( strcmp(buffchar, "p") == 1 ){
+                            maps.is_private[j] = 1 ; 
+                        }                                               
+                    }
+                    
+                    // detection if its a library (begin with slash)
+                    else if (strcmp(comp, slash) == 0){
+                        // search if the loadd library already saved
+                        int already_saved = 0;
+                        // search if its an already finded library path
+                        for (int k = 0; k < maps.number_libs ; k++){
+                            if (strcmp(maps.libs[k], parsed_line[index]) == 0){
+                                already_saved = 1;
+                            }
+                        }
+                        // si le groupe commence par un backslash --> c'est une lib
+                        
+                        if (already_saved == 0){
+                            // if (true){
+                            maps.libs[maps.number_libs] = malloc( strlen(parsed_line[index]) * sizeof(char));
+                            strcpy(maps.libs[maps.number_libs], parsed_line[index]);
+                            maps.number_libs++;                                      
+                            maps.libs = realloc( maps.libs, (maps.number_libs+1) *   sizeof(char *) ) ;
+                        }
+                        
+                    }
+                    
+                }
+            }
+            // realloc ..
+            maps.start = realloc(maps.start,  (j+2) *  sizeof(unsigned long long)) ; 
+            maps.stop = realloc( maps.stop, (j+2) *  sizeof(unsigned long long)) ; 
+            maps.is_readable = realloc( maps.is_readable, (j+2) *   sizeof(int) );
+            maps.is_writable = realloc(maps.is_writable,  (j+2) *   sizeof(int) );
+            maps.is_executable = realloc(maps.is_executable, (j+2) *   sizeof(int) );
+            maps.is_shared = realloc(maps.is_shared, (j+2) *   sizeof(int) );
+            maps.is_private = realloc(maps.is_private, (j+2) *   sizeof(int) );
+
+        }
+            
+    }     
+    free(buffpid) ; 
+    free(buffpath);
+    free(buffadress);
+    free(buffchar);
+    free(buffline);
+    return maps ;
+}
+
+void show_libraries_2(struct Interface *inter, struct maps_info maps){
+    WINDOW *win = (WINDOW *)inter->right_window[1] ; 
+
+    waddstr(win, "\n\n\n\n\n\n\n  all lines : \n\n  ");
+    for (int j = 0; j < maps.number_lines; j++){
+        waddstr(win, maps.line[j]);
+        waddstr(win, "    ");
+    }
+
+
+
+    waddstr(win, "\n  Loaded libraritrtrSes : \n\n  ");
+    for (int j = 0; j < maps.number_libs; j++){
+        waddstr(win, maps.libs[j]);
+        waddstr(win, "  ");
+    }
+    box(win, 0, 0);
+    wrefresh(win);
+
+
+}
+
 void show_libraries(WINDOW *win, struct process_t *pid, int verbose){
     /**
      * @brief This function write the loaded libraries of a pid specified from process_t process. 
@@ -601,13 +817,13 @@ void show_libraries(WINDOW *win, struct process_t *pid, int verbose){
         char *parsed_line[10];
 
         int number_loaded_lib = 0;
-        waddstr(win, "  ");
+        waddstr(win, "   ");
         // for each line
         for (int j = 0; j < i; j++){
             // if verbose print the line
             if (verbose == 1){
                 waddstr(win, line[j]);
-                waddstr(win, "  ");
+                waddstr(win, "   ");
             }
             token = strtok((char *)line[j], delim);
             parsed_line[0] = malloc(strlen(token) * sizeof(char));
@@ -953,6 +1169,8 @@ void *spawn_thread(void *input){
         } while (ret > 0);
         */
        refresh_window_tree(i->inter, as, ui);
+        refresh_window_memory(i->inter, child_pid) ; 
+
 
 
         // refresh_window_processes(i->inter,vp );
@@ -962,8 +1180,15 @@ void *spawn_thread(void *input){
         vec_t *vp = vec_new(sizeof(struct process_t));
         vec_push(vp, &process_father);
         vec_push(vp, &process_child);
+        waddstr(i->inter->main_window[0], "hello huhuhuhuhuhu");
         refresh_window_processes(i->inter, vp);
-        show_libraries(process_win, &process_child, opt_deb.verbose);
+
+        waddstr(i->inter->main_window[0], "hello hihihihi");
+
+
+        struct maps_info maps = get_maps(i->inter, &process_child) ; 
+        show_libraries_2(i->inter, maps) ;
+        //show_libraries(process_win, &process_child, opt_deb.verbose);
         vec_clear(vp);
         free(buff);
     }
@@ -1580,7 +1805,7 @@ void refresh_window_elf(struct Interface *inter){
     wrefresh(w);
 }
 
-void refresh_window_memory(struct Interface *inter){
+void refresh_window_memory(struct Interface *inter, pid_t child_pid){
     WINDOW *w = (WINDOW *)inter->right_window[5] ; 
     // box(inter->right_window[4], 0, 0);
     // mvaddstr(1, 1, "show window start");
