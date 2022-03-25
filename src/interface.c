@@ -338,7 +338,7 @@ void draw_box(struct Interface *inter){
 
 void refresh_window_start(struct Interface *inter);
 void refresh_window_processes(struct Interface *inter, vec_t *vp);
-void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg);
+void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg);
 void refresh_window_code(struct Interface *inter);
 void refresh_window_elf(struct Interface *inter);
 void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UPT_info *ui );
@@ -371,7 +371,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
      * There are three cases :
      * - The key is standard : letters, numbers like a, r or 5. So the corresponding character is added to the prompt
      * - The key is a special key : F1, F2 etc. So the selected panel is shown
-     * - The key is ENter : The text is send to the parser and a new line is started
+     * - The key is Enter : The text is send to the parser and a new line is started
      * - FUTURE : Add scroll / Pagedown Pageup to add scrolling support for windows.
      */
 
@@ -379,8 +379,8 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
 
     int panel_amount = 5;
     while (c != KEY_F(10)){
-        mvaddstr(1, 1, "while main");
-        refresh();
+        //mvaddstr(1, 1, "while main");
+        //refresh();
         switch (c){
         case KEY_F(1):
             show_specific_panel(inter, panel_amount, 1); // be careful , main window in panel[0]
@@ -811,6 +811,7 @@ void *spawn_thread(void *input){
         waitpid(child_pid, &wait_status, 0);
 
         struct user_regs_struct reg;
+        struct user_fpregs_struct fpreg ; 
         char tmp[10];
         char tmp2[100];
         char tmp3[100];
@@ -880,14 +881,15 @@ void *spawn_thread(void *input){
             siginfo_t signinf;
             ptrace(PTRACE_GETSIGINFO, child_pid, NULL, &signinf);
             ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
+            ptrace(PTRACE_GETFPREGS, child_pid, NULL, &fpreg) ; 
 
             if ((number_of_instructions % 10000 == 0) & opt_deb.singlestep == 1)
             {
-                refresh_window_memory(i->inter, reg);
+                refresh_window_memory(i->inter, reg, fpreg);
             }
             else
             {
-                // refresh_window_memory(i->inter, reg);
+                // refresh_window_memory(i->inter, reg, fpreg);
             }
             if (WIFSTOPPED(wait_status))
             {
@@ -945,7 +947,7 @@ void *spawn_thread(void *input){
 
         // refresh_window_processes(i->inter,vp );
         //refresh_window_code(i->inter);
-        refresh_window_memory(i->inter, reg);
+        refresh_window_memory(i->inter, reg, fpreg);
 
         vec_t *vp = vec_new(sizeof(struct process_t));
         vec_push(vp, &process_father);
@@ -959,12 +961,7 @@ void *spawn_thread(void *input){
     pthread_exit(NULL);
 }
 
-void parse(struct Interface *inter, WINDOW *win, vec_t *input)
-{
-    // waddstr(win , "\n vous avew saisi :") ;
-    // new_main_line(win) ;
-    // waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
-    // new_main_line(win) ;
+void parse(struct Interface *inter, WINDOW *win, vec_t *input){
     const char delim[2] = " ";
 
     /////////////////
@@ -1003,9 +1000,11 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input)
             strcpy(parsed[i_p - 1], token);
         }
     }
+
     ///////////////////
     // etape de parsing
     //////////////////
+
     int n_options = 4;
     // get the options & the args
     int is_an_option;
@@ -1047,11 +1046,9 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input)
     it.args = args;
 
     pthread_t thread;
-    if (is_valid)
-    {
+    if (is_valid){
         /// for EXEC command ; simple execution
-        if ((strcmp(command[0], parsed[0]) == 0) & (i_a > 0))
-        {
+        if ((strcmp(command[0], parsed[0]) == 0) & (i_a > 0)){
             waddstr(win, "\n EXEC :");
             new_main_line(win);
             int thr = 1;
@@ -1062,32 +1059,26 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input)
             wrefresh(win);
         }
         /// for BREAKPOINT command : define an explicit breakpoint
-        if ((strcmp(command[1], parsed[0]) == 0) & (i_a > 1))
-        {
+        if ((strcmp(command[1], parsed[0]) == 0) & (i_a > 1)){
             waddstr(win, "\n BREAKPOINT :");
             new_main_line(win);
             int thr = 1;
             it.have_breakpoint = 1;
-            if (strcmp(parsed[1], "function") == 0)
-            {
+            if (strcmp(parsed[1], "function") == 0){
                 it.breakpoint_function = malloc(strlen(parsed[2]) * sizeof(char));
                 strcpy(it.breakpoint_function, parsed[2]);
                 it.is_function = 1;
             }
-            else if (strcmp(parsed[1], "adress") == 0)
-            {
+            else if (strcmp(parsed[1], "adress") == 0){
                 it.breakpoint_adress = malloc(strlen(parsed[2]) * sizeof(char));
                 strcpy(it.breakpoint_adress, parsed[2]);
                 it.is_function = 0;
             }
-            else
-            {
+            else{
                 is_valid = 0;
             }
-            if (is_valid == 1)
-            {
-                for (int i = 0; i < i_a - 2; i++)
-                {
+            if (is_valid == 1){
+                for (int i = 0; i < i_a - 2; i++){
                     //(it.inter->main_window[0], &it) ;
                     strcpy(it.args[i], it.args[i + 2]);
                 }
@@ -1105,8 +1096,10 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input)
         }
     }
 
-    if (is_valid == 0)
-    {
+
+
+
+    if (is_valid == 0){
         waddstr(win, "Please enter a valid command... ");
         new_main_line(win);
         waddstr(win, "Select Help panel for more information.");
@@ -1117,48 +1110,33 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input)
     // deallocation
     //////////////////
 
-    for (int j = i_p - 1; j >= 0; j--)
-    {
+    for (int j = i_p - 1; j >= 0; j--){
         free(parsed[j]);
     }
-    for (int j = i_o - 1; j >= 0; j--)
-    {
+    for (int j = i_o - 1; j >= 0; j--){
         free(opts[j]);
     }
-    for (int j = i_a - 1; j >= 0; j--)
-    {
+    for (int j = i_a - 1; j >= 0; j--){
         free(args[j]);
     }
 }
 
-int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input)
-{
+int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
     int key;
-    while ((key = getch()))
-    {
-
-        if (function_key(win, key))
-        {
+    while ((key = getch())){
+        if (function_key(win, key)){
             break;
         }
-        else if (enter_key(win, key))
-        {
+        else if (enter_key(win, key)){
 
             // donnees a envoyer au parseur :
             char end = '\0';               // signal de terminaison de la saisie
             vec_push(input, (char *)&end); // le vecteur est rempli d caracteres a interpreter termin2 par null
-            // affichagele temps de debug
-            // waddstr(win , "\n vous avew saisi : \n") ;
-            // waddstr(win, (char *)(&input->data)[0] ) ; // affichage de la siason en guise de verif
-            // waddstr(win , "\n") ;
             parse(inter, win, input);
             vec_clear(input); // apres envoi au parseur, onvide le vec
         }
-        else
-        {
-            // mvaddstr(1,1,"notspecialkey") ;
+        else{
             waddch(win, key);
-            // wprintw(main_win, temp) ;
             doupdate();
             wrefresh(win);
             vec_push(input, (char *)&key);
@@ -1295,7 +1273,7 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp){
     wrefresh(w);
 }
 
-void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg){
+void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg){
     WINDOW *w = (WINDOW *)inter->right_window[2] ; 
     wclear(inter->right_window[2]);
     // mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
@@ -1312,6 +1290,7 @@ void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg)
 
     waddstr(w, "\n\n  Register Visualisation \n\n ");
     char tmp2[30];
+    char *tmp3 = malloc(200 * sizeof(char)) ; 
     sprintf(tmp2, " rax      0x%llx", reg.rax);
     waddstr(w, tmp2);
     new_main_line(w);
@@ -1422,6 +1401,22 @@ void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg)
     sprintf(tmp2, " es       0x%llx", reg.es);
     waddstr(w, tmp2);
     new_main_line(w);
+
+    // xmm register
+    for (int i = 0 ; i < 8 ; i++){
+        sprintf(tmp2, " xmm       ");
+        waddstr(w, tmp2) ; 
+        for (int j = 0 ; j < 8 ; j++){
+            sprintf(tmp2, "|0x%x" , fpreg.xmm_space[i*8+j]) ; 
+            waddstr(w, tmp2) ; 
+        }
+        new_main_line(w);
+    }
+
+
+    new_main_line(w);
+
+    free(tmp3);
     box(w, 0, 0);
     wrefresh(w);
 }
@@ -1457,7 +1452,7 @@ void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UP
 
             //sprintf(buf2, "  Proc name : %s\n", buf);
             //waddstr(w, buf2);
-            sprintf(buf2, "%s\n", buf);
+            sprintf(buf2, "|%s|\n", buf);
             waddstr(w,buf2) ;
             /* 
             if (off){
@@ -1621,10 +1616,6 @@ int main(int argc, char **argv)
     refresh();
     update_panels();
 
-    // attron(COLOR_PAIR(1));
-    // mvprintw( 0, 0, "%s", "voila");
-    // attroff(COLOR_PAIR(1));
-
     vec_t *vp = generate_processes(); // to add processes. Need to be obtain from branch/features
 
     keypad(inter.main_window[0], TRUE);
@@ -1635,27 +1626,6 @@ int main(int argc, char **argv)
     struct user_regs_struct reg;
     int c;
 
-    // show_specific_panel(&inter, 5, 1);
-    // refresh_window_start(&inter) ;
-    // usleep(100000);
-
-    // show_specific_panel(&inter, 5, 2);
-    // refresh_window_processes(&inter, vp) ;
-    // usleep(100000);
-
-    // show_specific_panel(&inter, 5, 3);
-    // refresh_window_memory(&inter, reg) ;
-    // usleep(100000);
-
-    // show_specific_panel(&inter, 5, 4);
-    // refresh_window_code(&inter) ;
-    // usleep(100000);
-
-    // show_specific_panel(&inter, 5, 5);
-    // refresh_window_elf(&inter) ;
-    // usleep(100000);
-
-    // show_specific_panel(&inter, 5, 1);
 
     box(inter.main_window[0], 0, 0);
     wrefresh(inter.main_window[0]);
@@ -1668,7 +1638,9 @@ int main(int argc, char **argv)
     doupdate();
     // refresh();
 
+    // here is where the interface & the debugger is working
     loop_execution(&inter, vp, c, input);
+    ////
 
     doupdate();
     getch();

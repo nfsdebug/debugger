@@ -27,13 +27,13 @@ $(TARGET)/mon_programme:  $(SRC)/mon_programme.c
 	gcc $< -o $@ 	
 
 $(TARGET)/test:  $(SRC)/test.c
-	gcc $< -g -gdwarf-2  -o $@ 	
+	gcc $< -g -gdwarf-2 -mavx2  -o $@ 	
 
 $(TARGET)/new_tty:  $(SRC)/new_tty.c
 	gcc $< -g -gdwarf-2  -o $@ 	 -lutil
 
 $(TARGET)/write_on_new_tty:  $(SRC)/write_on_new_tty.c
-	gcc $< -g -gdwarf-2  -o $@ 	 -lutil
+	gcc $< -g -gdwarf-2 -o $@ 	 -lutil
 
 clean:
 	rm target/* 
