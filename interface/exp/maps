@@ -1,0 +1,69 @@
+55abfc71a000-55abfc71c000 r--p 00000000 08:10 463559                     /home/sbstndbs/debugger/target/interface (deleted)
+55abfc71c000-55abfc720000 r-xp 00002000 08:10 463559                     /home/sbstndbs/debugger/target/interface (deleted)
+55abfc720000-55abfc721000 r--p 00006000 08:10 463559                     /home/sbstndbs/debugger/target/interface (deleted)
+55abfc721000-55abfc722000 r--p 00006000 08:10 463559                     /home/sbstndbs/debugger/target/interface (deleted)
+55abfc722000-55abfc723000 rw-p 00007000 08:10 463559                     /home/sbstndbs/debugger/target/interface (deleted)
+55abfdcd6000-55abfdd18000 rw-p 00000000 00:00 0                          [heap]
+7f84cc000000-7f84cc021000 rw-p 00000000 00:00 0 
+7f84cc021000-7f84d0000000 ---p 00000000 00:00 0 
+7f84d0cdb000-7f84d0cde000 r--p 00000000 08:10 19075                      /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f84d0cde000-7f84d0cf0000 r-xp 00003000 08:10 19075                      /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f84d0cf0000-7f84d0cf4000 r--p 00015000 08:10 19075                      /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f84d0cf4000-7f84d0cf5000 r--p 00018000 08:10 19075                      /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f84d0cf5000-7f84d0cf6000 rw-p 00019000 08:10 19075                      /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f84d0cf6000-7f84d0cf7000 ---p 00000000 00:00 0 
+7f84d0cf7000-7f84d14fc000 rw-p 00000000 00:00 0 
+7f84d14fc000-7f84d14fd000 r--p 00000000 08:10 95784                      /usr/lib/x86_64-linux-gnu/libdl-2.31.so
+7f84d14fd000-7f84d14ff000 r-xp 00001000 08:10 95784                      /usr/lib/x86_64-linux-gnu/libdl-2.31.so
+7f84d14ff000-7f84d1500000 r--p 00003000 08:10 95784                      /usr/lib/x86_64-linux-gnu/libdl-2.31.so
+7f84d1500000-7f84d1501000 r--p 00003000 08:10 95784                      /usr/lib/x86_64-linux-gnu/libdl-2.31.so
+7f84d1501000-7f84d1502000 rw-p 00004000 08:10 95784                      /usr/lib/x86_64-linux-gnu/libdl-2.31.so
+7f84d1502000-7f84d1524000 r--p 00000000 08:10 95783                      /usr/lib/x86_64-linux-gnu/libc-2.31.so
+7f84d1524000-7f84d169c000 r-xp 00022000 08:10 95783                      /usr/lib/x86_64-linux-gnu/libc-2.31.so
+7f84d169c000-7f84d16ea000 r--p 0019a000 08:10 95783                      /usr/lib/x86_64-linux-gnu/libc-2.31.so
+7f84d16ea000-7f84d16ee000 r--p 001e7000 08:10 95783                      /usr/lib/x86_64-linux-gnu/libc-2.31.so
+7f84d16ee000-7f84d16f0000 rw-p 001eb000 08:10 95783                      /usr/lib/x86_64-linux-gnu/libc-2.31.so
+7f84d16f0000-7f84d16f4000 rw-p 00000000 00:00 0 
+7f84d16f4000-7f84d16fa000 r--p 00000000 08:10 95796                      /usr/lib/x86_64-linux-gnu/libpthread-2.31.so
+7f84d16fa000-7f84d170b000 r-xp 00006000 08:10 95796                      /usr/lib/x86_64-linux-gnu/libpthread-2.31.so
+7f84d170b000-7f84d1711000 r--p 00017000 08:10 95796                      /usr/lib/x86_64-linux-gnu/libpthread-2.31.so
+7f84d1711000-7f84d1712000 r--p 0001c000 08:10 95796                      /usr/lib/x86_64-linux-gnu/libpthread-2.31.so
+7f84d1712000-7f84d1713000 rw-p 0001d000 08:10 95796                      /usr/lib/x86_64-linux-gnu/libpthread-2.31.so
+7f84d1713000-7f84d1717000 rw-p 00000000 00:00 0 
+7f84d1717000-7f84d171a000 r--p 00000000 08:10 11361                      /usr/lib/x86_64-linux-gnu/libmenu.so.6.2
+7f84d171a000-7f84d171f000 r-xp 00003000 08:10 11361                      /usr/lib/x86_64-linux-gnu/libmenu.so.6.2
+7f84d171f000-7f84d1721000 r--p 00008000 08:10 11361                      /usr/lib/x86_64-linux-gnu/libmenu.so.6.2
+7f84d1721000-7f84d1722000 r--p 00009000 08:10 11361                      /usr/lib/x86_64-linux-gnu/libmenu.so.6.2
+7f84d1722000-7f84d1723000 rw-p 0000a000 08:10 11361                      /usr/lib/x86_64-linux-gnu/libmenu.so.6.2
+7f84d1723000-7f84d1725000 rw-p 00000000 00:00 0 
+7f84d1725000-7f84d1727000 r--p 00000000 08:10 11429                      /usr/lib/x86_64-linux-gnu/libpanel.so.6.2
+7f84d1727000-7f84d1729000 r-xp 00002000 08:10 11429                      /usr/lib/x86_64-linux-gnu/libpanel.so.6.2
+7f84d1729000-7f84d172a000 r--p 00004000 08:10 11429                      /usr/lib/x86_64-linux-gnu/libpanel.so.6.2
+7f84d172a000-7f84d172b000 r--p 00004000 08:10 11429                      /usr/lib/x86_64-linux-gnu/libpanel.so.6.2
+7f84d172b000-7f84d172c000 rw-p 00005000 08:10 11429                      /usr/lib/x86_64-linux-gnu/libpanel.so.6.2
+7f84d172c000-7f84d173a000 r--p 00000000 08:10 11539                      /usr/lib/x86_64-linux-gnu/libtinfo.so.6.2
+7f84d173a000-7f84d1749000 r-xp 0000e000 08:10 11539                      /usr/lib/x86_64-linux-gnu/libtinfo.so.6.2
+7f84d1749000-7f84d1757000 r--p 0001d000 08:10 11539                      /usr/lib/x86_64-linux-gnu/libtinfo.so.6.2
+7f84d1757000-7f84d175b000 r--p 0002a000 08:10 11539                      /usr/lib/x86_64-linux-gnu/libtinfo.so.6.2
+7f84d175b000-7f84d175c000 rw-p 0002e000 08:10 11539                      /usr/lib/x86_64-linux-gnu/libtinfo.so.6.2
+7f84d175c000-7f84d1763000 r--p 00000000 08:10 11377                      /usr/lib/x86_64-linux-gnu/libncurses.so.6.2
+7f84d1763000-7f84d177c000 r-xp 00007000 08:10 11377                      /usr/lib/x86_64-linux-gnu/libncurses.so.6.2
+7f84d177c000-7f84d1782000 r--p 00020000 08:10 11377                      /usr/lib/x86_64-linux-gnu/libncurses.so.6.2
+7f84d1782000-7f84d1783000 ---p 00026000 08:10 11377                      /usr/lib/x86_64-linux-gnu/libncurses.so.6.2
+7f84d1783000-7f84d1784000 r--p 00026000 08:10 11377                      /usr/lib/x86_64-linux-gnu/libncurses.so.6.2
+7f84d1784000-7f84d1785000 rw-p 00027000 08:10 11377                      /usr/lib/x86_64-linux-gnu/libncurses.so.6.2
+7f84d179d000-7f84d179e000 r--p 00000000 08:10 461090                     /home/sbstndbs/debugger/ext/vec/libvec.so
+7f84d179e000-7f84d17a0000 r-xp 00001000 08:10 461090                     /home/sbstndbs/debugger/ext/vec/libvec.so
+7f84d17a0000-7f84d17a1000 r--p 00003000 08:10 461090                     /home/sbstndbs/debugger/ext/vec/libvec.so
+7f84d17a1000-7f84d17a2000 r--p 00003000 08:10 461090                     /home/sbstndbs/debugger/ext/vec/libvec.so
+7f84d17a2000-7f84d17a3000 rw-p 00004000 08:10 461090                     /home/sbstndbs/debugger/ext/vec/libvec.so
+7f84d17a3000-7f84d17a5000 rw-p 00000000 00:00 0 
+7f84d17a5000-7f84d17a6000 r--p 00000000 08:10 95779                      /usr/lib/x86_64-linux-gnu/ld-2.31.so
+7f84d17a6000-7f84d17c9000 r-xp 00001000 08:10 95779                      /usr/lib/x86_64-linux-gnu/ld-2.31.so
+7f84d17c9000-7f84d17d1000 r--p 00024000 08:10 95779                      /usr/lib/x86_64-linux-gnu/ld-2.31.so
+7f84d17d2000-7f84d17d3000 r--p 0002c000 08:10 95779                      /usr/lib/x86_64-linux-gnu/ld-2.31.so
+7f84d17d3000-7f84d17d4000 rw-p 0002d000 08:10 95779                      /usr/lib/x86_64-linux-gnu/ld-2.31.so
+7f84d17d4000-7f84d17d5000 rw-p 00000000 00:00 0 
+7ffe1d390000-7ffe1d3b2000 rw-p 00000000 00:00 0                          [stack]
+7ffe1d3e9000-7ffe1d3ed000 r--p 00000000 00:00 0                          [vvar]
+7ffe1d3ed000-7ffe1d3ee000 r-xp 00000000 00:00 0                          [vdso]
