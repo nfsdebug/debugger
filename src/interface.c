@@ -598,7 +598,8 @@ struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
     char *buffpid = (char *)malloc(10 * sizeof(char));
     char *buffpath = (char *)malloc(30 * sizeof(char));
     char *buffline = (char *)malloc(1000 * sizeof(char));
-    char *buffadress = (char *)malloc(12 * sizeof(char));
+    char *buffadress = (char *)malloc(18 * sizeof(char));
+    char *buffadress2 = (char *)malloc(18 * sizeof(char));    
     char *buffchar = (char *)malloc(sizeof(char)) ; 
     char *line = malloc(1000 * sizeof(char *));
 
@@ -658,11 +659,16 @@ struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
             int index = 0;
 
 
-                for(int fu = 0 ; fu < maps.number_lines ; fu++){
-                //waddstr(win, maps.line[fu]);
-                //waddstr(win, "   \n\n");
-        } 
-
+            // its the start-stop memory adress
+            // we want to parse with the "-" separator 
+            // proposition --> strncpy with 12 characters
+            // BE CAREFUL : this is not portable !!!!!
+            strncpy(buffadress , parsed_line[index], 12) ;
+            sprintf(buffadress2, "0x%s", buffadress) ;            
+            maps.start[j] = strtoull(buffadress2, NULL, 0) ;    
+            strncpy(buffadress , parsed_line[index]+13, 12) ; 
+            sprintf(buffadress2, "0x%s", buffadress) ; 
+            maps.stop[j] = strtoull(buffadress2, NULL, 0) ; 
 
             while (token != NULL){
                 token = strtok(NULL, delim);
@@ -674,17 +680,6 @@ struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
                     strncpy(comp, parsed_line[index], 1);
                     
                     if (index == 1){
-                        // its the start-stop memory adress
-                        // we want to parse with the "-" separator 
-                        // proposition --> strncpy with 12 characters
-                        // BE CAREFUL : this is not portable !!!!!
-                        strncpy(buffadress , parsed_line[index], 12) ; 
-                        maps.start[j] = strtoull(buffadress, NULL, 0) ; 
-                        strncpy(buffadress , parsed_line[index]+13, 12) ; 
-                        maps.stop[j] = strtoull(buffadress, NULL, 0) ;                         
-                    }
-                    
-                    else if (index == 2){
                         // its the rwxp information
                         strncpy(buffchar, parsed_line[index], 1) ;
                         if ( strcmp(buffchar, "r") == 1 ){
@@ -743,6 +738,7 @@ struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
     free(buffpid) ; 
     free(buffpath);
     free(buffadress);
+    free(buffadress2);
     free(buffchar);
     free(buffline);
     return maps ;
@@ -751,7 +747,7 @@ struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
 void show_libraries_2(struct Interface *inter, struct maps_info maps){
     WINDOW *win = (WINDOW *)inter->right_window[1] ; 
 
-    waddstr(win, "\n\n\n\n\n\n\n  all lines : \n\n  ");
+    waddstr(win, "\n\n\n  all lines : \n\n  ");
     for (int j = 0; j < maps.number_lines; j++){
         waddstr(win, maps.line[j]);
         waddstr(win, "    ");
@@ -759,11 +755,26 @@ void show_libraries_2(struct Interface *inter, struct maps_info maps){
 
 
 
-    waddstr(win, "\n  Loaded libraritrtrSes : \n\n  ");
+    waddstr(win, "\n  Loaded libraries : \n\n  ");
     for (int j = 0; j < maps.number_libs; j++){
         waddstr(win, maps.libs[j]);
         waddstr(win, "  ");
     }
+/*
+    waddstr(win, "\n  start stop  : \n\n  ");
+    char *buf = malloc(51) ; 
+    for (int j = 0; j < maps.number_lines; j++){
+        sprintf(buf, "%llx", maps.start[j]) ; 
+        waddstr(win, buf);
+        waddstr(win, "  ");
+    }
+    for (int j = 0; j < maps.number_lines; j++){
+        sprintf(buf, "%llx", maps.stop[j]) ; 
+        waddstr(win, buf);
+        waddstr(win, "  ");
+    }
+    free(buf) ;
+*/
     box(win, 0, 0);
     wrefresh(win);
 
