@@ -44,6 +44,7 @@ char *choice_panel[] = {
     "Memory",
     "Code",
     "Elf",
+    "Memory",
     (char *)NULL,
 };
 
@@ -52,6 +53,7 @@ char *panel_func[] = {
      * @brief Liste des textes additionels des selecteurs. Laisss vide car on ne 
      * souhaite pas utiliser d'autre texte que celui de choice_panel 
      */
+    " ",
     " ",
     " ",
     " ",
@@ -174,10 +176,10 @@ struct Interface{
     int number_left_window;
 
     WINDOW *main_window[1];
-    WINDOW *right_window[5];
+    WINDOW *right_window[6];
     WINDOW *title_window[1];
     WINDOW *selector_window[1];
-    PANEL *my_panels[1 + 5 + 2];
+    PANEL *my_panels[1 + 6 + 2];
     ITEM **my_items;
     MENU *my_menus;
     ITEM *cur_item;
@@ -281,8 +283,8 @@ void setup_window(struct Interface *inter, struct All_window_size *ws){
     /**
      * @brief window allocator. Called only one time after the Compute_size_window function
      */
-    inter->number_right_window = 5;
-    for (int i = 0; i < 5; i++){
+    inter->number_right_window = 6;
+    for (int i = 0; i < 6; i++){
         inter->right_window[i] = newwin(ws->right.dx, ws->right.dy, ws->right.x, ws->right.y);
     }
     inter->main_window[0] = newwin(ws->main.dx, ws->main.dy, ws->main.x, ws->main.y);
@@ -295,18 +297,18 @@ void setup_panel(struct Interface *inter){
      * @brief panel allocator. Called only one time.
      */
     inter->my_panels[0] = new_panel(inter->main_window[0]);
-    for (int i = 0; i < 5; i++){
+    for (int i = 0; i < 6; i++){
         inter->my_panels[i + 1] = new_panel(inter->right_window[i]);
     }
-    inter->my_panels[6] = new_panel(inter->title_window[0]);
-    inter->my_panels[7] = new_panel(inter->selector_window[0]);
+    inter->my_panels[7] = new_panel(inter->title_window[0]);
+    inter->my_panels[8] = new_panel(inter->selector_window[0]);
 }
 
 void setup_title(struct Interface *inter){
     /**
      * @brief title allocator. Called only one time.
      */
-    char title[] = "    NCurses debugger v0.3    ";
+    char title[] = "    NCurses debugger v0.4    ";
     wattron(inter->title_window[0], COLOR_PAIR(1));
     mvwprintw(inter->title_window[0], 0, 0, "%s", title);
     wattroff(inter->title_window[0], COLOR_PAIR(1));
@@ -330,7 +332,7 @@ void draw_box(struct Interface *inter){
      * This is in fact useless because the boxes are called after each refresh_window calls...
      */
     box(inter->main_window[0], 0, 0);
-    for (int i = 0; i < 5; i++){
+    for (int i = 0; i < 6; i++){
         box(inter->right_window[i], 0, 0);
     }
 }
@@ -338,9 +340,10 @@ void draw_box(struct Interface *inter){
 
 void refresh_window_start(struct Interface *inter);
 void refresh_window_processes(struct Interface *inter, vec_t *vp);
-void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg);
+void refresh_window_register(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg);
 void refresh_window_code(struct Interface *inter);
 void refresh_window_elf(struct Interface *inter);
+void refresh_window_memory(struct Interface *inter);
 void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UPT_info *ui );
 int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input);
 
@@ -377,7 +380,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
 
     WINDOW *mw = (WINDOW *)inter->main_window[0] ; 
 
-    int panel_amount = 5;
+    int panel_amount = 6;
     while (c != KEY_F(10)){
         //mvaddstr(1, 1, "while main");
         //refresh();
@@ -421,6 +424,13 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
             wrefresh(inter->right_window[4]);
             c = keyboard_input(inter, mw, input);
             break;
+        case KEY_F(6):
+            show_specific_panel(inter, panel_amount, 6); // be careful , main window in panel[0]
+            update_panels();
+            doupdate();
+            wrefresh(inter->right_window[5]);
+            c = keyboard_input(inter, mw, input);
+            break;            
         }
         doupdate();
         refresh();
@@ -441,7 +451,7 @@ int function_key(WINDOW *win, int key){
     /**
      * @brief If a special function is selected, so send true
      */
-    if ((key == KEY_F(1)) || (key == KEY_F(2)) || (key == KEY_F(3)) || (key == KEY_F(4)) || (key == KEY_F(5))){
+    if ((key == KEY_F(1)) || (key == KEY_F(2)) || (key == KEY_F(3)) || (key == KEY_F(4)) || (key == KEY_F(5)) || (key == KEY_F(6))){
         mvaddstr(1, 1, "specialkey");
         wrefresh(win);
         return 1;
@@ -885,11 +895,11 @@ void *spawn_thread(void *input){
 
             if ((number_of_instructions % 10000 == 0) & opt_deb.singlestep == 1)
             {
-                refresh_window_memory(i->inter, reg, fpreg);
+                refresh_window_register(i->inter, reg, fpreg);
             }
             else
             {
-                // refresh_window_memory(i->inter, reg, fpreg);
+                // refresh_window_register(i->inter, reg, fpreg);
             }
             if (WIFSTOPPED(wait_status))
             {
@@ -947,7 +957,7 @@ void *spawn_thread(void *input){
 
         // refresh_window_processes(i->inter,vp );
         //refresh_window_code(i->inter);
-        refresh_window_memory(i->inter, reg, fpreg);
+        refresh_window_register(i->inter, reg, fpreg);
 
         vec_t *vp = vec_new(sizeof(struct process_t));
         vec_push(vp, &process_father);
@@ -1178,9 +1188,10 @@ void refresh_window_start(struct Interface *inter)
     wattroff(inter->title_window[0], COLOR_PAIR(1));
     waddstr(inter->right_window[0], "     F1 : Help \n");
     waddstr(inter->right_window[0], "     F2 : Processes \n");
-    waddstr(inter->right_window[0], "     F3 : Memory \n");
+    waddstr(inter->right_window[0], "     F3 : Register \n");
     waddstr(inter->right_window[0], "     F4 : Code \n");
     waddstr(inter->right_window[0], "     F5 : Elf \n");
+    waddstr(inter->right_window[0], "     F6 : Memory \n");    
     waddstr(inter->right_window[0], "     Enter : Select current input");
 
     box(inter->right_window[0], 0, 0);
@@ -1208,7 +1219,7 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp){
         "GID",
         "status",
         "threads",
-        "Memory",
+        "Register",
         (char *)NULL,
     };
     char *reduced_entity_name[] = {
@@ -1273,7 +1284,7 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp){
     wrefresh(w);
 }
 
-void refresh_window_memory(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg){
+void refresh_window_register(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg){
     WINDOW *w = (WINDOW *)inter->right_window[2] ; 
     wclear(inter->right_window[2]);
     // mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
@@ -1561,6 +1572,16 @@ void refresh_window_code(struct Interface *inter){
 
 void refresh_window_elf(struct Interface *inter){
     WINDOW *w = (WINDOW *)inter->right_window[4] ; 
+    // box(inter->right_window[4], 0, 0);
+    // mvaddstr(1, 1, "show window start");
+    // refresh();
+    // mvwaddstr(inter->right_window[4], 2, 1, "start panel");
+    box(w, 0, 0);
+    wrefresh(w);
+}
+
+void refresh_window_memory(struct Interface *inter){
+    WINDOW *w = (WINDOW *)inter->right_window[5] ; 
     // box(inter->right_window[4], 0, 0);
     // mvaddstr(1, 1, "show window start");
     // refresh();
