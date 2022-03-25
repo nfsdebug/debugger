@@ -1824,10 +1824,68 @@ void refresh_window_memory(struct Interface *inter, pid_t child_pid, struct maps
     // refresh();
     // mvwaddstr(inter->right_window[4], 2, 1, "start panel");
 
+
+    // we get the window size to show only the enough information to fill the window
+    // we need to implement PageUp / PageDown to scroll on the window. This 
+    // needs to refetch the data for each Scroll.
+
+    struct All_window_size ws = compute_size_window() ; 
+    int length = ws.right.dx - 2 ; 
+
     scrollok(w, TRUE);
     char *tmp = malloc( 16 * sizeof(char) ) ; 
-    char *tmpadress = malloc( 16 * sizeof(char));
-    unsigned long pd ; 
+    unsigned long pd ;
+
+
+    int current_printed_line = 0 ; 
+    int count_start = 4080 ; // exemple : count_start = 4000
+    int current_plage = 0 ; 
+    // premiere etape : detecter dans quelle plage memoire on touche au depart
+
+    while(count_start > 0 ){
+        // tant que on est pas dans la bonne plage memoire
+        count_start = count_start - (maps.stop[current_plage] - maps.start[current_plage]);
+        // if count_start is positive : go to the next plage
+        // else : its the good plage !!!
+        if (count_start>0){
+            current_plage++;
+        }
+        else{
+            break;
+        }
+    }
+    // get the position on the finded plage
+    count_start = count_start + (maps.stop[current_plage] - maps.start[current_plage]); 
+    unsigned long long j ; 
+    waddstr(w, "\n\n ") ; 
+    while( current_printed_line < length ){
+        // tant qu'on a pas affiché assez de line 
+        if  (count_start >= (maps.stop[current_plage] - maps.start[current_plage])){
+            // if we are not in the same memory chunck, pass to the next chunk
+            current_plage++;
+            count_start = 0 ;
+            wattron(w, COLOR_PAIR(2));
+            waddstr(w, "------- New chunk of memory ------\n ") ; 
+            wattroff(w, COLOR_PAIR(2));
+            if (current_plage >= maps.number_lines){
+                // if there is no more readable memory
+                break;
+            }            
+        }
+        j =  maps.start[current_plage] + count_start ;
+        sprintf(tmp, "adress : %llx", j) ;
+        waddstr(w, tmp) ;
+        pd = ptrace(PTRACE_PEEKDATA, child_pid, j , 0) ; 
+        sprintf(tmp, "  value  : %016lx\n ", pd) ; 
+        waddstr(w, tmp);
+        current_printed_line++;
+        count_start++;
+    }
+
+    
+
+
+/*
     for (int i = 0 ; i < maps.number_lines ; i++){
         for (unsigned long long j = maps.start[i] ; j < maps.stop[i] ; j++){
             sprintf(tmp, "-|%llx|", j) ;
@@ -1838,11 +1896,9 @@ void refresh_window_memory(struct Interface *inter, pid_t child_pid, struct maps
         }
         waddstr(w, "\n");
     }
-
+*/
     box(w, 0, 0);
     wrefresh(w);
-    free(tmp);
-    free(tmpadress);
 }
 
 // this is the way the main window is drawn
@@ -1872,6 +1928,7 @@ int main(int argc, char **argv)
 
     start_color();
     init_pair(1, COLOR_BLACK, COLOR_WHITE);
+    init_pair(2, COLOR_WHITE, COLOR_RED);
 
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
 
