@@ -338,12 +338,31 @@ void draw_box(struct Interface *inter){
 }
 
 
+struct maps_info{
+    /**
+     * @brief Structure of the proc/pid/maps to do easier analysis on this data
+     * "start" & "stop" are the adress of the "name" data. "is_*" is from rwxp".
+     */
+    unsigned long long *start ;
+    unsigned long long *stop ; 
+    int *is_readable ; 
+    int *is_writable ; 
+    int *is_executable ; 
+    int *is_shared ;
+    int *is_private ; 
+    char **line ;
+    char **libs ; 
+    int number_lines ;
+    int number_libs ; 
+
+};
+
 void refresh_window_start(struct Interface *inter);
 void refresh_window_processes(struct Interface *inter, vec_t *vp);
 void refresh_window_register(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg);
 void refresh_window_code(struct Interface *inter);
 void refresh_window_elf(struct Interface *inter);
-void refresh_window_memory(struct Interface *inter, pid_t child_pid);
+void refresh_window_memory(struct Interface *inter, pid_t child_pid, struct maps_info maps);
 void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UPT_info *ui );
 int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input);
 
@@ -555,24 +574,7 @@ void print_pid(WINDOW *win, struct process_t *pid, int info){
 }
 
 
-struct maps_info{
-    /**
-     * @brief Structure of the proc/pid/maps to do easier analysis on this data
-     * "start" & "stop" are the adress of the "name" data. "is_*" is from rwxp".
-     */
-    unsigned long long *start ;
-    unsigned long long *stop ; 
-    int *is_readable ; 
-    int *is_writable ; 
-    int *is_executable ; 
-    int *is_shared ;
-    int *is_private ; 
-    char **line ;
-    char **libs ; 
-    int number_lines ;
-    int number_libs ; 
 
-};
 
 struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
     /**
@@ -744,16 +746,26 @@ struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
     return maps ;
 }
 
-void show_libraries_2(struct Interface *inter, struct maps_info maps){
+struct option_debugger{
+    /**
+     * @brief Structure to set booleans to each options which can be specified in the prompt
+     */
+    int singlestep;
+    int get_reg;
+    int get_all_sig;
+    int verbose;
+};
+
+void show_libraries_2(struct Interface *inter, struct maps_info maps, struct option_debugger *opt_deb){
     WINDOW *win = (WINDOW *)inter->right_window[1] ; 
 
-    waddstr(win, "\n\n\n  all lines : \n\n  ");
-    for (int j = 0; j < maps.number_lines; j++){
-        waddstr(win, maps.line[j]);
-        waddstr(win, "    ");
+    if (opt_deb->verbose == 1){
+        waddstr(win, "\n\n\n  all lines : \n\n  ");
+        for (int j = 0; j < maps.number_lines; j++){
+            waddstr(win, maps.line[j]);
+            waddstr(win, "    ");
+        }
     }
-
-
 
     waddstr(win, "\n  Loaded libraries : \n\n  ");
     for (int j = 0; j < maps.number_libs; j++){
@@ -768,8 +780,9 @@ void show_libraries_2(struct Interface *inter, struct maps_info maps){
         waddstr(win, buf);
         waddstr(win, "  ");
     }
+    waddstr(win, "\n\n") ; 
     for (int j = 0; j < maps.number_lines; j++){
-        sprintf(buf, "%llx", maps.stop[j]) ; 
+        sprintf(buf, "%llx\n", maps.stop[j]) ; 
         waddstr(win, buf);
         waddstr(win, "  ");
     }
@@ -915,15 +928,7 @@ void print_siginfo(WINDOW *win, siginfo_t *signinf, struct user_regs_struct *reg
     wrefresh(win);
 }
 
-struct option_debugger{
-    /**
-     * @brief Structure to set booleans to each options which can be specified in the prompt
-     */
-    int singlestep;
-    int get_reg;
-    int get_all_sig;
-    int verbose;
-};
+
 
 void config_debugger(struct input_thread *in, struct option_debugger *opt_deb){
     opt_deb->singlestep = 0;
@@ -1017,7 +1022,6 @@ void *spawn_thread(void *input){
         free(path_for_dbg);
         if (count_func == 0)
             get_elf(i->args[0]);
-        usleep(1000000);
         long long prog_offset;
         char fname[128];
 
@@ -1180,7 +1184,6 @@ void *spawn_thread(void *input){
         } while (ret > 0);
         */
        refresh_window_tree(i->inter, as, ui);
-        refresh_window_memory(i->inter, child_pid) ; 
 
 
 
@@ -1191,14 +1194,12 @@ void *spawn_thread(void *input){
         vec_t *vp = vec_new(sizeof(struct process_t));
         vec_push(vp, &process_father);
         vec_push(vp, &process_child);
-        waddstr(i->inter->main_window[0], "hello huhuhuhuhuhu");
         refresh_window_processes(i->inter, vp);
-
-        waddstr(i->inter->main_window[0], "hello hihihihi");
 
 
         struct maps_info maps = get_maps(i->inter, &process_child) ; 
-        show_libraries_2(i->inter, maps) ;
+        show_libraries_2(i->inter, maps, &opt_deb) ;
+        refresh_window_memory(i->inter, child_pid, maps) ; 
         //show_libraries(process_win, &process_child, opt_deb.verbose);
         vec_clear(vp);
         free(buff);
@@ -1654,7 +1655,7 @@ void refresh_window_register(struct Interface *inter, struct user_regs_struct re
         sprintf(tmp2, " xmm       ");
         waddstr(w, tmp2) ; 
         for (int j = 0 ; j < 8 ; j++){
-            sprintf(tmp2, "|0x%x" , fpreg.xmm_space[i*8+j]) ; 
+            sprintf(tmp2, "  0x%016x" , fpreg.xmm_space[i*8+j]) ; 
             waddstr(w, tmp2) ; 
         }
         new_main_line(w);
@@ -1816,14 +1817,32 @@ void refresh_window_elf(struct Interface *inter){
     wrefresh(w);
 }
 
-void refresh_window_memory(struct Interface *inter, pid_t child_pid){
+void refresh_window_memory(struct Interface *inter, pid_t child_pid, struct maps_info maps){
     WINDOW *w = (WINDOW *)inter->right_window[5] ; 
     // box(inter->right_window[4], 0, 0);
     // mvaddstr(1, 1, "show window start");
     // refresh();
     // mvwaddstr(inter->right_window[4], 2, 1, "start panel");
+
+    scrollok(w, TRUE);
+    char *tmp = malloc( 16 * sizeof(char) ) ; 
+    char *tmpadress = malloc( 16 * sizeof(char));
+    unsigned long pd ; 
+    for (int i = 0 ; i < maps.number_lines ; i++){
+        for (unsigned long long j = maps.start[i] ; j < maps.stop[i] ; j++){
+            sprintf(tmp, "-|%llx|", j) ;
+            waddstr(w, tmp) ;
+            pd = ptrace(PTRACE_PEEKDATA, child_pid, j , 0) ; 
+            sprintf(tmp, "+|%016lx|\n", pd) ; 
+            waddstr(w, tmp);
+        }
+        waddstr(w, "\n");
+    }
+
     box(w, 0, 0);
     wrefresh(w);
+    free(tmp);
+    free(tmpadress);
 }
 
 // this is the way the main window is drawn
