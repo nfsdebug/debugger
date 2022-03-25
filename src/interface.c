@@ -495,6 +495,21 @@ int enter_key(WINDOW *win, int key){
     }
 }
 
+int page_key(WINDOW *win, int key){
+    /**
+     * @brief if the PageUp or PageDown is pressed, scroll the page 
+     *      (if implemented in this specific window) 
+     */
+    if ((key == KEY_PPAGE) || (key == KEY_NPAGE)){
+        // scroll the current window :
+        // need to implement function named "scroll_window(win, id, direction)"
+        return 1 ; 
+    }
+    else{
+        return 0 ; 
+    }
+}
+
 struct input_thread{
     /**
      * @brief the ptrace is encapsuled in a pthread. Hence, we need to 
@@ -1208,6 +1223,16 @@ void *spawn_thread(void *input){
     pthread_exit(NULL);
 }
 
+
+void scroll_window(struct Interface *inter, int id){
+    WINDOW *main_win = (WINDOW *)inter->main_window[0] ; 
+    if (id == 5){
+        // it is the memory panel : we want to scroll it !!
+        waddstr(main_win, "We want to scroll the window !!!\n ") ; 
+        wrefresh(main_win) ; 
+    }
+}
+
 void parse(struct Interface *inter, WINDOW *win, vec_t *input){
     const char delim[2] = " ";
 
@@ -1381,6 +1406,18 @@ int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
             vec_push(input, (char *)&end); // le vecteur est rempli d caracteres a interpreter termin2 par null
             parse(inter, win, input);
             vec_clear(input); // apres envoi au parseur, onvide le vec
+        }
+        else if(page_key(win, key)){
+            // we need to interact with the rght window
+            int id = item_index(inter->my_items) ; 
+            int direction ; 
+            if (key == KEY_PPAGE){
+                direction = -1 ; 
+            }
+            else{
+                direction = 1 ; 
+            }
+            scroll_window(inter, id) ; 
         }
         else{
             waddch(win, key);
@@ -1652,7 +1689,7 @@ void refresh_window_register(struct Interface *inter, struct user_regs_struct re
 
     // xmm register
     for (int i = 0 ; i < 8 ; i++){
-        sprintf(tmp2, " xmm       ");
+        sprintf(tmp2, " xmm%i       ", i);
         waddstr(w, tmp2) ; 
         for (int j = 0 ; j < 8 ; j++){
             sprintf(tmp2, "  0x%016x" , fpreg.xmm_space[i*8+j]) ; 
