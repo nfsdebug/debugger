@@ -185,6 +185,18 @@ struct Interface{
     ITEM *cur_item;
 };
 
+
+struct Debugger{
+    int test ; 
+    int test2 ;
+};
+
+struct Data{
+    struct Interface *inter ; 
+    struct Debugger *debug ; 
+};
+
+
 struct Window_size{
     /**
      * @brief Permet de stocker les dimensions d'une fenetre
@@ -207,10 +219,16 @@ struct All_window_size{
     struct Window_size selector;
 };
 
-struct Interface start_interface(void){
-    struct Interface inter;
-    return inter;
+
+struct Data start_data(void){ 
+    struct Data data ; 
+    //struct Interface inter ; 
+    //struct Debugger debug ; 
+    //data.inter = &inter ; 
+    //data.debug = &debug ; 
+    return data ; 
 }
+
 
 struct winsize compute_size_terminal(void){
     /**
@@ -265,11 +283,12 @@ int NumDigits(int n){
     return digits;
 }
 
-void setup_selector(struct Interface *inter){
+void setup_selector(struct Data *data){
     /**
      * @brief selector allocation. Called only one time
      * - n_choice is the number of right panels used
      */
+    struct Interface *inter = data->inter ; 
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
     inter->my_items = (ITEM **)calloc(n_choice, sizeof(ITEM *));
     for (int i = 0; i < n_choice; i++){
@@ -279,11 +298,12 @@ void setup_selector(struct Interface *inter){
     inter->my_menus = new_menu((ITEM **)inter->my_items);
 }
 
-void setup_window(struct Interface *inter, struct All_window_size *ws){
+void setup_window(struct Data *data, struct All_window_size *ws){
     /**
      * @brief window allocator. Called only one time after the Compute_size_window function
      */
-    inter->number_right_window = 6;
+    struct Interface *inter = data->inter ; 
+    data->inter->number_right_window = 6;
     for (int i = 0; i < 6; i++){
         inter->right_window[i] = newwin(ws->right.dx, ws->right.dy, ws->right.x, ws->right.y);
     }
@@ -292,10 +312,11 @@ void setup_window(struct Interface *inter, struct All_window_size *ws){
     inter->selector_window[0] = newwin(ws->selector.dx, ws->selector.dy, ws->selector.x, ws->selector.y);
 }
 
-void setup_panel(struct Interface *inter){
+void setup_panel(struct Data *data){
     /**
      * @brief panel allocator. Called only one time.
      */
+    struct Interface *inter = data->inter ; 
     inter->my_panels[0] = new_panel(inter->main_window[0]);
     for (int i = 0; i < 6; i++){
         inter->my_panels[i + 1] = new_panel(inter->right_window[i]);
@@ -304,20 +325,22 @@ void setup_panel(struct Interface *inter){
     inter->my_panels[8] = new_panel(inter->selector_window[0]);
 }
 
-void setup_title(struct Interface *inter){
+void setup_title(struct Data *data){
     /**
      * @brief title allocator. Called only one time.
      */
+    struct Interface *inter = data->inter ; 
     char title[] = "    NCurses debugger v0.4    ";
     wattron(inter->title_window[0], COLOR_PAIR(1));
     mvwprintw(inter->title_window[0], 0, 0, "%s", title);
     wattroff(inter->title_window[0], COLOR_PAIR(1));
 }
 
-void setup_menu(struct Interface *inter, struct All_window_size *ws){
+void setup_menu(struct Data *data, struct All_window_size *ws){
     /**
      * @brief Menu allocator. Called only one time.
      */
+    struct Interface *inter = data->inter ; 
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
     set_menu_win(inter->my_menus, inter->selector_window[0]);
     set_menu_sub(inter->my_menus, derwin(inter->selector_window[0], ws->selector.dx, ws->selector.dy, 0, 0));
@@ -326,11 +349,12 @@ void setup_menu(struct Interface *inter, struct All_window_size *ws){
     set_current_item(inter->my_menus, inter->my_items[0]);
 }
 
-void draw_box(struct Interface *inter){
+void draw_box(struct Data *data){
     /**
      * @brief Draw the boxes of all panels. 
      * This is in fact useless because the boxes are called after each refresh_window calls...
      */
+    struct Interface *inter = data->inter ;     
     box(inter->main_window[0], 0, 0);
     for (int i = 0; i < 6; i++){
         box(inter->right_window[i], 0, 0);
@@ -357,21 +381,22 @@ struct maps_info{
 
 };
 
-void refresh_window_start(struct Interface *inter);
-void refresh_window_processes(struct Interface *inter, vec_t *vp);
-void refresh_window_register(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg);
-void refresh_window_code(struct Interface *inter);
-void refresh_window_elf(struct Interface *inter);
-void refresh_window_memory(struct Interface *inter, pid_t child_pid, struct maps_info maps);
-void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UPT_info *ui );
-int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input);
+void refresh_window_start(struct Data *data);
+void refresh_window_processes(struct Data *data, vec_t *vp);
+void refresh_window_register(struct Data *data, struct user_regs_struct reg, struct user_fpregs_struct fpreg);
+void refresh_window_code(struct Data *data);
+void refresh_window_elf(struct Data *data);
+void refresh_window_memory(struct Data *data, pid_t child_pid, struct maps_info maps);
+void refresh_window_tree(struct Data *data, unw_addr_space_t as, struct UPT_info *ui );
+int keyboard_input(struct Data *data, WINDOW *win, vec_t *input);
 
-void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id){
+void show_specific_panel(struct Data *data, int panel_amount, int panel_id){
     /**
      * @brief This function is called when the user want to select another window. Hence, 
      * the selected panel is showed and the others are hided, and the selector is set to another name to.
      * - Note that main_panel has no panel so there is an offset between my_items and the selector ID.
      */
+    struct Interface *inter = data->inter ; 
     set_current_item(inter->my_menus, inter->my_items[panel_id - 1]); // main_window has no panel
     for (int i = 1; i < panel_id; i++)
     {
@@ -387,7 +412,7 @@ void show_specific_panel(struct Interface *inter, int panel_amount, int panel_id
     doupdate();
 }
 
-void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
+void loop_execution(struct Data *data, vec_t *vp, int c, vec_t *input){
     /**
      * @brief This is where the input is interpreted. 
      * There are three cases :
@@ -397,6 +422,7 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
      * - FUTURE : Add scroll / Pagedown Pageup to add scrolling support for windows.
      */
 
+    struct Interface *inter = data->inter ; 
     WINDOW *mw = (WINDOW *)inter->main_window[0] ; 
 
     int panel_amount = 6;
@@ -405,50 +431,50 @@ void loop_execution(struct Interface *inter, vec_t *vp, int c, vec_t *input){
         //refresh();
         switch (c){
         case KEY_F(1):
-            show_specific_panel(inter, panel_amount, 1); // be careful , main window in panel[0]
+            show_specific_panel(data, panel_amount, 1); // be careful , main window in panel[0]
             update_panels();
             doupdate();
             wrefresh(inter->right_window[0]);
-            c = keyboard_input(inter, mw, input);
+            c = keyboard_input(data, mw, input);
             break;
         // case 50:
         case KEY_F(2):
-            show_specific_panel(inter, panel_amount, 2); // be careful , main window in panel[0]
+            show_specific_panel(data, panel_amount, 2); // be careful , main window in panel[0]
             update_panels();
             doupdate();
             wrefresh(inter->right_window[1]);
-            c = keyboard_input(inter, mw, input);
+            c = keyboard_input(data, mw, input);
             break;
         // case 51:
         case KEY_F(3):
-            show_specific_panel(inter, panel_amount, 3); // be careful , main window in panel[0]
+            show_specific_panel(data, panel_amount, 3); // be careful , main window in panel[0]
             update_panels();
             doupdate();
             wrefresh(inter->right_window[2]);
-            c = keyboard_input(inter, mw, input);
+            c = keyboard_input(data, mw, input);
             break;
         // case 52:
         case KEY_F(4):
-            show_specific_panel(inter, panel_amount, 4); // be careful , main window in panel[0]
+            show_specific_panel(data, panel_amount, 4); // be careful , main window in panel[0]
             update_panels();
             doupdate();
             wrefresh(inter->right_window[3]);
-            c = keyboard_input(inter, mw, input);
+            c = keyboard_input(data, mw, input);
             break;
         // case 53:
         case KEY_F(5):
-            show_specific_panel(inter, panel_amount, 5); // be careful , main window in panel[0]
+            show_specific_panel(data, panel_amount, 5); // be careful , main window in panel[0]
             update_panels();
             doupdate();
             wrefresh(inter->right_window[4]);
-            c = keyboard_input(inter, mw, input);
+            c = keyboard_input(data, mw, input);
             break;
         case KEY_F(6):
-            show_specific_panel(inter, panel_amount, 6); // be careful , main window in panel[0]
+            show_specific_panel(data, panel_amount, 6); // be careful , main window in panel[0]
             update_panels();
             doupdate();
             wrefresh(inter->right_window[5]);
-            c = keyboard_input(inter, mw, input);
+            c = keyboard_input(data, mw, input);
             break;            
         }
         doupdate();
@@ -525,7 +551,7 @@ struct input_thread{
      *          - breakpoint_function :  function associated to the breakpoint
      *          - breakpoint_adress : relative adress associated with the breakpoint
      */
-    struct Interface *inter;
+    struct Data *data;
     char **args;
     char **opts;
     int size_args;
@@ -591,12 +617,13 @@ void print_pid(WINDOW *win, struct process_t *pid, int info){
 
 
 
-struct maps_info get_maps(struct Interface *inter, struct process_t *pid){
+struct maps_info get_maps(struct Data *data, struct process_t *pid){
     /**
      * @brief get_maps is creating and filling the maps_info structure from the pid structure.
      * Hence, the function opens the following proc maps file and read on it. 
      *      We can place the old show_libraries function file parser on it.
      */
+    struct Interface *inter = data->inter ; 
     WINDOW *win = (WINDOW *)inter->main_window[0] ; 
     struct maps_info maps ; 
     maps.start = malloc(sizeof(unsigned long long)) ; 
@@ -771,7 +798,8 @@ struct option_debugger{
     int verbose;
 };
 
-void show_libraries_2(struct Interface *inter, struct maps_info maps, struct option_debugger *opt_deb){
+void show_libraries_2(struct Data *data, struct maps_info maps, struct option_debugger *opt_deb){
+    struct Interface *inter = data->inter ;         
     WINDOW *win = (WINDOW *)inter->right_window[1] ; 
 
     if (opt_deb->verbose == 1){
@@ -974,9 +1002,12 @@ void *spawn_thread(void *input){
      * - input is from the input_thread structure (interface, args, options, ...)
      */
     struct input_thread *i = input;
-    WINDOW *main_win = i->inter->main_window[0];
-    WINDOW *process_win = i->inter->right_window[1];
-    print_parsed(i->inter->main_window[0], i);
+    struct Data *data = i->data ;    
+    struct Interface *inter = data->inter ; 
+
+    WINDOW *main_win = inter->main_window[0];
+    WINDOW *process_win = inter->right_window[1];
+    print_parsed(inter->main_window[0], i);
 
     struct option_debugger opt_deb;
     config_debugger(i, &opt_deb);
@@ -1141,7 +1172,7 @@ void *spawn_thread(void *input){
 
             if ((number_of_instructions % 10000 == 0) & opt_deb.singlestep == 1)
             {
-                refresh_window_register(i->inter, reg, fpreg);
+                refresh_window_register(data, reg, fpreg);
             }
             else
             {
@@ -1198,23 +1229,23 @@ void *spawn_thread(void *input){
 
         } while (ret > 0);
         */
-       refresh_window_tree(i->inter, as, ui);
+       refresh_window_tree(data, as, ui);
 
 
 
         // refresh_window_processes(i->inter,vp );
         //refresh_window_code(i->inter);
-        refresh_window_register(i->inter, reg, fpreg);
+        refresh_window_register(data, reg, fpreg);
 
         vec_t *vp = vec_new(sizeof(struct process_t));
         vec_push(vp, &process_father);
         vec_push(vp, &process_child);
-        refresh_window_processes(i->inter, vp);
+        refresh_window_processes(data, vp);
 
 
-        struct maps_info maps = get_maps(i->inter, &process_child) ; 
-        show_libraries_2(i->inter, maps, &opt_deb) ;
-        refresh_window_memory(i->inter, child_pid, maps) ; 
+        struct maps_info maps = get_maps(data, &process_child) ; 
+        show_libraries_2(data, maps, &opt_deb) ;
+        refresh_window_memory(data, child_pid, maps) ; 
         //show_libraries(process_win, &process_child, opt_deb.verbose);
         vec_clear(vp);
         free(buff);
@@ -1224,7 +1255,8 @@ void *spawn_thread(void *input){
 }
 
 
-void scroll_window(struct Interface *inter, int id){
+void scroll_window(struct Data *data, int id){
+    struct Interface *inter = data->inter ;     
     WINDOW *main_win = (WINDOW *)inter->main_window[0] ; 
     if (id == 5){
         // it is the memory panel : we want to scroll it !!
@@ -1233,7 +1265,8 @@ void scroll_window(struct Interface *inter, int id){
     }
 }
 
-void parse(struct Interface *inter, WINDOW *win, vec_t *input){
+void parse(struct Data *data, WINDOW *win, vec_t *input){
+    struct Interface *inter = data->inter ; 
     const char delim[2] = " ";
 
     /////////////////
@@ -1309,7 +1342,7 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
 
     // structure for the thread
     struct input_thread it;
-    it.inter = inter;
+    it.data = data;
     it.have_breakpoint = 0;
     it.size_args = i_a;
     it.size_opts = i_o;
@@ -1393,7 +1426,8 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input){
     }
 }
 
-int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
+int keyboard_input(struct Data *data, WINDOW *win, vec_t *input){
+    struct Interface *inter = data->inter ;     
     int key;
     while ((key = getch())){
         if (function_key(win, key)){
@@ -1404,12 +1438,12 @@ int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
             // donnees a envoyer au parseur :
             char end = '\0';               // signal de terminaison de la saisie
             vec_push(input, (char *)&end); // le vecteur est rempli d caracteres a interpreter termin2 par null
-            parse(inter, win, input);
+            parse(data, win, input);
             vec_clear(input); // apres envoi au parseur, onvide le vec
         }
         else if(page_key(win, key)){
             // we need to interact with the rght window
-            int id = item_index(inter->my_items) ; 
+            int id = 0;
             int direction ; 
             if (key == KEY_PPAGE){
                 direction = -1 ; 
@@ -1417,7 +1451,7 @@ int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
             else{
                 direction = 1 ; 
             }
-            scroll_window(inter, id) ; 
+            scroll_window(data, id) ; 
         }
         else{
             waddch(win, key);
@@ -1431,8 +1465,8 @@ int keyboard_input(struct Interface *inter, WINDOW *win, vec_t *input){
     return key;
 }
 
-void refresh_window_start(struct Interface *inter)
-{
+void refresh_window_start(struct Data *data){
+    struct Interface *inter = data->inter ;    
     // box(inter->right_window[0], 0, 0);
     // mvaddstr(1, 1, "show window start");
     // refresh();
@@ -1472,7 +1506,8 @@ void refresh_window_start(struct Interface *inter)
     wrefresh(inter->right_window[0]);
 }
 
-void refresh_window_processes(struct Interface *inter, vec_t *vp){
+void refresh_window_processes(struct Data *data, vec_t *vp){
+    struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[1];
 
     // box(inter->right_window[1], 0, 0) ;
@@ -1558,7 +1593,8 @@ void refresh_window_processes(struct Interface *inter, vec_t *vp){
     wrefresh(w);
 }
 
-void refresh_window_register(struct Interface *inter, struct user_regs_struct reg, struct user_fpregs_struct fpreg){
+void refresh_window_register(struct Data *data, struct user_regs_struct reg, struct user_fpregs_struct fpreg){
+    struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[2] ; 
     wclear(inter->right_window[2]);
     // mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
@@ -1706,7 +1742,8 @@ void refresh_window_register(struct Interface *inter, struct user_regs_struct re
     wrefresh(w);
 }
 
-void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UPT_info *ui ){
+void refresh_window_tree(struct Data *data, unw_addr_space_t as, struct UPT_info *ui ){
+    struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[3] ; 
     wclear(w);
     unw_word_t ip, start_ip = 0, sp, off;
@@ -1760,7 +1797,8 @@ void refresh_window_tree(struct Interface *inter, unw_addr_space_t as, struct UP
 
 }
 
-void refresh_window_code(struct Interface *inter){
+void refresh_window_code(struct Data *data){
+    struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[3] ; 
 
     //wclear(w);
@@ -1844,7 +1882,8 @@ void refresh_window_code(struct Interface *inter){
     wrefresh(w);
 }
 
-void refresh_window_elf(struct Interface *inter){
+void refresh_window_elf(struct Data *data){
+    struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[4] ; 
     // box(inter->right_window[4], 0, 0);
     // mvaddstr(1, 1, "show window start");
@@ -1854,7 +1893,8 @@ void refresh_window_elf(struct Interface *inter){
     wrefresh(w);
 }
 
-void refresh_window_memory(struct Interface *inter, pid_t child_pid, struct maps_info maps){
+void refresh_window_memory(struct Data *data, pid_t child_pid, struct maps_info maps){
+    struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[5] ; 
     // box(inter->right_window[4], 0, 0);
     // mvaddstr(1, 1, "show window start");
@@ -1939,21 +1979,28 @@ void refresh_window_memory(struct Interface *inter, pid_t child_pid, struct maps
 }
 
 // this is the way the main window is drawn
-int show_window_start(struct Interface *inter, WINDOW *win, WINDOW *main_win, vec_t *input){
-    refresh_window_start(inter);
+int show_window_start(struct Data *data, WINDOW *win, WINDOW *main_win, vec_t *input){
+    struct Interface *inter = data->inter ;     
+    refresh_window_start(data);
     int c;
-    c = keyboard_input(inter, main_win, input);
+    c = keyboard_input(data, main_win, input);
     // mvaddstr(1, 1, "exit window start");
     refresh();
     return c;
 }
 
-int main(int argc, char **argv)
-{
-    printf("This is the Ncurses sbstndbs debugger ! \n");
+int main(int argc, char **argv){
+    //printf("This is the Ncurses sbstndbs debugger ! \n");
 
     // struct Interface inter ;
-    struct Interface inter = start_interface();
+    //struct Data data = start_data() ;
+    struct Data data  ; 
+    struct Interface inter ; 
+    struct Debugger debug;
+    data.inter = &inter ; 
+    data.debug = &debug ; 
+
+     
     // compute dimensions of interface
     struct All_window_size ws = compute_size_window();
 
@@ -1969,54 +2016,59 @@ int main(int argc, char **argv)
 
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
 
-    setup_selector(&inter);
-    setup_window(&inter, &ws);
-    draw_box(&inter);
-    setup_panel(&inter);
-    setup_title(&inter);
-    setup_menu(&inter, &ws);
+
+
+    //setup_selector(data);
+    setup_window(&data, &ws);
+    draw_box(&data);
+    setup_panel(&data);
+    setup_title(&data);
+    setup_menu(&data, &ws);
 
     keypad(stdscr, TRUE);
-    scrollok(inter.main_window[0], TRUE);
+    scrollok(data.inter->main_window[0], TRUE);
     for (int i = 0; i < 5; i++)
     {
-        scrollok(inter.right_window[i], TRUE);
+        scrollok(data.inter->right_window[i], TRUE);
     }
 
     refresh();
     update_panels();
 
+
+
     vec_t *vp = generate_processes(); // to add processes. Need to be obtain from branch/features
 
-    keypad(inter.main_window[0], TRUE);
+    keypad(data.inter->main_window[0], TRUE);
 
-    new_main_line(inter.main_window[0]);
+    new_main_line(data.inter->main_window[0]);
 
     vec_t *input = vec_new(sizeof(char));
     struct user_regs_struct reg;
     int c;
 
 
-    box(inter.main_window[0], 0, 0);
-    wrefresh(inter.main_window[0]);
+    box(data.inter->main_window[0], 0, 0);
+    wrefresh(data.inter->main_window[0]);
 
-    c = show_window_start(&inter, inter.right_window[0], inter.main_window[0], input); // c est la touche d'interraction pressee
+    c = show_window_start(&data, data.inter->right_window[0], data.inter->main_window[0], input); // c est la touche d'interraction pressee
     // TODO: utiliser l'execution conditionelle au debug (compil) des mvwaddnstr
     //  qui servent au debug uniquement
 
     update_panels();
     doupdate();
-    // refresh();
+     refresh();
 
     // here is where the interface & the debugger is working
-    loop_execution(&inter, vp, c, input);
+    loop_execution(&data, vp, c, input);
     ////
 
     doupdate();
     getch();
-
-    free_item(inter.my_items[0]);
-    free_menu(inter.my_menus);
+    free_item(data.inter->my_items[0]);
+    free_menu(data.inter->my_menus);
     vec_drop(input);
+    
     endwin();
+    
 }
