@@ -1180,9 +1180,9 @@ void *spawn_thread(void *input)
         // add memory management
         if (i->have_rmemory)
         {
-            sprintf(tmp2, "DEBUG:\tRead memory on adress %s\n", i->breakpoint_adress);
+            sprintf(tmp2, "DEBUG:\tRead memory on adress %s\n", i->memory_adress);
             waddstr(main_win, tmp2);
-            Dwarf_Addr adr = strtoll(i->breakpoint_adress, NULL, 16) + prog_offset;
+            Dwarf_Addr adr = strtoll(i->memory_adress, NULL, 16) + prog_offset;
             sprintf(tmp3, " Addresse with offset : %llx\n", adr);
             waddstr(main_win, tmp3);
             // Add 3 to the adress
@@ -1197,9 +1197,9 @@ void *spawn_thread(void *input)
         // add memory management
         if (i->have_wmemory)
         {
-            sprintf(tmp2, "DEBUG:\tWrite %s memory on adress %s\n", i->memory_content, i->breakpoint_adress);
+            sprintf(tmp2, "DEBUG:\tWrite %s memory on adress %s\n", i->memory_content, i->memory_adress);
             waddstr(main_win, tmp2);
-            Dwarf_Addr adr = strtoll(i->breakpoint_adress, NULL, 16) + prog_offset;
+            Dwarf_Addr adr = strtoll(i->memory_adress, NULL, 16) + prog_offset;
             sprintf(tmp3, " Addresse with offset : %llx\n", adr);
             waddstr(main_win, tmp3);
 
@@ -1211,22 +1211,22 @@ void *spawn_thread(void *input)
         }
 
         // add write register
-     /*   if (i->have_rmemory)
-        {
-            sprintf(tmp2, "DEBUG:\tWrite %s on register %s\n", i->register_content, i->register_adress);
-            waddstr(main_win, tmp2);
+        /*   if (i->have_rmemory)
+           {
+               sprintf(tmp2, "DEBUG:\tWrite %s on register %s\n", i->register_content, i->register_adress);
+               waddstr(main_win, tmp2);
 
 
-            Dwarf_Addr adr = strtoll(i->breakpoint_adress, NULL, 16) + prog_offset;
-            sprintf(tmp3, " Addresse with offset : %llx\n", adr);
-            waddstr(main_win, tmp3);
+               Dwarf_Addr adr = strtoll(i->breakpoint_adress, NULL, 16) + prog_offset;
+               sprintf(tmp3, " Addresse with offset : %llx\n", adr);
+               waddstr(main_win, tmp3);
 
-            u_int64_t res = ptrace(PTRACE_PEEKDATA, child_pid, adr, 0);
-            sprintf(tmp2, "DEBUG:\tResult: %lx\n", res);
-            waddstr(main_win, tmp2);
-            ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
-            waitpid(child_pid, &wait_status, 0);
-        }*/
+               u_int64_t res = ptrace(PTRACE_PEEKDATA, child_pid, adr, 0);
+               sprintf(tmp2, "DEBUG:\tResult: %lx\n", res);
+               waddstr(main_win, tmp2);
+               ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
+               waitpid(child_pid, &wait_status, 0);
+           }*/
         while (1)
         {
 
@@ -1408,6 +1408,9 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input)
     struct input_thread it;
     it.inter = inter;
     it.have_breakpoint = 0;
+    it.have_rmemory = 0;
+    it.have_wmemory = 0;
+    it.have_wregister = 0;
     it.size_args = i_a;
     it.size_opts = i_o;
 
