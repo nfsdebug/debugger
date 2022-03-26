@@ -34,6 +34,126 @@ static int dienumber = 0;
 
 struct variable_s *var;
 int count_var = 0;
+
+long int set_register(char *choice, pid_t child_pid, long long content)
+{
+    struct user_regs_struct reg;
+    ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
+
+    if (strcasestr(choice, "rax"))
+    {
+        reg.rax = content;
+    }
+    else if (strcasestr(choice, "rbx"))
+    {
+        reg.rbx = content;
+    }
+    else if (strcasestr(choice, "rcx"))
+    {
+        reg.rcx = content;
+    }
+    else if (strcasestr(choice, "rdx"))
+    {
+        reg.rdx = content;
+    }
+    else if (strcasestr(choice, "rdi"))
+    {
+        reg.rdi = content;
+    }
+    else if (strcasestr(choice, "rsi"))
+    {
+        reg.rsi = content;
+    }
+    else if (strcasestr(choice, "rbp"))
+    {
+        reg.rbp = content;
+    }
+    else if (strcasestr(choice, "rsp,"))
+    {
+        reg.rsp = content;
+    }
+    else if (strcasestr(choice, "r8"))
+    {
+        reg.r8 = content;
+    }
+    else if (strcasestr(choice, "r9"))
+    {
+        reg.r9 = content;
+    }
+    else if (strcasestr(choice, "r10"))
+    {
+        reg.r10 = content;
+    }
+    else if (strcasestr(choice, "r11"))
+    {
+        reg.r11 = content;
+    }
+    else if (strcasestr(choice, "r12"))
+    {
+        reg.r12 = content;
+    }
+    else if (strcasestr(choice, "r13"))
+    {
+        reg.r13 = content;
+    }
+    else if (strcasestr(choice, "r14"))
+    {
+        reg.r14 = content;
+    }
+    else if (strcasestr(choice, "r15"))
+    {
+        reg.r15 = content;
+    }
+    else if (strcasestr(choice, "rip"))
+    {
+        reg.rip = content;
+    }
+    else if (strcasestr(choice, "rdx"))
+    {
+        reg.rdx = content;
+    }
+    else if (strcasestr(choice, "eflags"))
+    {
+        reg.eflags = content;
+    }
+    else if (strcasestr(choice, "cs"))
+    {
+        reg.cs = content;
+    }
+    else if (strcasestr(choice, "orig_rax"))
+    {
+        reg.orig_rax = content;
+    }
+    else if (strcasestr(choice, "fs_base"))
+    {
+        reg.fs_base = content;
+    }
+    else if (strcasestr(choice, "gs_base"))
+    {
+        reg.gs_base = content;
+    }
+    else if (strcasestr(choice, "fs"))
+    {
+        reg.fs = content;
+    }
+    else if (strcasestr(choice, "gs"))
+    {
+        reg.gs = content;
+    }
+    else if (strcasestr(choice, "ss"))
+    {
+        reg.ss = content;
+    }
+    else if (strcasestr(choice, "ds"))
+    {
+        reg.ds = content;
+    }
+    else if (strcasestr(choice, "es"))
+    {
+        reg.es = content;
+    }
+    ptrace(PTRACE_SETREGS, child_pid, NULL, &reg);
+}
 void get_dbg(char *name)
 {
     func = malloc(sizeof(struct functions_s) * MAX_FUNCTIONS);
@@ -100,7 +220,7 @@ void get_dbg(char *name)
         }
         if (res == DW_DLV_NO_ENTRY)
         {
-            //printf("DONE\n");
+            // printf("DONE\n");
             return;
         }
 
@@ -187,10 +307,10 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     Dwarf_Attribute *attrs;
     Dwarf_Addr lowpc, highpc;
     Dwarf_Signed attrcount, i;
-        Dwarf_Line *lines;
+    Dwarf_Line *lines;
 
-        Dwarf_Addr lineaddr;
-        Dwarf_Unsigned lineno;
+    Dwarf_Addr lineaddr;
+    Dwarf_Unsigned lineno;
     int rc = dwarf_diename(die, &die_name, &err);
 
     if (rc == DW_DLV_ERROR)
@@ -198,7 +318,7 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     else if (rc == DW_DLV_NO_ENTRY)
         return;
     // Get all lines
-           int n;
+    int n;
 
     if (dwarf_tag(die, &tag, &err) != DW_DLV_OK)
         printf("Error in dwarf_tag\n");
@@ -212,14 +332,14 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         printf("Error in dwarf_attlist\n");
 
     Dwarf_Unsigned line = 0;
-    Dwarf_Addr adresse ;
+    Dwarf_Addr adresse;
     for (i = 0; i < attrcount; ++i)
     {
 
         Dwarf_Half attrcode;
-        
+
         dwarf_whatattr(attrs[i], &attrcode, &err);
-            //printf("Error in dwarf_whatattr\n");
+        // printf("Error in dwarf_whatattr\n");
         if (attrcode == DW_AT_low_pc)
             dwarf_formaddr(attrs[i], &lowpc, 0);
         else if (attrcode == DW_AT_high_pc)
@@ -227,7 +347,6 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         else if (attrcode == DW_AT_decl_line)
         {
             dwarf_formudata(attrs[i], &line, 0);
-       
         }
     }
 
@@ -241,7 +360,6 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         func[count_func].line = line;
 
         count_func++;
-
     }
     if (tag == DW_TAG_variable)
     {
