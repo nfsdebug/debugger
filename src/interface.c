@@ -105,6 +105,15 @@ struct process_t{
     int memory;
 };
 
+void init_process_t(struct process_t *process){
+    process->pid = 0 ; 
+    process->ppid = 0 ; 
+    process->gid = 0 ; 
+    process->memory = 0 ; 
+    process->num_threads = 0 ; 
+    process->status = 0 ; 
+}
+
 vec_t *generate_processes(void){
     /**
      * @brief permet de generer des processus en vue de tester son affichage dans la fenetre dediee
@@ -261,8 +270,23 @@ struct Data{
     struct maps_info *maps;
     struct regs_info *regs ; 
     struct process_info *procs ; 
- 
 
+    char *buff2 ; 
+    char *buff2_2 ; 
+    char *buff16 ; 
+    char *buff32 ; 
+    char *buff32_2 ; 
+    char *buff64 ; 
+    char *buff64_2 ; 
+    char *buff64_3 ; 
+    char *buff128 ; 
+    char *buff256 ; 
+    char *buff512 ; 
+    char *buff1024 ; 
+    char *buff1024_2 ;
+
+    char **dbuff64 ; 
+    char **dbuff1024 ; 
 };
 
 
@@ -669,6 +693,14 @@ void get_maps(struct Data *data){
     maps->number_lines = 0 ;    
 
     // memory allocation for string manipulation
+    // Data preallocated buffer
+    //char *buffpid = data->buff2 ; 
+    //char *buffpath  = data->buff64 ; 
+    //char *buffline = data->buff1024 ; 
+    //char *buffadress = data->buff32 ; 
+    //char *buffadress2 = data->buff32_2 ; 
+    //char *buffchar = data->buff2_2 ;   
+    //char *line = data->dbuff1024 ;   
     char *buffpid = (char *)malloc(10 * sizeof(char));
     char *buffpath = (char *)malloc(30 * sizeof(char));
     char *buffline = (char *)malloc(1000 * sizeof(char));
@@ -1035,10 +1067,10 @@ void *spawn_thread(void *idata){
     WINDOW *main_win = inter->main_window[0];
     WINDOW *process_win = inter->right_window[1];
 
-    print_parsed(data);
-
     struct process_t process_child;
     struct process_t process_father;
+    init_process_t(&process_child) ; 
+    init_process_t(&process_father) ; 
     data->procs->process_child = &process_child ; 
     data->procs->process_father = &process_father ;   
 
@@ -1046,8 +1078,8 @@ void *spawn_thread(void *idata){
     struct user_fpregs_struct fpreg ; 
     data->regs->reg = &reg ; 
     data->regs->fpreg = &fpreg ; 
-
-
+ 
+    print_parsed(data);
     config_debugger(data);
 
     as = unw_create_addr_space(&_UPT_accessors, 0);
@@ -1056,12 +1088,6 @@ void *spawn_thread(void *idata){
     int pid_status;
     child_pid = fork();
 
-
-    // old test 
-    char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL};
-    char *argprog2[] = {"./test", "5433", (char *)NULL};
-    //
-    // 
     if (child_pid == 0){
         // TRACEE 
         personality(ADDR_NO_RANDOMIZE);
@@ -1072,6 +1098,12 @@ void *spawn_thread(void *idata){
     if (child_pid != 0){
         data->procs->process_child->pid = child_pid;
         get_pid(data->procs->process_father);
+
+        vec_t *vp = vec_new(sizeof(struct process_t));
+        vec_push(vp, procs->process_father);
+        vec_push(vp, procs->process_child);
+        procs->vp = vp ; 
+
         ui = _UPT_create(child_pid);
     }
     int is_executed = 1;
@@ -1084,7 +1116,7 @@ void *spawn_thread(void *idata){
     }
     if (is_executed == 0)
     {
-        // waddstr(main_win , "\n Issue : cannot trace this program") ;
+        waddstr(main_win , "\n Issue : cannot trace this program") ;
     }
     if ((child_pid != 0) & (is_executed != 0))
     {
@@ -1272,10 +1304,7 @@ void *spawn_thread(void *idata){
         //refresh_window_code(i->inter);
         refresh_window_register(data);
 
-        vec_t *vp = vec_new(sizeof(struct process_t*));
-        vec_push(vp, procs->process_father);
-        vec_push(vp, procs->process_child);
-        procs->vp = vp ; 
+        
         refresh_window_processes(data);
 
 
@@ -1283,7 +1312,7 @@ void *spawn_thread(void *idata){
         show_libraries_2(data) ;
         refresh_window_memory(data, child_pid) ; 
         //show_libraries(process_win, &process_child, debug.verbose);
-        vec_clear(vp);
+    
         free(buff);
     }
 
@@ -1567,7 +1596,7 @@ void refresh_window_processes(struct Data *data){
         "GID",
         "status",
         "threads",
-        "Register",
+        "Memory",
         (char *)NULL,
     };
     char *reduced_entity_name[] = {
@@ -2040,6 +2069,20 @@ int main(int argc, char **argv){
     struct maps_info maps ; 
     struct regs_info regs ; 
     struct process_info procs ; 
+    data.buff2 = (char *)malloc(2) ; 
+    data.buff2_2 = (char *)malloc(2) ;    
+    data.buff16 = (char *)malloc(16) ; 
+    data.buff32 = (char *)malloc(32) ;   
+    data.buff32_2 = (char *)malloc(32) ;       
+    data.buff64 = (char *)malloc(64) ; 
+    data.buff64_2 = (char *)malloc(64) ; 
+    data.buff64_3 = (char *)malloc(64) ;        
+    data.buff128 = (char *)malloc(128) ;         
+    data.buff512 = (char *)malloc(512) ; 
+    data.buff1024 = (char *)malloc(1024) ;     
+    data.buff1024_2 = (char *)malloc(1024) ;      
+    data.dbuff64 = (char**)malloc(64 * sizeof(char *)) ;     
+    data.dbuff1024 = (char**)malloc(1024 * sizeof(char *)) ;   
 
 
     data.inter = &inter ; 
@@ -2120,4 +2163,20 @@ int main(int argc, char **argv){
     
     endwin();
     
+
+    free(data.buff2) ; 
+    free(data.buff2_2) ;     
+    free(data.buff16) ;
+    free(data.buff32) ; 
+    free(data.buff32_2) ;     
+    free(data.buff64) ; 
+    free(data.buff64_2) ; 
+    free(data.buff64_3) ;         
+    free(data.buff128) ; 
+    free(data.buff256) ; 
+    free(data.buff512) ; 
+    free(data.buff1024) ;     
+    free(data.buff1024_2) ;       
+    free(data.dbuff64) ; 
+    free(data.dbuff1024) ;     
 }
