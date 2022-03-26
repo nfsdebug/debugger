@@ -1178,35 +1178,23 @@ void *spawn_thread(void *input)
             waitpid(child_pid, &wait_status, 0);
         }
         // add memory management
-        if (i->have_rmemory)
+        if (i->have_wmemory)
         {
-            sprintf(tmp2, "DEBUG:\tRead memory on adress %s\n", i->memory_adress);
+            sprintf(tmp2, "DEBUG:\tWrite %s in memory on adress %s\n", i->memory_content, i->memory_adress);
             waddstr(main_win, tmp2);
             Dwarf_Addr adr = strtoll(i->memory_adress, NULL, 16) + prog_offset;
             sprintf(tmp3, " Address with offset : %llx\n", adr);
             waddstr(main_win, tmp3);
-            // Add 3 to the adress
 
-            u_int64_t res = ptrace(PTRACE_PEEKDATA, child_pid, adr, 0);
-            sprintf(tmp2, "DEBUG:\tResult: %lx\n", res);
-            waddstr(main_win, tmp2);
-            ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
-            waitpid(child_pid, &wait_status, 0);
-        }
-
-        // add memory management
-        if (i->have_wmemory)
-        {
-            sprintf(tmp2, "DEBUG:\tWrite %s memory on adress %s\n", i->memory_content, i->memory_adress);
-            waddstr(main_win, tmp2);
-            Dwarf_Addr adr = strtoll(i->memory_adress, NULL, 16) + prog_offset;
-            sprintf(tmp3, " Address with offset : %llx\n", adr);
+            sprintf(tmp3, " Before : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
             waddstr(main_win, tmp3);
 
             if (ptrace(PTRACE_POKEDATA, child_pid, adr, strtoll(i->memory_content, NULL, 16)) < 0)
                 waddstr(main_win, "Error with the adress you entered\n");
             else
                 waddstr(main_win, "Content succesfully modified\n");
+            sprintf(tmp3, " After : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
+            waddstr(main_win, tmp3);
         }
 
         // add write register
@@ -1470,24 +1458,12 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input)
             waddstr(win, "\n MEMORY :");
             new_main_line(win);
             int thr = 1;
-            if (strcmp(parsed[1], "write") == 0)
-            {
-                it.have_wmemory = 1;
-                it.memory_adress = malloc(strlen(parsed[2]) * sizeof(char));
-                strcpy(it.memory_adress, parsed[2]);
-                it.memory_content = malloc(strlen(parsed[3]) * sizeof(char));
-                strcpy(it.memory_content, parsed[3]);
-            }
-            else if (strcmp(parsed[1], "read") == 0)
-            {
-                it.have_rmemory = 1;
-                it.memory_adress = malloc(strlen(parsed[2]) * sizeof(char));
-                strcpy(it.memory_adress, parsed[2]);
-            }
-            else
-            {
-                is_valid = 0;
-            }
+            it.have_wmemory = 1;
+            it.memory_adress = malloc(strlen(parsed[1]) * sizeof(char));
+            strcpy(it.memory_adress, parsed[1]);
+            it.memory_content = malloc(strlen(parsed[2]) * sizeof(char));
+            strcpy(it.memory_content, parsed[2]);
+
             if (is_valid == 1)
             {
                 for (int i = 0; i < i_a - 2; i++)
@@ -1513,10 +1489,10 @@ void parse(struct Interface *inter, WINDOW *win, vec_t *input)
             new_main_line(win);
             int thr = 1;
             it.have_wregister = 1;
-            it.register_adress = malloc(strlen(parsed[2]) * sizeof(char));
-            strcpy(it.register_adress, parsed[2]);
-            it.register_content = malloc(strlen(parsed[3]) * sizeof(char));
-            strcpy(it.register_content, parsed[3]);
+            it.register_adress = malloc(strlen(parsed[1]) * sizeof(char));
+            strcpy(it.register_adress, parsed[1]);
+            it.register_content = malloc(strlen(parsed[2]) * sizeof(char));
+            strcpy(it.register_content, parsed[2]);
         }
         else
         {
