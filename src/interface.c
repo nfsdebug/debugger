@@ -149,12 +149,23 @@ char *memory_type_char[] = {
     "i88",                                      
     (char *)NULL,
 };
+char *memory_type_int16[] = {
+    "uint16_1",
+    "uint16_2",
+    "uint16_3",
+    "uint16_4",    
+    "int8_1",
+    "int8_2",
+    "int8_3",
+    "int8_4",                                      
+    (char *)NULL,
+};
 int width_type_raw[] = {15, 18} ; 
 int width_type_fp[] = {12,  12, 12} ; 
 int width_type_int[] = {21, 13, 13, 21, 13, 13} ; 
 int width_type_char[] = {18, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5} ; 
-
-int nentity_horizontal[] = {2, 3, 6, 17} ; 
+int width_type_int16[] = {10, 10, 10, 10, 10, 10, 10, 10} ; 
+int nentity_horizontal[] = {2, 3, 6, 17, 8} ; 
 // raw, fp, int, char
 struct process_t{
     /**
@@ -2182,6 +2193,12 @@ void refresh_window_memory(struct Data *data){
             current_position += width_type_char[i];
         }        
     }        
+    else if(horizontal == 4){
+        for (int i = 0 ; i < nentity ; i++){
+            mvwaddstr(win, 1, current_position, memory_type_int16[i]) ;
+            current_position += width_type_int16[i];
+        }        
+    }      
 
 
     wattroff(win, COLOR_PAIR(1));
@@ -2251,11 +2268,7 @@ void refresh_window_memory(struct Data *data){
                 char_8[j] = ((char*)mems->value->data)[8 * position + j] ; 
                 uint8[j] = ((uint8_t*)mems->value->data)[8 * position + j] ; 
                 int8[j] = ((int8_t*)mems->value->data)[8 * position + j] ; 
-            }
-            for (int j = 0 ; j < 4 ; j++){
-                uint16[j] = ((uint16_t*)mems->value->data)[4 * position + j] ; 
-                int16[j] = ((int16_t*)mems->value->data)[4 * position + j] ; 
-            }            
+            }          
             sprintf(data->buff128, "%s\n",char_8);
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
             current_position += width_type_char[0] ;
@@ -2269,9 +2282,23 @@ void refresh_window_memory(struct Data *data){
                 mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
                 current_position += width_type_char[j+8+1] ;
             }             
-
-
         }
+        else if(horizontal == 4){
+            for (int j = 0 ; j < 4 ; j++){
+                uint16[j] = ((uint16_t*)mems->value->data)[4 * position + j] ; 
+                int16[j] = ((int16_t*)mems->value->data)[4 * position + j] ; 
+            }            
+            for (int j = 0 ; j < 4 ; j++){
+                sprintf(data->buff128, "%u\n",uint16[j]);
+                mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+                current_position += width_type_int16[j+1] ;
+            }       
+            for (int j = 0 ; j < 4 ; j++){
+                sprintf(data->buff128, "%u\n",int16[j]);
+                mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+                current_position += width_type_int16[j+4+1] ;
+            }                   
+        }        
 
     }
     free(char_8);
