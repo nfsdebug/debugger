@@ -434,7 +434,7 @@ struct All_window_size compute_size_window(void){
     struct All_window_size size;
     struct winsize w = compute_size_terminal(); 
 
-    float vertical_ratio = 0.5;
+    float vertical_ratio = 0.4;
     float horizontal_ratio = 0.6;
 
     size.main.dx = (int)(1.0 * w.ws_row) - 3,  size.main.dy = (int)(vertical_ratio * w.ws_col);
@@ -1630,16 +1630,16 @@ int keyboard_input(struct Data *data, WINDOW *win, vec_t *input){
             // we need to interact with the rght window
             int direction ; 
             if (key == KEY_PPAGE){
-                direction = -20 ; 
+                direction = -8*20 ; 
             }
             else if (key == KEY_NPAGE){
-                direction = 20 ; 
+                direction = 8*20 ; 
             }
             else if (key == KEY_HOME){
-                direction = -20 * 1000 ; 
+                direction = -8 * 1000 ; 
             }
             else if (key == KEY_END){
-                direction = 20 * 1000 ; 
+                direction = 8 * 1000 ; 
             }                        
             //int id = 0 ;
             int id = item_index(current_item(data->inter->my_menus)) ;  
@@ -2226,7 +2226,7 @@ void refresh_window_memory(struct Data *data){
             // fp values
             fp_64 = (double)value ; 
             fp_32_1 = ((float*)mems->value->data)[2 * position] ; 
-            fp_32_2 = ((float*)mems->value->data)[2 * position + 1] ;  
+            fp_32_2 = ((float*)mems->value->data)[2 * position + 4] ;  
             sprintf(data->buff128, "%.04e\n",fp_64);
             mvwaddstr(win, i + 2, current_position, data->buff128) ; 
             current_position += width_type_fp[0] ; 
@@ -2240,10 +2240,10 @@ void refresh_window_memory(struct Data *data){
             // intger values
             uint_64 = (uint64_t)value ; 
             uint_32_1 = ((uint32_t*)mems->value->data)[2 * position] ; 
-            uint_32_2 = ((uint32_t*)mems->value->data)[2 * position + 1] ;  
+            uint_32_2 = ((uint32_t*)mems->value->data)[2 * position + 4] ;  
             int_64 = (int64_t)value ; 
             int_32_1 = ((int32_t*)mems->value->data)[2 * position] ; 
-            int_32_2 = ((int32_t*)mems->value->data)[2 * position + 1] ;             
+            int_32_2 = ((int32_t*)mems->value->data)[2 * position + 4] ;             
             sprintf(data->buff128, "%lu\n",uint_64);
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
             current_position += width_type_int[0] ; 
@@ -2269,6 +2269,11 @@ void refresh_window_memory(struct Data *data){
                 uint8[j] = ((uint8_t*)mems->value->data)[8 * position + j] ; 
                 int8[j] = ((int8_t*)mems->value->data)[8 * position + j] ; 
             }          
+            //for (int j = 0 ; j < 8 ; j++){
+            //    strncpy(data->buff2 , char_8[j], 1) ; 
+            //    //sprintf(data->buff16, "%s", char_8[j]);
+            //    mvwaddstr(win, i + 2,  current_position + j, data->buff2) ;
+            //}
             sprintf(data->buff128, "%s\n",char_8);
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
             current_position += width_type_char[0] ;
