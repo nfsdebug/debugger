@@ -223,6 +223,11 @@ struct regs_info{
     struct user_fpregs_struct *fpreg ; 
 };
 
+struct memory_info{
+    vec_t *adress ; 
+    vec_t *value ; 
+};
+
 
 struct process_info{
     struct process_t *process_father ; 
@@ -273,6 +278,7 @@ struct Data{
     struct maps_info *maps;
     struct regs_info *regs ; 
     struct process_info *procs ; 
+    struct memory_info *mems ;
     
     char *buff1 ; 
     char *buff2 ; 
@@ -606,7 +612,7 @@ int page_key(WINDOW *win, int key){
      * @brief if the PageUp or PageDown is pressed, scroll the page 
      *      (if implemented in this specific window) 
      */
-    if ((key == KEY_PPAGE) || (key == KEY_NPAGE)){
+    if ((key == KEY_PPAGE) || (key == KEY_NPAGE) || (key == KEY_HOME) || (key == KEY_END)){
         // scroll the current window :
         // need to implement function named "scroll_window(win, id, direction)"
         return 1 ; 
@@ -1057,6 +1063,8 @@ void config_debugger(struct Data *data){
     }
 }
 
+void get_memory(struct Data *data) ; 
+
 static unw_addr_space_t as;
 static struct UPT_info *ui;
 void *spawn_thread(void *idata){
@@ -1314,6 +1322,7 @@ void *spawn_thread(void *idata){
 
         get_maps(data) ; 
         show_libraries_2(data) ;
+        get_memory(data); 
         refresh_window_memory(data) ; 
         //show_libraries(process_win, &process_child, debug.verbose);
     
@@ -1330,13 +1339,9 @@ void scroll_window(struct Data *data, int id, int direction ){
 
     if (id == 5){
         // it is the memory panel : we want to scroll it !!
-        waddstr(main_win, "We want to scroll the window !!!\n ") ; 
         wrefresh(main_win) ; 
-        inter->scroll_position_memory+=  direction * 1 ; 
+        inter->scroll_position_memory += direction ; 
         refresh_window_memory(data) ; 
-
-
-
     }
 }
 
@@ -1519,15 +1524,21 @@ int keyboard_input(struct Data *data, WINDOW *win, vec_t *input){
             // we need to interact with the rght window
             int direction ; 
             if (key == KEY_PPAGE){
-                direction = -1 ; 
+                direction = -20 ; 
             }
-            else{
-                direction = 1 ; 
+            else if (key == KEY_NPAGE){
+                direction = 20 ; 
             }
+            else if (key == KEY_HOME){
+                direction = -20 * 1000 ; 
+            }
+            else if (key == KEY_END){
+                direction = 20 * 1000 ; 
+            }                        
             //int id = 0 ;
             int id = item_index(current_item(data->inter->my_menus)) ;  
-            sprintf(data->buff16, "\n valeur de id : %i", id) ; 
-            waddstr(win, data->buff16) ; 
+            //sprintf(data->buff16, "\n valeur de id : %i", id) ; 
+            //waddstr(win, data->buff16) ; 
             scroll_window(data, id, direction) ; 
         }
 
@@ -1975,96 +1986,74 @@ void refresh_window_elf(struct Data *data){
     box(w, 0, 0);
     wrefresh(w);
 }
-
-void refresh_window_memory(struct Data *data){
+void get_memory(struct Data *data){
     struct Interface *inter = data->inter ;     
     struct maps_info *maps  = data->maps ; 
+    struct memory_info *mems = data->mems; 
+    waddstr(inter->main_window[0] , "\n  Dump memory ...\n")  ;
+    wrefresh(inter->main_window[0]) ;
+
+    //if (mems->adress->data != NULL){
+    //    vec_clear(mems->adress) ; 
+    //}
+    //if (mems->value->data != NULL){
+    //    vec_clear(mems->value) ; 
+    //}    
+
     pid_t child_pid = data->procs->process_child->pid ; 
+    int position_chunk = 0 ; 
+    int chunk = 0 ; 
+    unsigned long long diff = maps->stop[chunk] - maps->start[chunk] ;  
+    unsigned long long adress ; 
+    unsigned long long value ; 
+    unsigned long long length ;
 
-    WINDOW *w = (WINDOW *)inter->right_window[5] ; 
-    wclear(w) ; 
-    // box(inter->right_window[4], 0, 0);
-    // mvaddstr(1, 1, "show window start");
-    // refresh();
-    // mvwaddstr(inter->right_window[4], 2, 1, "start panel");
+    for (unsigned long long i = 0 ; i < maps->number_lines ; i++){
+        length = maps->stop[i] - maps->start[i] ; 
+        for (unsigned long long j = 0 ; j < length ; j++){
+            // for every adress / data. push in the correspojding vectors
+            adress = maps->start[i] + j ; 
+            value = ptrace(PTRACE_PEEKDATA, child_pid, adress , 0) ; 
+            vec_push(mems->adress , &adress) ;             
+            vec_push(mems->value , &value ) ; 
+        }
+    }
+    waddstr(inter->main_window[0] , "  Done !\n")  ;
+    wrefresh(inter->main_window[0]);
+}
 
 
-    // we get the window size to show only the enough information to fill the window
-    // we need to implement PageUp / PageDown to scroll on the window. This 
-    // needs to refetch the data for each Scroll.
+void refresh_window_memory(struct Data *data){
+    WINDOW *win = data->inter->right_window[5] ; 
+    wclear(win) ; 
+    struct memory_info *mems = data->mems ; 
+    unsigned long long offset = data->inter->scroll_position_memory ; 
 
     struct All_window_size ws = compute_size_window() ; 
     int length = ws.right.dx - 2 ; 
-
-    unsigned long pd ;
-
-
-    int current_printed_line = 0 ; 
-    int position_chunk = data->inter->scroll_position_memory + 2 ; // exemple : count_start = 4000
-    if (position_chunk < 0){
-        position_chunk = 0; 
+    // test if length is > than the data to display
+    if (offset < 0){
+        offset = 0 ; 
+    }      
+    if (length > (mems->value->len - offset)  ){
+        length = mems->value->len - offset ; 
     }
-    int chunk = 0 ; 
-
-    // premiere etape : detecter dans quelle plage memoire on touche au depart
-    while(position_chunk > 0 ){
-        // tant que on est pas dans la bonne plage memoire
-        position_chunk = position_chunk - (maps->stop[chunk] - maps->start[chunk]);
-        // if position_chunk is positive : go to the next plage
-        // else : its the good plage !!!
-        if (position_chunk>0){
-            chunk++;
-        }
-        else{
+    waddstr(win, "\n ") ; 
+    for (unsigned long long i = 0 ; i < length ; i++){
+        unsigned long long position = offset + i  ; 
+        if (position > mems->value->len){
+            waddstr(win, " Please scroll up !!!\n " ) ; 
             break;
         }
+        sprintf(data->buff64, "adress : 0x%llx  value :  %016llx\n ", 
+                    ((unsigned long long*)mems->adress->data)[position] , 
+                    ((unsigned long long*)mems->value->data)[position]) ;
+        waddstr(win, data->buff64) ;
     }
-    // get the position on the finded plage
-    position_chunk = position_chunk + (maps->stop[chunk] - maps->start[chunk]); 
-    unsigned long long j ; 
-    waddstr(w, "\n\n ") ; 
-    while( current_printed_line < length ){
-        // tant qu'on a pas affiché assez de line 
-        if  (position_chunk > (maps->stop[chunk] - maps->start[chunk])){
-            // if we are not in the same memory chunck, pass to the next chunk
-            chunk++;
-            position_chunk = 0 ;
-            wattron(w, COLOR_PAIR(2));
-            waddstr(w, "------- New chunk of memory ------\n ") ; 
-            wattroff(w, COLOR_PAIR(2));
-            if (chunk >= maps->number_lines){
-                // if there is no more readable memory
-                break;
-            }            
-        }
-        j =  maps->start[chunk] + position_chunk ;
-        sprintf(data->buff16, "adress : %llx", j) ;
-        waddstr(w, data->buff16) ;
-        pd = ptrace(PTRACE_PEEKDATA, child_pid, j , 0) ; 
-        sprintf(data->buff16, "  value  : %016lx\n ", pd) ; 
-        waddstr(w, data->buff16);
-        current_printed_line++;
-        position_chunk++;
-    }
-
-    
-
-
-/*
-    for (int i = 0 ; i < maps.number_lines ; i++){
-        for (unsigned long long j = maps.start[i] ; j < maps.stop[i] ; j++){
-            sprintf(tmp, "-|%llx|", j) ;
-            waddstr(w, tmp) ;
-            pd = ptrace(PTRACE_PEEKDATA, child_pid, j , 0) ; 
-            sprintf(tmp, "+|%016lx|\n", pd) ; 
-            waddstr(w, tmp);
-        }
-        waddstr(w, "\n");
-    }
-*/
-    box(w, 0, 0);
-    wrefresh(w);
+    box(win,0,0) ; 
+    wrefresh(win) ; 
 }
+
 
 // this is the way the main window is drawn
 int show_window_start(struct Data *data, WINDOW *win, WINDOW *main_win, vec_t *input){
@@ -2086,7 +2075,12 @@ int main(int argc, char **argv){
     struct Debugger debug;
     struct maps_info maps ; 
     struct regs_info regs ; 
-    struct process_info procs ; 
+    struct process_info procs ;
+    struct memory_info mems ;  
+
+    mems.value = vec_new( sizeof(unsigned long long) ) ; 
+    mems.adress = vec_new( sizeof(unsigned long long) ) ; 
+
     data.buff1 = (char *)malloc(1) ;     
     data.buff2 = (char *)malloc(2) ; 
     data.buff2_2 = (char *)malloc(2) ;    
@@ -2109,6 +2103,7 @@ int main(int argc, char **argv){
     data.maps = &maps ; 
     data.regs = &regs ; 
     data.procs = &procs ; 
+    data.mems = &mems ; 
 
 
      
