@@ -186,10 +186,6 @@ struct Interface{
 };
 
 
-struct Debugger{
-    int test ; 
-    int test2 ;
-};
 
 struct maps_info{
     /**
@@ -210,7 +206,7 @@ struct maps_info{
 
 };
 
-struct input_thread{
+struct Debugger{
     /**
      * @brief the ptrace is encapsuled in a pthread. Hence, we need to 
      * creat e an argument structure for that function.
@@ -225,6 +221,9 @@ struct input_thread{
      *          - breakpoint_function :  function associated to the breakpoint
      *          - breakpoint_adress : relative adress associated with the breakpoint
      */
+    /**
+     * @brief Structure to set booleans to each options which can be specified in the prompt
+     */    
     char **args;
     char **opts;
     int size_args;
@@ -233,18 +232,13 @@ struct input_thread{
     int is_function;
     char *breakpoint_function;
     char *breakpoint_adress;
-};
 
-
-struct option_debugger{
-    /**
-     * @brief Structure to set booleans to each options which can be specified in the prompt
-     */
     int singlestep;
     int get_reg;
     int get_all_sig;
-    int verbose;
+    int verbose;    
 };
+
 
 
 
@@ -252,8 +246,7 @@ struct Data{
     struct Interface *inter ; 
     struct Debugger *debug ; 
     struct maps_info *maps;
-    struct input_thread *input_thread ; 
-    struct option_debugger *opt_deb ;
+
 };
 
 
@@ -586,14 +579,14 @@ void print_parsed(struct Data *data){
      * working well and to be sure what is sended to the ptrace function
      */
     WINDOW *main_win = data->inter->main_window[0] ;\
-    struct input_thread *i = data->input_thread ;  
+    struct Debugger *d = data->debug ;  
     waddstr(main_win, "\n Arguments list :");
-    for (int j = 0; j < i->size_args + 1; j++){
-        waddstr(main_win, i->args[j]);
+    for (int j = 0; j < d->size_args + 1; j++){
+        waddstr(main_win, d->args[j]);
     }
     waddstr(main_win, "\n Options list :");
-    for (int j = 0; j < i->size_opts; j++){
-        waddstr(main_win, i->opts[j]);
+    for (int j = 0; j < d->size_opts; j++){
+        waddstr(main_win, d->opts[j]);
     }
     waddstr(main_win, "\n\n ");
 }
@@ -806,12 +799,13 @@ void get_maps(struct Data *data, struct process_t *pid){
 }
 
 
-void show_libraries_2(struct Data *data, struct option_debugger *opt_deb){
+void show_libraries_2(struct Data *data){
     struct Interface *inter = data->inter ;         
     struct maps_info *maps = data->maps ; 
+    struct Debugger *debug = data->debug ; 
     WINDOW *win = (WINDOW *)inter->right_window[1] ; 
 
-    if (opt_deb->verbose == 1){
+    if (debug->verbose == 1){
         waddstr(win, "\n\n\n  all lines : \n\n  ");
         for (int j = 0; j < maps->number_lines; j++){
             waddstr(win, maps->line[j]);
@@ -982,25 +976,24 @@ void print_siginfo(WINDOW *win, siginfo_t *signinf, struct user_regs_struct *reg
 
 
 
-void config_debugger(struct Data *data){
-    struct option_debugger *opt_deb = data->opt_deb ; 
-    struct input_thread *in = data->input_thread ; 
-    opt_deb->singlestep = 0;
-    opt_deb->get_reg = 0;
-    opt_deb->get_all_sig = 0;
-    opt_deb->verbose = 0;
-    for (int i = 0; i < in->size_opts; i++){
-        if (strcmp(options[0], in->opts[i]) == 0){
-            opt_deb->singlestep = 1;
+void config_debugger(struct Data *data){ 
+    struct Debugger *d = data->debug ; 
+    d->singlestep = 0;
+    d->get_reg = 0;
+    d->get_all_sig = 0;
+    d->verbose = 0;
+    for (int i = 0; i < d->size_opts; i++){
+        if (strcmp(options[0], d->opts[i]) == 0){
+            d->singlestep = 1;
         }
-        if (strcmp(options[1], in->opts[i]) == 0){
-            opt_deb->get_reg = 1;
+        if (strcmp(options[1], d->opts[i]) == 0){
+            d->get_reg = 1;
         }
-        if (strcmp(options[2], in->opts[i]) == 0){
-            opt_deb->get_all_sig = 1;
+        if (strcmp(options[2], d->opts[i]) == 0){
+            d->get_all_sig = 1;
         }
-        if (strcmp(options[3], in->opts[i]) == 0){
-            opt_deb->verbose = 1;
+        if (strcmp(options[3], d->opts[i]) == 0){
+            d->verbose = 1;
         }
     }
 }
@@ -1016,9 +1009,8 @@ void *spawn_thread(void *idata){
     //struct Data *data = i->data ;    
     //struct Interface *inter = data->inter ; 
     struct Data *data = idata ; 
-    struct input_thread *input = data->input_thread ;
+    struct Debugger *debug = data->debug ;
     struct Interface *inter = data->inter ; 
-    struct option_debugger *opt_deb = data->opt_deb;
     WINDOW *main_win = inter->main_window[0];
     WINDOW *process_win = inter->right_window[1];
     //print_parsed(data);
@@ -1055,7 +1047,7 @@ void *spawn_thread(void *idata){
     int is_executed = 1;
     if (child_pid == 0){
         personality(ADDR_NO_RANDOMIZE);
-        execvp(input->args[0], input->args);
+        execvp(debug->args[0], debug->args);
         is_executed = 0;
         _exit(-1);
         // is_executed set to -1 if execvp returned an error
@@ -1071,8 +1063,8 @@ void *spawn_thread(void *idata){
         // Note : don't work for smthing like 
         // ../src/test
         // solve : change at the level of get_dgb function
-        char *path_for_dbg = malloc( sizeof(strlen(input->args[0])) * sizeof(char)) ; 
-            strcpy(path_for_dbg, input->args[0] + 2);
+        char *path_for_dbg = malloc( sizeof(strlen(debug->args[0])) * sizeof(char)) ; 
+            strcpy(path_for_dbg, debug->args[0] + 2);
         char *buff = malloc(128 * sizeof(char));        
         sprintf(buff, "    modified path : %s\n",path_for_dbg);
         waddstr(main_win, buff);
@@ -1081,7 +1073,7 @@ void *spawn_thread(void *idata){
         //get_dbg(path_for_dbg);
         free(path_for_dbg);
         if (count_func == 0)
-            get_elf(input->args[0]);
+            get_elf(debug->args[0]);
         long long prog_offset;
         char fname[128];
 
@@ -1121,13 +1113,13 @@ void *spawn_thread(void *idata){
         int loop = 0;
 
         // add breakpoint
-        if (input->have_breakpoint)
+        if (debug->have_breakpoint)
         {
-            if (input->is_function == 0)
+            if (debug->is_function == 0)
             {
-                sprintf(tmp2, "DEBUG:\tSetting a breakpoint on adress %s\n", input->breakpoint_adress);
+                sprintf(tmp2, "DEBUG:\tSetting a breakpoint on adress %s\n", debug->breakpoint_adress);
                 waddstr(main_win, tmp2);
-                Dwarf_Addr adr = strtoll(input->breakpoint_adress, NULL, 16) + prog_offset;
+                Dwarf_Addr adr = strtoll(debug->breakpoint_adress, NULL, 16) + prog_offset;
                 sprintf(tmp3, " Addresse avec offset : %llx\n", adr);
                 waddstr(main_win, tmp3);
                 // Add 3 to the adress
@@ -1143,7 +1135,7 @@ void *spawn_thread(void *idata){
             {
                 for (int j = 0; j < count_func; j++)
                 {
-                    if (strcmp(input->breakpoint_function, func[j].name) == 0)
+                    if (strcmp(debug->breakpoint_function, func[j].name) == 0)
                     {
                         sprintf(tmp3, " function name : %s\n", func[j].name);
                         waddstr(main_win, tmp3);
@@ -1169,7 +1161,7 @@ void *spawn_thread(void *idata){
             if (WIFEXITED(wait_status) || WIFSIGNALED(wait_status))
                 break;
             loop++;
-            if (opt_deb->singlestep == 1)
+            if (debug->singlestep == 1)
             {
                 ptrace(PTRACE_SINGLESTEP, child_pid, 0, 0);
                 number_of_instructions++;
@@ -1184,7 +1176,7 @@ void *spawn_thread(void *idata){
             ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
             ptrace(PTRACE_GETFPREGS, child_pid, NULL, &fpreg) ; 
 
-            if ((number_of_instructions % 10000 == 0) & opt_deb->singlestep == 1)
+            if ((number_of_instructions % 10000 == 0) & debug->singlestep == 1)
             {
                 refresh_window_register(data, reg, fpreg);
             }
@@ -1199,7 +1191,7 @@ void *spawn_thread(void *idata){
                     print_siginfo(main_win, &signinf, &reg);
                     break;
                 }
-                else if ((signinf.si_signo == 5) && (input->have_breakpoint))
+                else if ((signinf.si_signo == 5) && (debug->have_breakpoint))
                 {
                     print_siginfo(main_win, &signinf, &reg);
                     break;
@@ -1258,9 +1250,9 @@ void *spawn_thread(void *idata){
 
 
         get_maps(data, &process_child) ; 
-        show_libraries_2(data, opt_deb) ;
+        show_libraries_2(data) ;
         refresh_window_memory(data, child_pid) ; 
-        //show_libraries(process_win, &process_child, opt_deb.verbose);
+        //show_libraries(process_win, &process_child, debug.verbose);
         vec_clear(vp);
         free(buff);
     }
@@ -1281,7 +1273,7 @@ void scroll_window(struct Data *data, int id){
 
 void parse(struct Data *data, WINDOW *win, vec_t *input){
     struct Interface *inter = data->inter ; 
-    struct input_thread *input_thread = data->input_thread ; 
+    struct Debugger *debug = data->debug ; 
     const char delim[2] = " ";
 
     /////////////////
@@ -1356,12 +1348,12 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
     }
 
     // structure for the thread
-    input_thread->have_breakpoint = 0;
-    input_thread->size_args = i_a;
-    input_thread->size_opts = i_o;
+    debug->have_breakpoint = 0;
+    debug->size_args = i_a;
+    debug->size_opts = i_o;
 
-    input_thread->opts = opts;
-    input_thread->args = args;
+    debug->opts = opts;
+    debug->args = args;
 
     pthread_t thread;
     if (is_valid){
@@ -1370,8 +1362,8 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
             waddstr(win, "\n EXEC :");
             new_main_line(win);
             int thr = 1;
-            input_thread->opts = opts;
-            input_thread->args = args;
+            debug->opts = opts;
+            debug->args = args;
             pthread_create(&thread, NULL, spawn_thread, data);
             pthread_join(thread, NULL);
             wrefresh(win);
@@ -1381,16 +1373,16 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
             waddstr(win, "\n BREAKPOINT :");
             new_main_line(win);
             int thr = 1;
-            input_thread->have_breakpoint = 1;
+            debug->have_breakpoint = 1;
             if (strcmp(parsed[1], "function") == 0){
-                input_thread->breakpoint_function = malloc(strlen(parsed[2]) * sizeof(char));
-                strcpy(input_thread->breakpoint_function, parsed[2]);
-                input_thread->is_function = 1;
+                debug->breakpoint_function = malloc(strlen(parsed[2]) * sizeof(char));
+                strcpy(debug->breakpoint_function, parsed[2]);
+                debug->is_function = 1;
             }
             else if (strcmp(parsed[1], "adress") == 0){
-                input_thread->breakpoint_adress = malloc(strlen(parsed[2]) * sizeof(char));
-                strcpy(input_thread->breakpoint_adress, parsed[2]);
-                input_thread->is_function = 0;
+                debug->breakpoint_adress = malloc(strlen(parsed[2]) * sizeof(char));
+                strcpy(debug->breakpoint_adress, parsed[2]);
+                debug->is_function = 0;
             }
             else{
                 is_valid = 0;
@@ -1398,12 +1390,12 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
             if (is_valid == 1){
                 for (int i = 0; i < i_a - 2; i++){
                     //(it.inter->main_window[0], &it) ;
-                    strcpy(input_thread->args[i], input_thread->args[i + 2]);
+                    strcpy(debug->args[i], debug->args[i + 2]);
                 }
-                input_thread->size_args -= 2;
-                input_thread->args[i_a - 1] = (char *)NULL;
-                input_thread->args[i_a - 1] = (char *)NULL;
-                input_thread->args[i_a] = (char *)NULL;
+                debug->size_args -= 2;
+                debug->args[i_a - 1] = (char *)NULL;
+                debug->args[i_a - 1] = (char *)NULL;
+                debug->args[i_a] = (char *)NULL;
 
                 // print_parsed(it.inter->main_window[0], &it) ;
 
@@ -2011,14 +2003,12 @@ int main(int argc, char **argv){
     struct Interface inter ; 
     struct Debugger debug;
     struct maps_info maps ; 
-    struct input_thread input_thread ; 
-    struct option_debugger opt_deb ; 
+
 
     data.inter = &inter ; 
     data.debug = &debug ; 
     data.maps = &maps ; 
-    data.input_thread = &input_thread ; 
-    data.opt_deb = &opt_deb ; 
+
 
      
     // compute dimensions of interface
