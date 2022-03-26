@@ -109,20 +109,30 @@ char *reduced_entity_name[] = {
     (char *)NULL,
 };
 
-char *memory_type[] = {
+char *memory_type_raw[] = {
     "adress",
     "raw",
+    (char *)NULL,
+};
+char *memory_type_fp[] = {
     "fp64",
     "fp32_1",
     "fp32_2",
+    (char *)NULL,
+};
+char *memory_type_int[] = {
+    "uint64",
+    "uint32_1", 
+    "uint32_2",
     "int64",
-    "int32_1", 
+    "int32_1",
     "int32_2",
     (char *)NULL,
 };
-
-int width_type[] = {15, 18, 12,  12, 12, 21, 13, 13} ; 
-
+int width_type_raw[] = {15, 18} ; 
+int width_type_fp[] = {12,  12, 12} ; 
+int width_type_int[] = {21, 13, 13, 21, 13, 13} ; 
+int nentity_horizontal[] = {2, 3, 6} ; 
 
 struct process_t{
     /**
@@ -2091,9 +2101,12 @@ void refresh_window_memory(struct Data *data){
     double fp_64 ; 
     float fp_32_1 ; 
     float fp_32_2 ; 
-    uint64_t int_64 ; 
-    uint32_t int_32_1 ; 
-    uint32_t int_32_2 ; 
+    uint64_t uint_64 ; 
+    uint32_t uint_32_1 ; 
+    uint32_t uint_32_2 ; 
+    int64_t int_64 ; 
+    int32_t int_32_1 ; 
+    int32_t int_32_2 ; 
 
     struct All_window_size ws = compute_size_window() ; 
     int length = ws.right.dx - 3 ; 
@@ -2116,18 +2129,27 @@ void refresh_window_memory(struct Data *data){
     for (int i = 0; i < ncol - 2; i++){
         mvwaddstr(win, 1, i + 1, symbol[0]);
     }
-    int nentity = 3 ; 
+    int nentity = nentity_horizontal[horizontal]  ; 
     int current_position = 1 ; 
-    mvwaddstr(win, 1, current_position, memory_type[0]) ;
-    current_position += width_type[0];
-    mvwaddstr(win, 1, current_position, memory_type[1]) ;
-    current_position += width_type[1];  
-    int current_element ; 
-    for (int i = 0 ; i < nentity ; i++){
-        current_element = i + nentity * horizontal + 2 ; 
-        mvwaddstr(win, 1, current_position, memory_type[current_element]) ;
-        current_position += width_type[current_element];
+    if(horizontal == 0){
+        mvwaddstr(win, 1, current_position, memory_type_raw[0]) ;
+        current_position += width_type_raw[0];
+        mvwaddstr(win, 1, current_position, memory_type_raw[1]) ;
+        current_position += width_type_raw[1];  
     }
+    else if(horizontal == 1){
+        for (int i = 0 ; i < nentity ; i++){
+            mvwaddstr(win, 1, current_position, memory_type_fp[i]) ;
+            current_position += width_type_fp[i];
+        }        
+    }    
+    else if(horizontal == 2){
+        for (int i = 0 ; i < nentity ; i++){
+            mvwaddstr(win, 1, current_position, memory_type_int[i]) ;
+            current_position += width_type_int[i];
+        }        
+    }    
+
     wattroff(win, COLOR_PAIR(1));
     waddstr(win, "\n") ; 
 
@@ -2139,43 +2161,56 @@ void refresh_window_memory(struct Data *data){
             mvwaddstr(win, 1,1, " Please scroll up !!!\n " ) ; 
             break;
         }
-
         adress = ((unsigned long long*)mems->adress->data)[position];
-        value = ((unsigned long long*)mems->value->data)[position] ;  
+        value = ((unsigned long long*)mems->value->data)[position] ; 
 
-        current_position = 1 ; 
-        sprintf(data->buff128,  "0x%llx %016llx",  adress, value) ; 
-        mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
-        current_position += width_type[0] + width_type[1] ; 
+        current_position = 1 ;  
+
         if (horizontal == 0){
+            sprintf(data->buff128,  "0x%llx %016llx",  adress, value) ; 
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            //current_position += width_type[0] + width_type[1] ; 
+        }
+        else if (horizontal == 1){
             // fp values
             fp_64 = (double)value ; 
             fp_32_1 = ((float*)mems->value->data)[2 * position] ; 
             fp_32_2 = ((float*)mems->value->data)[2 * position + 1] ;  
             sprintf(data->buff128, "%.04e\n",fp_64);
             mvwaddstr(win, i + 2, current_position, data->buff128) ; 
-            current_position += width_type[2] ; 
+            current_position += width_type_fp[0] ; 
             sprintf(data->buff128, "%.04e\n",fp_32_1);
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
-            current_position += width_type[3] ; 
+            current_position += width_type_fp[1] ; 
             sprintf(data->buff128, "%.04e\n",fp_32_2);
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
-            //current_position += width_type[4] ;
         }
-        else if(horizontal == 1){
+        else if(horizontal == 2){
             // intger values
-            int_64 = (uint64_t)value ; 
-            int_32_1 = ((uint32_t*)mems->value->data)[2 * position] ; 
-            int_32_2 = ((uint32_t*)mems->value->data)[2 * position + 1] ;  
+            uint_64 = (uint64_t)value ; 
+            uint_32_1 = ((uint32_t*)mems->value->data)[2 * position] ; 
+            uint_32_2 = ((uint32_t*)mems->value->data)[2 * position + 1] ;  
+            int_64 = (int64_t)value ; 
+            int_32_1 = ((int32_t*)mems->value->data)[2 * position] ; 
+            int_32_2 = ((int32_t*)mems->value->data)[2 * position + 1] ;             
+            sprintf(data->buff128, "%lu\n",uint_64);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            current_position += width_type_int[0] ; 
+            sprintf(data->buff128, "%u\n",uint_32_1);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            current_position += width_type_int[1] ; 
+            sprintf(data->buff128, "%u\n",uint_32_2);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            current_position += width_type_int[2] ;         
             sprintf(data->buff128, "%ld\n",int_64);
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
-            current_position += width_type[5] ; 
+            current_position += width_type_int[3] ; 
             sprintf(data->buff128, "%d\n",int_32_1);
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
-            current_position += width_type[6] ; 
+            current_position += width_type_int[4] ; 
             sprintf(data->buff128, "%d\n",int_32_2);
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
-            //current_position += width_type[7] ;         
+            current_position += width_type_int[5] ;              
         }
 
     }
