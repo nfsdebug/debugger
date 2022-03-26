@@ -41,7 +41,7 @@ char *choice_panel[] = {
      */
     "Help",
     "Processes",
-    "Memory",
+    "Register",
     "Code",
     "Elf",
     "Memory",
@@ -192,6 +192,9 @@ struct Interface{
     ITEM **my_items;
     MENU *my_menus;
     ITEM *cur_item;
+
+    // scrolling position ; 
+    int scroll_position_memory ;  
 };
 
 
@@ -270,7 +273,8 @@ struct Data{
     struct maps_info *maps;
     struct regs_info *regs ; 
     struct process_info *procs ; 
-
+    
+    char *buff1 ; 
     char *buff2 ; 
     char *buff2_2 ; 
     char *buff16 ; 
@@ -462,7 +466,7 @@ void refresh_window_processes(struct Data *data);
 void refresh_window_register(struct Data *data);
 void refresh_window_code(struct Data *data);
 void refresh_window_elf(struct Data *data);
-void refresh_window_memory(struct Data *data, pid_t child_pid);
+void refresh_window_memory(struct Data *data);
 void refresh_window_tree(struct Data *data, unw_addr_space_t as, struct UPT_info *ui );
 int keyboard_input(struct Data *data, WINDOW *win, vec_t *input);
 
@@ -694,18 +698,18 @@ void get_maps(struct Data *data){
 
     // memory allocation for string manipulation
     // Data preallocated buffer
-    //char *buffpid = data->buff2 ; 
-    //char *buffpath  = data->buff64 ; 
-    //char *buffline = data->buff1024 ; 
-    //char *buffadress = data->buff32 ; 
-    //char *buffadress2 = data->buff32_2 ; 
-    //char *buffchar = data->buff2_2 ;   
+    char *buffpid = data->buff2 ; 
+    char *buffpath  = data->buff64 ; 
+    char *buffline = data->buff1024 ; 
+    char *buffadress = data->buff32 ; 
+    char *buffadress2 = data->buff32_2 ; 
+    //char *buffchar = data->buff1;   
     //char *line = data->dbuff1024 ;   
-    char *buffpid = (char *)malloc(10 * sizeof(char));
-    char *buffpath = (char *)malloc(30 * sizeof(char));
-    char *buffline = (char *)malloc(1000 * sizeof(char));
-    char *buffadress = (char *)malloc(18 * sizeof(char));
-    char *buffadress2 = (char *)malloc(18 * sizeof(char));    
+    //char *buffpid = (char *)malloc(10 * sizeof(char));
+    //char *buffpath = (char *)malloc(30 * sizeof(char));
+    //char *buffline = (char *)malloc(1000 * sizeof(char));
+    //char *buffadress = (char *)malloc(18 * sizeof(char));
+    //char *buffadress2 = (char *)malloc(18 * sizeof(char));    
     char *buffchar = (char *)malloc(sizeof(char)) ; 
     char *line = malloc(1000 * sizeof(char *));
 
@@ -841,12 +845,12 @@ void get_maps(struct Data *data){
         }
             
     }     
-    free(buffpid) ; 
-    free(buffpath);
-    free(buffadress);
-    free(buffadress2);
+    //free(buffpid) ; 
+    //free(buffpath);
+    //free(buffadress);
+    //free(buffadress2);
     free(buffchar);
-    free(buffline);
+    //free(buffline);
     
 }
 
@@ -1310,7 +1314,7 @@ void *spawn_thread(void *idata){
 
         get_maps(data) ; 
         show_libraries_2(data) ;
-        refresh_window_memory(data, child_pid) ; 
+        refresh_window_memory(data) ; 
         //show_libraries(process_win, &process_child, debug.verbose);
     
         free(buff);
@@ -1320,13 +1324,19 @@ void *spawn_thread(void *idata){
 }
 
 
-void scroll_window(struct Data *data, int id){
+void scroll_window(struct Data *data, int id, int direction ){
     struct Interface *inter = data->inter ;     
     WINDOW *main_win = (WINDOW *)inter->main_window[0] ; 
+
     if (id == 5){
         // it is the memory panel : we want to scroll it !!
         waddstr(main_win, "We want to scroll the window !!!\n ") ; 
         wrefresh(main_win) ; 
+        inter->scroll_position_memory+=  direction * 1 ; 
+        refresh_window_memory(data) ; 
+
+
+
     }
 }
 
@@ -1507,7 +1517,6 @@ int keyboard_input(struct Data *data, WINDOW *win, vec_t *input){
         }
         else if(page_key(win, key)){
             // we need to interact with the rght window
-            int id = 0;
             int direction ; 
             if (key == KEY_PPAGE){
                 direction = -1 ; 
@@ -1515,8 +1524,13 @@ int keyboard_input(struct Data *data, WINDOW *win, vec_t *input){
             else{
                 direction = 1 ; 
             }
-            scroll_window(data, id) ; 
+            //int id = 0 ;
+            int id = item_index(current_item(data->inter->my_menus)) ;  
+            sprintf(data->buff16, "\n valeur de id : %i", id) ; 
+            waddstr(win, data->buff16) ; 
+            scroll_window(data, id, direction) ; 
         }
+
         else{
             waddch(win, key);
             doupdate();
@@ -1962,11 +1976,13 @@ void refresh_window_elf(struct Data *data){
     wrefresh(w);
 }
 
-void refresh_window_memory(struct Data *data, pid_t child_pid){
+void refresh_window_memory(struct Data *data){
     struct Interface *inter = data->inter ;     
     struct maps_info *maps  = data->maps ; 
+    pid_t child_pid = data->procs->process_child->pid ; 
 
     WINDOW *w = (WINDOW *)inter->right_window[5] ; 
+    wclear(w) ; 
     // box(inter->right_window[4], 0, 0);
     // mvaddstr(1, 1, "show window start");
     // refresh();
@@ -1980,54 +1996,55 @@ void refresh_window_memory(struct Data *data, pid_t child_pid){
     struct All_window_size ws = compute_size_window() ; 
     int length = ws.right.dx - 2 ; 
 
-    scrollok(w, TRUE);
-    char *tmp = malloc( 16 * sizeof(char) ) ; 
     unsigned long pd ;
 
 
     int current_printed_line = 0 ; 
-    int count_start = 4080 ; // exemple : count_start = 4000
-    int current_plage = 0 ; 
-    // premiere etape : detecter dans quelle plage memoire on touche au depart
+    int position_chunk = data->inter->scroll_position_memory + 2 ; // exemple : count_start = 4000
+    if (position_chunk < 0){
+        position_chunk = 0; 
+    }
+    int chunk = 0 ; 
 
-    while(count_start > 0 ){
+    // premiere etape : detecter dans quelle plage memoire on touche au depart
+    while(position_chunk > 0 ){
         // tant que on est pas dans la bonne plage memoire
-        count_start = count_start - (maps->stop[current_plage] - maps->start[current_plage]);
-        // if count_start is positive : go to the next plage
+        position_chunk = position_chunk - (maps->stop[chunk] - maps->start[chunk]);
+        // if position_chunk is positive : go to the next plage
         // else : its the good plage !!!
-        if (count_start>0){
-            current_plage++;
+        if (position_chunk>0){
+            chunk++;
         }
         else{
             break;
         }
     }
     // get the position on the finded plage
-    count_start = count_start + (maps->stop[current_plage] - maps->start[current_plage]); 
+    position_chunk = position_chunk + (maps->stop[chunk] - maps->start[chunk]); 
     unsigned long long j ; 
     waddstr(w, "\n\n ") ; 
     while( current_printed_line < length ){
         // tant qu'on a pas affiché assez de line 
-        if  (count_start >= (maps->stop[current_plage] - maps->start[current_plage])){
+        if  (position_chunk > (maps->stop[chunk] - maps->start[chunk])){
             // if we are not in the same memory chunck, pass to the next chunk
-            current_plage++;
-            count_start = 0 ;
+            chunk++;
+            position_chunk = 0 ;
             wattron(w, COLOR_PAIR(2));
             waddstr(w, "------- New chunk of memory ------\n ") ; 
             wattroff(w, COLOR_PAIR(2));
-            if (current_plage >= maps->number_lines){
+            if (chunk >= maps->number_lines){
                 // if there is no more readable memory
                 break;
             }            
         }
-        j =  maps->start[current_plage] + count_start ;
-        sprintf(tmp, "adress : %llx", j) ;
-        waddstr(w, tmp) ;
+        j =  maps->start[chunk] + position_chunk ;
+        sprintf(data->buff16, "adress : %llx", j) ;
+        waddstr(w, data->buff16) ;
         pd = ptrace(PTRACE_PEEKDATA, child_pid, j , 0) ; 
-        sprintf(tmp, "  value  : %016lx\n ", pd) ; 
-        waddstr(w, tmp);
+        sprintf(data->buff16, "  value  : %016lx\n ", pd) ; 
+        waddstr(w, data->buff16);
         current_printed_line++;
-        count_start++;
+        position_chunk++;
     }
 
     
@@ -2064,11 +2081,13 @@ int main(int argc, char **argv){
     printf("This is the Ncurses sbstndbs debugger ! \n");
 
     struct Data data  ; 
-    struct Interface inter ; 
+    struct Interface inter ;
+    inter.scroll_position_memory  = 0 ;
     struct Debugger debug;
     struct maps_info maps ; 
     struct regs_info regs ; 
     struct process_info procs ; 
+    data.buff1 = (char *)malloc(1) ;     
     data.buff2 = (char *)malloc(2) ; 
     data.buff2_2 = (char *)malloc(2) ;    
     data.buff16 = (char *)malloc(16) ; 
@@ -2110,7 +2129,7 @@ int main(int argc, char **argv){
 
 
 
-    //setup_selector(data);
+    setup_selector(&data);
     setup_window(&data, &ws);
     draw_box(&data);
     setup_panel(&data);
@@ -2163,7 +2182,7 @@ int main(int argc, char **argv){
     
     endwin();
     
-
+    free(data.buff1) ; 
     free(data.buff2) ; 
     free(data.buff2_2) ;     
     free(data.buff16) ;
