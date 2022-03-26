@@ -89,6 +89,41 @@ char *options[] = {
 };
 
 
+char *entity_name[] = {
+    "PID",
+    "PPID",
+    "GID",
+    "status",
+    "threads",
+    "Memory",
+    (char *)NULL,
+};
+
+char *reduced_entity_name[] = {
+    "PID",
+    "PPID",
+    "GID",
+    "stat.",
+    "th.",
+    "Mem.",
+    (char *)NULL,
+};
+
+char *memory_type[] = {
+    "adress",
+    "raw",
+    "fp64",
+    "fp32_1",
+    "fp32_2",
+    "int64",
+    "int32_1", 
+    "int32_2",
+    (char *)NULL,
+};
+
+int width_type[] = {15, 18, 12,  12, 12, 21, 13, 13} ; 
+
+
 struct process_t{
     /**
      * @brief stocke l'etat d'un processus en vue de l'afficher
@@ -195,6 +230,7 @@ struct Interface{
 
     // scrolling position ; 
     int scroll_position_memory ;  
+    int horizontal_position_memory ;      
 };
 
 
@@ -613,6 +649,21 @@ int page_key(WINDOW *win, int key){
      *      (if implemented in this specific window) 
      */
     if ((key == KEY_PPAGE) || (key == KEY_NPAGE) || (key == KEY_HOME) || (key == KEY_END)){
+        // scroll the current window :
+        // need to implement function named "scroll_window(win, id, direction)"
+        return 1 ; 
+    }
+    else{
+        return 0 ; 
+    }
+}
+
+int horizontal_key(WINDOW *win, int key){
+    /**
+     * @brief if the PageUp or PageDown is pressed, scroll the page 
+     *      (if implemented in this specific window) 
+     */
+    if ((key == KEY_LEFT) || (key == KEY_RIGHT)){
         // scroll the current window :
         // need to implement function named "scroll_window(win, id, direction)"
         return 1 ; 
@@ -1345,6 +1396,18 @@ void scroll_window(struct Data *data, int id, int direction ){
     }
 }
 
+void horizontal_window(struct Data *data, int id, int direction ){
+    struct Interface *inter = data->inter ;     
+    WINDOW *main_win = (WINDOW *)inter->main_window[0] ; 
+
+    if (id == 5){
+        // it is the memory panel : we want to scroll it !!
+        wrefresh(main_win) ; 
+        inter->horizontal_position_memory += direction ; 
+        refresh_window_memory(data) ; 
+    }
+}
+
 void parse(struct Data *data, WINDOW *win, vec_t *input){
     struct Interface *inter = data->inter ; 
     struct Debugger *debug = data->debug ; 
@@ -1541,6 +1604,17 @@ int keyboard_input(struct Data *data, WINDOW *win, vec_t *input){
             //waddstr(win, data->buff16) ; 
             scroll_window(data, id, direction) ; 
         }
+        else if(horizontal_key(win, key)){
+            int direction ; 
+            if (key == KEY_LEFT){
+                direction = -1 ; 
+            }
+            else if(key == KEY_RIGHT){
+                direction = 1 ;
+            }
+            int id = item_index(current_item(data->inter->my_menus)) ; 
+            horizontal_window(data, id, direction) ;
+        }
 
         else{
             waddch(win, key);
@@ -1615,24 +1689,7 @@ void refresh_window_processes(struct Data *data){
     // box(inter->right_window[1], 0, 0) ;
     // wrefresh(inter->right_window[1]) ;
 
-    char *entity_name[] = {
-        "PID",
-        "PPID",
-        "GID",
-        "status",
-        "threads",
-        "Memory",
-        (char *)NULL,
-    };
-    char *reduced_entity_name[] = {
-        "PID",
-        "PPID",
-        "GID",
-        "stat.",
-        "th.",
-        "Mem.",
-        (char *)NULL,
-    };
+
     // first line : legendary line
     // other lines : show each processes of vec.
     int ncol, nrow;
@@ -2028,9 +2085,18 @@ void refresh_window_memory(struct Data *data){
     wclear(win) ; 
     struct memory_info *mems = data->mems ; 
     unsigned long long offset = data->inter->scroll_position_memory ; 
+    unsigned long long horizontal = data->inter->horizontal_position_memory ; 
+    unsigned long long adress ; 
+    unsigned long long value ; 
+    double fp_64 ; 
+    float fp_32_1 ; 
+    float fp_32_2 ; 
+    uint64_t int_64 ; 
+    uint32_t int_32_1 ; 
+    uint32_t int_32_2 ; 
 
     struct All_window_size ws = compute_size_window() ; 
-    int length = ws.right.dx - 2 ; 
+    int length = ws.right.dx - 3 ; 
     // test if length is > than the data to display
     if (offset < 0){
         offset = 0 ; 
@@ -2038,17 +2104,80 @@ void refresh_window_memory(struct Data *data){
     if (length > (mems->value->len - offset)  ){
         length = mems->value->len - offset ; 
     }
-    waddstr(win, "\n ") ; 
+    if (horizontal < 0){
+        horizontal = 0 ; 
+    }   
+
+    // show the white line with memory types
+    wattron(win, COLOR_PAIR(1));     
+    int ncol, nrow;
+    getmaxyx(win, nrow, ncol);    
+    char *symbol[1] = {" "} ;
+    for (int i = 0; i < ncol - 2; i++){
+        mvwaddstr(win, 1, i + 1, symbol[0]);
+    }
+    int nentity = 3 ; 
+    int current_position = 1 ; 
+    mvwaddstr(win, 1, current_position, memory_type[0]) ;
+    current_position += width_type[0];
+    mvwaddstr(win, 1, current_position, memory_type[1]) ;
+    current_position += width_type[1];  
+    int current_element ; 
+    for (int i = 0 ; i < nentity ; i++){
+        current_element = i + nentity * horizontal + 2 ; 
+        mvwaddstr(win, 1, current_position, memory_type[current_element]) ;
+        current_position += width_type[current_element];
+    }
+    wattroff(win, COLOR_PAIR(1));
+    waddstr(win, "\n") ; 
+
+    ////////
+    ////////
     for (unsigned long long i = 0 ; i < length ; i++){
         unsigned long long position = offset + i  ; 
         if (position > mems->value->len){
-            waddstr(win, " Please scroll up !!!\n " ) ; 
+            mvwaddstr(win, 1,1, " Please scroll up !!!\n " ) ; 
             break;
         }
-        sprintf(data->buff64, "adress : 0x%llx  value :  %016llx\n ", 
-                    ((unsigned long long*)mems->adress->data)[position] , 
-                    ((unsigned long long*)mems->value->data)[position]) ;
-        waddstr(win, data->buff64) ;
+
+        adress = ((unsigned long long*)mems->adress->data)[position];
+        value = ((unsigned long long*)mems->value->data)[position] ;  
+
+        current_position = 1 ; 
+        sprintf(data->buff128,  "0x%llx %016llx",  adress, value) ; 
+        mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+        current_position += width_type[0] + width_type[1] ; 
+        if (horizontal == 0){
+            // fp values
+            fp_64 = (double)value ; 
+            fp_32_1 = ((float*)mems->value->data)[2 * position] ; 
+            fp_32_2 = ((float*)mems->value->data)[2 * position + 1] ;  
+            sprintf(data->buff128, "%.04e\n",fp_64);
+            mvwaddstr(win, i + 2, current_position, data->buff128) ; 
+            current_position += width_type[2] ; 
+            sprintf(data->buff128, "%.04e\n",fp_32_1);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            current_position += width_type[3] ; 
+            sprintf(data->buff128, "%.04e\n",fp_32_2);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            //current_position += width_type[4] ;
+        }
+        else if(horizontal == 1){
+            // intger values
+            int_64 = (uint64_t)value ; 
+            int_32_1 = ((uint32_t*)mems->value->data)[2 * position] ; 
+            int_32_2 = ((uint32_t*)mems->value->data)[2 * position + 1] ;  
+            sprintf(data->buff128, "%ld\n",int_64);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            current_position += width_type[5] ; 
+            sprintf(data->buff128, "%d\n",int_32_1);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            current_position += width_type[6] ; 
+            sprintf(data->buff128, "%d\n",int_32_2);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            //current_position += width_type[7] ;         
+        }
+
     }
     box(win,0,0) ; 
     wrefresh(win) ; 
@@ -2072,6 +2201,7 @@ int main(int argc, char **argv){
     struct Data data  ; 
     struct Interface inter ;
     inter.scroll_position_memory  = 0 ;
+    inter.horizontal_position_memory = 0 ; 
     struct Debugger debug;
     struct maps_info maps ; 
     struct regs_info regs ; 
