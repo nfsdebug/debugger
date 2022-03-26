@@ -10,6 +10,7 @@ struct functions_s
     Dwarf_Addr highpc;
     Dwarf_Unsigned line;
     char *name;
+    char *path;
 };
 
 struct variable_s

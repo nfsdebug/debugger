@@ -1091,7 +1091,7 @@ void *spawn_thread(void *input)
         waddstr(main_win, buff);
         wrefresh(main_win);
         //
-        // get_dbg(path_for_dbg);
+        get_dbg(path_for_dbg);
         free(path_for_dbg);
         if (count_func == 0)
             get_elf(i->args[0]);
@@ -1109,7 +1109,7 @@ void *spawn_thread(void *input)
 
         for (int i = 0; i < count_func; i++)
         {
-            sprintf(buff, "    Function : %s\n", func[i].name);
+            sprintf(buff, "    Function : %s %s\n", func[i].name,func[i].path);
             waddstr(main_win, buff);
         }
         wrefresh(main_win);

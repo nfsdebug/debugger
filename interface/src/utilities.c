@@ -34,6 +34,7 @@ static int dienumber = 0;
 
 struct variable_s *var;
 int count_var = 0;
+char *namesrc ;
 
 long int set_register(char *choice, pid_t child_pid, long long content)
 {
@@ -311,6 +312,9 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
 
     Dwarf_Addr lineaddr;
     Dwarf_Unsigned lineno;
+    char **filesnames;
+    Dwarf_Unsigned countname;
+    Dwarf_Unsigned countfiles;
     int rc = dwarf_diename(die, &die_name, &err);
 
     if (rc == DW_DLV_ERROR)
@@ -319,7 +323,9 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         return;
     // Get all lines
     int n;
-
+    if (dwarf_srclines(die, &lines, &countfiles, errp) == DW_DLV_OK )
+   { dwarf_linesrc(lines[0], &namesrc, 0);
+    }
     if (dwarf_tag(die, &tag, &err) != DW_DLV_OK)
         printf("Error in dwarf_tag\n");
 
@@ -347,7 +353,9 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         else if (attrcode == DW_AT_decl_line)
         {
             dwarf_formudata(attrs[i], &line, 0);
+
         }
+
     }
 
     if (tag == DW_TAG_subprogram)
@@ -357,8 +365,10 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         strcpy(func[count_func].name, die_name);
         func[count_func].lowpc = lowpc;
         func[count_func].highpc = highpc;
-        func[count_func].line = line;
+        func[count_func].line = countfiles;
 
+        func[count_func].path = malloc(sizeof(char) * strlen(namesrc));
+        strcpy(func[count_func].path, namesrc);
         count_func++;
     }
     if (tag == DW_TAG_variable)
