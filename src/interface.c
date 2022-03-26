@@ -206,6 +206,18 @@ struct maps_info{
 
 };
 
+struct regs_info{
+    struct user_regs_struct *reg ; 
+    struct user_fpregs_struct *fpreg ; 
+};
+
+
+struct process_info{
+    struct process_t *process_father ; 
+    struct process_t *process_child ;    
+    vec_t *vp ;  
+};
+
 struct Debugger{
     /**
      * @brief the ptrace is encapsuled in a pthread. Hence, we need to 
@@ -237,6 +249,7 @@ struct Debugger{
     int get_reg;
     int get_all_sig;
     int verbose;    
+
 };
 
 
@@ -246,6 +259,9 @@ struct Data{
     struct Interface *inter ; 
     struct Debugger *debug ; 
     struct maps_info *maps;
+    struct regs_info *regs ; 
+    struct process_info *procs ; 
+ 
 
 };
 
@@ -418,8 +434,8 @@ void draw_box(struct Data *data){
 
 
 void refresh_window_start(struct Data *data);
-void refresh_window_processes(struct Data *data, vec_t *vp);
-void refresh_window_register(struct Data *data, struct user_regs_struct reg, struct user_fpregs_struct fpreg);
+void refresh_window_processes(struct Data *data);
+void refresh_window_register(struct Data *data);
 void refresh_window_code(struct Data *data);
 void refresh_window_elf(struct Data *data);
 void refresh_window_memory(struct Data *data, pid_t child_pid);
@@ -627,7 +643,7 @@ void print_pid(WINDOW *win, struct process_t *pid, int info){
     refresh();
 }
 
-void get_maps(struct Data *data, struct process_t *pid){
+void get_maps(struct Data *data){
     /**
      * @brief get_maps is creating and filling the maps_info structure from the pid structure.
      * Hence, the function opens the following proc maps file and read on it. 
@@ -636,6 +652,10 @@ void get_maps(struct Data *data, struct process_t *pid){
     struct Interface *inter = data->inter ; 
     WINDOW *win = (WINDOW *)inter->main_window[0] ; 
     struct maps_info *maps = data->maps ; 
+    struct process_info *procs = data->procs ; 
+    struct Debugger *debug = data->debug ; 
+    struct process_t *process_child = procs->process_child ; 
+
     maps->start = malloc(sizeof(unsigned long long)) ; 
     maps->stop = malloc(sizeof(unsigned long long)) ; 
     maps->is_readable = malloc( sizeof(int) );
@@ -658,7 +678,7 @@ void get_maps(struct Data *data, struct process_t *pid){
     char *line = malloc(1000 * sizeof(char *));
 
     // print the mapos localisation is the dedicated window
-    sprintf(buffpid, "%d", pid->pid);
+    sprintf(buffpid, "%d", process_child->pid);
     waddstr(win, " \n\n  Maps localisation :  ");
     sprintf(buffpath, "/proc/%s/maps", buffpid);
     waddstr(win, buffpath);
@@ -953,25 +973,28 @@ void show_libraries(WINDOW *win, struct process_t *pid, int verbose){
     free(line);
 }
 
-void print_siginfo(WINDOW *win, siginfo_t *signinf, struct user_regs_struct *reg){
+void print_siginfo(struct Data *data, siginfo_t *signinf){
     /**
      * @brief Just a function to show the siginfo to the win 
      * 
      */
+
+    WINDOW *main_win = data->inter->main_window[0] ; 
+    struct regs_info *regs = data->regs ;
     char tmp2[100];
     char tmp3[100];
     char tmp4[100];
     sprintf(tmp2, "%s", strsignal(signinf->si_signo));
     sprintf(tmp3, "%d", signinf->si_signo);
-    sprintf(tmp4, "%llx", reg->rip);
-    waddstr(win, "\n Child stopped : ");
-    waddstr(win, tmp2);
-    waddstr(win, " (");
-    waddstr(win, tmp3);
-    waddstr(win, ") at adress 0x");
-    waddstr(win, tmp4);
-    new_main_line(win);
-    wrefresh(win);
+    sprintf(tmp4, "%llx", regs->reg->rip);
+    waddstr(main_win, "\n Child stopped : ");
+    waddstr(main_win, tmp2);
+    waddstr(main_win, " (");
+    waddstr(main_win, tmp3);
+    waddstr(main_win, ") at adress 0x");
+    waddstr(main_win, tmp4);
+    new_main_line(main_win);
+    wrefresh(main_win);
 }
 
 
@@ -1005,15 +1028,24 @@ void *spawn_thread(void *idata){
      * @brief This is the equivalent of the "main" function of a terminal based  ptracer. All the ptrace calls are made here. 
      * - input is from the input_thread structure (interface, args, options, ...)
      */
-    //struct input_thread *i = input;
-    //struct Data *data = i->data ;    
-    //struct Interface *inter = data->inter ; 
     struct Data *data = idata ; 
     struct Debugger *debug = data->debug ;
     struct Interface *inter = data->inter ; 
+    struct process_info *procs = data->procs ; 
     WINDOW *main_win = inter->main_window[0];
     WINDOW *process_win = inter->right_window[1];
-    //print_parsed(data);
+
+    print_parsed(data);
+
+    struct process_t process_child;
+    struct process_t process_father;
+    data->procs->process_child = &process_child ; 
+    data->procs->process_father = &process_father ;   
+
+    struct user_regs_struct reg;
+    struct user_fpregs_struct fpreg ; 
+    data->regs->reg = &reg ; 
+    data->regs->fpreg = &fpreg ; 
 
 
     config_debugger(data);
@@ -1024,8 +1056,6 @@ void *spawn_thread(void *idata){
     int pid_status;
     child_pid = fork();
 
-    struct process_t process_child;
-    struct process_t process_father;
 
     // old test 
     char *argprog[] = {"/home/sbstndbs/debugger/target/test", "5433", (char *)NULL};
@@ -1035,13 +1065,13 @@ void *spawn_thread(void *idata){
     if (child_pid == 0){
         // TRACEE 
         personality(ADDR_NO_RANDOMIZE);
-        get_pid(&process_child);
+        get_pid(data->procs->process_child);
         if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) < 0)
             return printf("Error with ptrace, check the manual"), -2;
     }
     if (child_pid != 0){
-        process_child.pid = child_pid;
-        get_pid(&process_father);
+        data->procs->process_child->pid = child_pid;
+        get_pid(data->procs->process_father);
         ui = _UPT_create(child_pid);
     }
     int is_executed = 1;
@@ -1103,8 +1133,7 @@ void *spawn_thread(void *idata){
         // Wait for the program (first execution)
         waitpid(child_pid, &wait_status, 0);
 
-        struct user_regs_struct reg;
-        struct user_fpregs_struct fpreg ; 
+
         char tmp[10];
         char tmp2[100];
         char tmp3[100];
@@ -1173,27 +1202,27 @@ void *spawn_thread(void *idata){
             waitpid(child_pid, &wait_status, 0);
             siginfo_t signinf;
             ptrace(PTRACE_GETSIGINFO, child_pid, NULL, &signinf);
-            ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
-            ptrace(PTRACE_GETFPREGS, child_pid, NULL, &fpreg) ; 
+            ptrace(PTRACE_GETREGS, child_pid, NULL, data->regs->reg);
+            ptrace(PTRACE_GETFPREGS, child_pid, NULL, data->regs->fpreg) ; 
 
             if ((number_of_instructions % 10000 == 0) & debug->singlestep == 1)
             {
-                refresh_window_register(data, reg, fpreg);
+                refresh_window_register(data);
             }
             else
             {
-                // refresh_window_register(i->inter, reg, fpreg);
+                // refresh_window_register(i->inter);
             }
             if (WIFSTOPPED(wait_status))
             {
                 if (signinf.si_signo != 5)
                 {
-                    print_siginfo(main_win, &signinf, &reg);
+                    print_siginfo(data, &signinf);
                     break;
                 }
                 else if ((signinf.si_signo == 5) && (debug->have_breakpoint))
                 {
-                    print_siginfo(main_win, &signinf, &reg);
+                    print_siginfo(data, &signinf);
                     break;
                 }
             }
@@ -1241,15 +1270,16 @@ void *spawn_thread(void *idata){
 
         // refresh_window_processes(i->inter,vp );
         //refresh_window_code(i->inter);
-        refresh_window_register(data, reg, fpreg);
+        refresh_window_register(data);
 
-        vec_t *vp = vec_new(sizeof(struct process_t));
-        vec_push(vp, &process_father);
-        vec_push(vp, &process_child);
-        refresh_window_processes(data, vp);
+        vec_t *vp = vec_new(sizeof(struct process_t*));
+        vec_push(vp, procs->process_father);
+        vec_push(vp, procs->process_child);
+        procs->vp = vp ; 
+        refresh_window_processes(data);
 
 
-        get_maps(data, &process_child) ; 
+        get_maps(data) ; 
         show_libraries_2(data) ;
         refresh_window_memory(data, child_pid) ; 
         //show_libraries(process_win, &process_child, debug.verbose);
@@ -1511,8 +1541,12 @@ void refresh_window_start(struct Data *data){
     wrefresh(inter->right_window[0]);
 }
 
-void refresh_window_processes(struct Data *data, vec_t *vp){
+void refresh_window_processes(struct Data *data){
     struct Interface *inter = data->inter ;     
+    struct Debugger *debug = data->debug ;
+    struct process_info *procs = data->procs ; 
+    vec_t *vp = procs->vp ;  
+    
     WINDOW *w = (WINDOW *)inter->right_window[1];
 
     // box(inter->right_window[1], 0, 0) ;
@@ -1598,9 +1632,10 @@ void refresh_window_processes(struct Data *data, vec_t *vp){
     wrefresh(w);
 }
 
-void refresh_window_register(struct Data *data, struct user_regs_struct reg, struct user_fpregs_struct fpreg){
+void refresh_window_register(struct Data *data){
     struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[2] ; 
+    struct regs_info *regs = data->regs ; 
     wclear(inter->right_window[2]);
     // mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
     // wrefresh(inter->right_window[2]);
@@ -1617,114 +1652,114 @@ void refresh_window_register(struct Data *data, struct user_regs_struct reg, str
     waddstr(w, "\n\n  Register Visualisation \n\n ");
     char tmp2[30];
     char *tmp3 = malloc(200 * sizeof(char)) ; 
-    sprintf(tmp2, " rax      0x%llx", reg.rax);
+    sprintf(tmp2, " rax      0x%llx", regs->reg->rax);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rbx      0x%llx", reg.rbx);
+    sprintf(tmp2, " rbx      0x%llx", regs->reg->rbx);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rcx      0x%llx", reg.rcx);
+    sprintf(tmp2, " rcx      0x%llx", regs->reg->rcx);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rdx      0x%llx", reg.rdx);
+    sprintf(tmp2, " rdx      0x%llx", regs->reg->rdx);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rdi      0x%llx", reg.rdi);
+    sprintf(tmp2, " rdi      0x%llx", regs->reg->rdi);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rsi      0x%llx", reg.rsi);
+    sprintf(tmp2, " rsi      0x%llx", regs->reg->rsi);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rbp      0x%llx", reg.rbp);
+    sprintf(tmp2, " rbp      0x%llx", regs->reg->rbp);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rsp      0x%llx", reg.rsp);
+    sprintf(tmp2, " rsp      0x%llx", regs->reg->rsp);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " r8       0x%llx", reg.r8);
+    sprintf(tmp2, " r8       0x%llx", regs->reg->r8);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " r9       0x%llx", reg.r9);
+    sprintf(tmp2, " r9       0x%llx", regs->reg->r9);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " r10      0x%llx", reg.r10);
+    sprintf(tmp2, " r10      0x%llx", regs->reg->r10);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " r11      0x%llx", reg.r11);
+    sprintf(tmp2, " r11      0x%llx", regs->reg->r11);
     waddstr(w, tmp2);
     new_main_line(w);
-    sprintf(tmp2, " r12      0x%llx", reg.r12);
-    waddstr(w, tmp2);
-    new_main_line(w);
-
-    sprintf(tmp2, " r13      0x%llx", reg.r13);
+    sprintf(tmp2, " r12      0x%llx", regs->reg->r12);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " r14      0x%llx", reg.r14);
+    sprintf(tmp2, " r13      0x%llx", regs->reg->r13);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " r15      0x%llx", reg.r15);
+    sprintf(tmp2, " r14      0x%llx", regs->reg->r14);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rip      0x%llx", reg.rip);
+    sprintf(tmp2, " r15      0x%llx", regs->reg->r15);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " rdx      0x%llx", reg.rdx);
+    sprintf(tmp2, " rip      0x%llx", regs->reg->rip);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " eflags   0x%llx", reg.eflags);
+    sprintf(tmp2, " rdx      0x%llx", regs->reg->rdx);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " cs       0x%llx", reg.cs);
+    sprintf(tmp2, " eflags   0x%llx", regs->reg->eflags);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " orig_rax 0x%llx", reg.orig_rax);
+    sprintf(tmp2, " cs       0x%llx", regs->reg->cs);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " fs_b     0x%llx", reg.fs_base);
+    sprintf(tmp2, " orig_rax 0x%llx", regs->reg->orig_rax);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " gs_b     0x%llx", reg.gs_base);
+    sprintf(tmp2, " fs_b     0x%llx", regs->reg->fs_base);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " fs_a     0x%llx", reg.fs);
+    sprintf(tmp2, " gs_b     0x%llx", regs->reg->gs_base);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " gs_a     0x%llx", reg.gs);
+    sprintf(tmp2, " fs_a     0x%llx", regs->reg->fs);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " ss       0x%llx", reg.ss);
+    sprintf(tmp2, " gs_a     0x%llx", regs->reg->gs);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " ds       0x%llx", reg.ds);
+    sprintf(tmp2, " ss       0x%llx", regs->reg->ss);
     waddstr(w, tmp2);
     new_main_line(w);
 
-    sprintf(tmp2, " es       0x%llx", reg.es);
+    sprintf(tmp2, " ds       0x%llx", regs->reg->ds);
+    waddstr(w, tmp2);
+    new_main_line(w);
+
+    sprintf(tmp2, " es       0x%llx", regs->reg->es);
     waddstr(w, tmp2);
     new_main_line(w);
 
@@ -1733,7 +1768,7 @@ void refresh_window_register(struct Data *data, struct user_regs_struct reg, str
         sprintf(tmp2, " xmm%i       ", i);
         waddstr(w, tmp2) ; 
         for (int j = 0 ; j < 8 ; j++){
-            sprintf(tmp2, "  0x%016x" , fpreg.xmm_space[i*8+j]) ; 
+            sprintf(tmp2, "  0x%016x" , regs->fpreg->xmm_space[i*8+j]) ; 
             waddstr(w, tmp2) ; 
         }
         new_main_line(w);
@@ -2003,11 +2038,15 @@ int main(int argc, char **argv){
     struct Interface inter ; 
     struct Debugger debug;
     struct maps_info maps ; 
+    struct regs_info regs ; 
+    struct process_info procs ; 
 
 
     data.inter = &inter ; 
     data.debug = &debug ; 
     data.maps = &maps ; 
+    data.regs = &regs ; 
+    data.procs = &procs ; 
 
 
      
