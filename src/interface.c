@@ -129,11 +129,33 @@ char *memory_type_int[] = {
     "int32_2",
     (char *)NULL,
 };
+char *memory_type_char[] = {
+    "ASCII",
+    "ui81",
+    "ui82",
+    "ui83",
+    "ui84",
+    "ui85",
+    "ui86",
+    "ui87",
+    "ui88",     
+    "i81",
+    "i82",
+    "i83",
+    "i84",
+    "i85",
+    "i86",
+    "i87",
+    "i88",                                      
+    (char *)NULL,
+};
 int width_type_raw[] = {15, 18} ; 
 int width_type_fp[] = {12,  12, 12} ; 
 int width_type_int[] = {21, 13, 13, 21, 13, 13} ; 
-int nentity_horizontal[] = {2, 3, 6} ; 
+int width_type_char[] = {18, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5} ; 
 
+int nentity_horizontal[] = {2, 3, 6, 17} ; 
+// raw, fp, int, char
 struct process_t{
     /**
      * @brief stocke l'etat d'un processus en vue de l'afficher
@@ -2107,6 +2129,11 @@ void refresh_window_memory(struct Data *data){
     int64_t int_64 ; 
     int32_t int_32_1 ; 
     int32_t int_32_2 ; 
+    char *char_8 = malloc( 8 ) ; 
+    uint8_t *uint8 = malloc( 8 * sizeof(uint8_t)) ; 
+    int8_t *int8 = malloc( 8 * sizeof(int8_t)) ; 
+    uint16_t *uint16 = malloc( 4 * sizeof(uint16_t)) ;     
+    int16_t *int16 = malloc( 4 * sizeof(int16_t)) ;  
 
     struct All_window_size ws = compute_size_window() ; 
     int length = ws.right.dx - 3 ; 
@@ -2148,7 +2175,14 @@ void refresh_window_memory(struct Data *data){
             mvwaddstr(win, 1, current_position, memory_type_int[i]) ;
             current_position += width_type_int[i];
         }        
-    }    
+    } 
+    else if(horizontal == 3){
+        for (int i = 0 ; i < nentity ; i++){
+            mvwaddstr(win, 1, current_position, memory_type_char[i]) ;
+            current_position += width_type_char[i];
+        }        
+    }        
+
 
     wattroff(win, COLOR_PAIR(1));
     waddstr(win, "\n") ; 
@@ -2156,7 +2190,7 @@ void refresh_window_memory(struct Data *data){
     ////////
     ////////
     for (unsigned long long i = 0 ; i < length ; i++){
-        unsigned long long position = offset + i  ; 
+        unsigned long long position = offset + 8 * i  ; // 64 bits 
         if (position > mems->value->len){
             mvwaddstr(win, 1,1, " Please scroll up !!!\n " ) ; 
             break;
@@ -2212,8 +2246,35 @@ void refresh_window_memory(struct Data *data){
             mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
             current_position += width_type_int[5] ;              
         }
+        else if(horizontal == 3){
+            for (int j = 0 ; j < 8 ; j++){
+                char_8[j] = ((char*)mems->value->data)[8 * position + j] ; 
+                uint8[j] = ((uint8_t*)mems->value->data)[8 * position + j] ; 
+                int8[j] = ((int8_t*)mems->value->data)[8 * position + j] ; 
+            }
+            for (int j = 0 ; j < 4 ; j++){
+                uint16[j] = ((uint16_t*)mems->value->data)[4 * position + j] ; 
+                int16[j] = ((int16_t*)mems->value->data)[4 * position + j] ; 
+            }            
+            sprintf(data->buff128, "%s\n",char_8);
+            mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+            current_position += width_type_char[0] ;
+            for (int j = 0 ; j < 8 ; j++){
+                sprintf(data->buff128, "%u\n",uint8[j]);
+                mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+                current_position += width_type_char[j+1] ;
+            } 
+            for (int j = 0 ; j < 8 ; j++){
+                sprintf(data->buff128, "%i\n",int8[j]);
+                mvwaddstr(win, i + 2,  current_position, data->buff128) ; 
+                current_position += width_type_char[j+8+1] ;
+            }             
+
+
+        }
 
     }
+    free(char_8);
     box(win,0,0) ; 
     wrefresh(win) ; 
 }
