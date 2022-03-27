@@ -1436,10 +1436,10 @@ void *spawn_thread(void *idata){
             }
         }   
         get_backtrace(data) ;
-        //sprintf(data->buff64 , "premier : %s", data->backs->names[0]) ; 
-        //waddstr(main_win, data->buff64) ; 
-        //sprintf(data->buff64 , "second : %s", data->backs->names[1]) ; 
-        //waddstr(main_win, data->buff64) ;         
+        sprintf(data->buff64 , "premier : %s", data->backs->names[0]) ; 
+        waddstr(main_win, data->buff64) ; 
+        sprintf(data->buff64 , "second : %s", data->backs->names[1]) ; 
+        waddstr(main_win, data->buff64) ;         
        //refresh_window_tree(data, as, ui);
 
         refresh_window_register(data);
