@@ -31,12 +31,18 @@ void sigh(int sig)
 	exit(1);
 }
 
+void funcdetest2(){
+	int a = 0 ; 
+	char *b = malloc(512) ; 
+	free(b) ; 
+	kill(getpid(),SIGSEGV);
+}
 
 void funcdetest()
 {
-	//printf("salut je suis ici \n");
+	printf("salut je suis ici \n");
 	//printf(" puis encore ici ?\n");
-	kill(getpid(),SIGSEGV);
+	funcdetest2() ; 
 	//printf("salut je suis ici \n");
 	//printf(" puis encore ici ?\n");	
 }
