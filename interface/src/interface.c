@@ -1109,7 +1109,7 @@ void *spawn_thread(void *input)
 
         for (int i = 0; i < count_func; i++)
         {
-            sprintf(buff, "    Function : %s %s\n", func[i].name,func[i].path);
+            sprintf(buff, "    Function : %s %d %s\n", func[i].name,func[i].line,func[i].path);
             waddstr(main_win, buff);
         }
         wrefresh(main_win);
@@ -1251,7 +1251,7 @@ void *spawn_thread(void *input)
         }
         // backtrace point
 
-        /*
+        
         unw_word_t ip, start_ip = 0, sp, off;
         int n = 0, ret;
         unw_cursor_t c;
@@ -1285,7 +1285,7 @@ void *spawn_thread(void *input)
             waddstr(main_win, "\n");
 
         } while (ret > 0);
-        */
+        
         refresh_window_tree(i->inter, as, ui);
 
         // refresh_window_processes(i->inter,vp );
