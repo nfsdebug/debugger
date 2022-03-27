@@ -1240,7 +1240,7 @@ void *spawn_thread(void *idata){
         waddstr(main_win, buff);
         wrefresh(main_win);
         //
-        //get_dbg(path_for_dbg);
+        get_dbg(path_for_dbg);
         free(path_for_dbg);
         if (count_func == 0)
             get_elf(debug->args[0]);
@@ -1258,7 +1258,7 @@ void *spawn_thread(void *idata){
 
         for (int ii = 0; ii < count_func; ii++)
         {
-            sprintf(buff, "    Function : %s\n", func[ii].name);
+            sprintf(buff, "    Function : %s %s\n", func[ii].name, func[ii].path);
             waddstr(main_win, buff);
         }
 
