@@ -365,7 +365,7 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         strcpy(func[count_func].name, die_name);
         func[count_func].lowpc = lowpc;
         func[count_func].highpc = highpc;
-        func[count_func].line = countfiles;
+        func[count_func].line = line;
 
         func[count_func].path = malloc(sizeof(char) * strlen(namesrc));
         strcpy(func[count_func].path, namesrc);

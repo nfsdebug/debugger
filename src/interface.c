@@ -978,7 +978,7 @@ void get_codes(struct Data *data){
     for (uint64_t i = 0 ; i < count_func ; i++){
         codes->paths[i] = malloc( 100 ) ; 
         strcpy(codes->paths[i] ,  func[i].path) ; 
-        codes->line[i] = i +1; 
+        codes->line[i] = func[i].line; 
     }
 }
 
@@ -1284,7 +1284,7 @@ void *spawn_thread(void *idata){
 
         for (int ii = 0; ii < count_func; ii++)
         {
-            sprintf(buff, "    Function : %s %s at line %d\n", func[ii].name, func[ii].path);
+            sprintf(buff, "    Function : %s %s at line %d\n", func[ii].name, func[ii].path, func[ii].line);
             waddstr(main_win, buff);
         }
 
@@ -1432,10 +1432,6 @@ void *spawn_thread(void *idata){
         */
        refresh_window_tree(data, as, ui);
 
-
-
-        // refresh_window_processes(i->inter,vp );
-        //refresh_window_code(i->inter);
         refresh_window_register(data);
 
         
@@ -2175,7 +2171,7 @@ void refresh_window_code(struct Data *data){
     // we want to prijnt a specific part of the code where the bug occurs, or something else
     // protocole : we get a file, and a line
     // example : want to print line 54 in main.c --> we print from line 54-height/2 to 54+height/2
-    uint64_t line_to_print = codes->line[selected_code]*10 + 1;
+    uint64_t line_to_print = codes->line[selected_code];
     int nrow, ncol;
     getmaxyx(w, nrow, ncol); // get the specific window size
     nrow--;
