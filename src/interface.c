@@ -275,7 +275,9 @@ struct Interface{
     int scroll_position_memory ;  
     int horizontal_position_memory ;  
     int scroll_position_register ;  
-    int horizontal_position_register ;         
+    int horizontal_position_register ; 
+    int horizontal_position_code ;     
+
 };
 
 
@@ -1490,6 +1492,12 @@ void horizontal_window(struct Data *data, int id, int direction ){
         inter->horizontal_position_register += direction ; 
         refresh_window_register(data) ; 
     }    
+    if (id == 3){
+        // it is the memory panel : we want to scroll it !!
+        wrefresh(main_win) ; 
+        inter->horizontal_position_code += direction ; 
+        refresh_window_code(data) ; 
+    }       
 }
 
 void parse(struct Data *data, WINDOW *win, vec_t *input){
@@ -2156,13 +2164,17 @@ void refresh_window_code(struct Data *data){
     struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[3] ; 
     struct code_info *codes = data->codes ; 
+    int selected_code = inter->horizontal_position_code ; 
+    if (selected_code < 0){
+        selected_code = 0 ; 
+    }
 
     wclear(w);
 
     // we want to prijnt a specific part of the code where the bug occurs, or something else
     // protocole : we get a file, and a line
     // example : want to print line 54 in main.c --> we print from line 54-height/2 to 54+height/2
-    uint64_t line_to_print = codes->line[0] + 1;
+    uint64_t line_to_print = codes->line[selected_code] + 1;
     usleep(1000000);
     int nrow, ncol;
     getmaxyx(w, nrow, ncol); // get the specific window size
@@ -2191,7 +2203,7 @@ void refresh_window_code(struct Data *data){
     waddstr(w,codes->paths[0] );
     refresh() ; 
     usleep(1000000);
-    fp = fopen(codes->paths[0], "r");
+    fp = fopen(codes->paths[selected_code], "r");
     if (fp == NULL)
     {
         mvwaddstr(w, 1, 4, "cannot open the selected file...");
@@ -2501,7 +2513,8 @@ int main(int argc, char **argv){
     inter.scroll_position_memory  = 0 ;
     inter.horizontal_position_memory = 0 ; 
     inter.scroll_position_register  = 0 ;
-    inter.horizontal_position_register = 0 ;     
+    inter.horizontal_position_register = 0 ;   
+    inter.horizontal_position_code = 0 ;         
     struct Debugger debug;
     struct maps_info maps ; 
     struct regs_info regs ; 
