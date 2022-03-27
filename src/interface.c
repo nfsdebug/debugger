@@ -273,7 +273,9 @@ struct Interface{
 
     // scrolling position ; 
     int scroll_position_memory ;  
-    int horizontal_position_memory ;      
+    int horizontal_position_memory ;  
+    int scroll_position_register ;  
+    int horizontal_position_register ;         
 };
 
 
@@ -1434,9 +1436,16 @@ void scroll_window(struct Data *data, int id, int direction ){
     if (id == 5){
         // it is the memory panel : we want to scroll it !!
         wrefresh(main_win) ; 
-        inter->scroll_position_memory += direction ; 
+        inter->scroll_position_memory += direction*20 ; 
         refresh_window_memory(data) ; 
     }
+    if (id == 2){
+        // it is the memory panel : we want to scroll it !!
+        wrefresh(main_win) ; 
+        inter->scroll_position_register += direction/8 ; 
+        refresh_window_register(data) ; 
+    }
+
 }
 
 void horizontal_window(struct Data *data, int id, int direction ){
@@ -1449,6 +1458,12 @@ void horizontal_window(struct Data *data, int id, int direction ){
         inter->horizontal_position_memory += direction ; 
         refresh_window_memory(data) ; 
     }
+    if (id == 2){
+        // it is the memory panel : we want to scroll it !!
+        wrefresh(main_win) ; 
+        inter->horizontal_position_register += direction ; 
+        refresh_window_register(data) ; 
+    }    
 }
 
 void parse(struct Data *data, WINDOW *win, vec_t *input){
@@ -1630,16 +1645,16 @@ int keyboard_input(struct Data *data, WINDOW *win, vec_t *input){
             // we need to interact with the rght window
             int direction ; 
             if (key == KEY_PPAGE){
-                direction = -8*20 ; 
+                direction = -8 ; 
             }
             else if (key == KEY_NPAGE){
-                direction = 8*20 ; 
+                direction = 8 ; 
             }
             else if (key == KEY_HOME){
-                direction = -8 * 1000 ; 
+                direction = -8 * 10 ; 
             }
             else if (key == KEY_END){
-                direction = 8 * 1000 ; 
+                direction = 8 * 10 ; 
             }                        
             //int id = 0 ;
             int id = item_index(current_item(data->inter->my_menus)) ;  
@@ -1791,147 +1806,266 @@ void refresh_window_register(struct Data *data){
     WINDOW *w = (WINDOW *)inter->right_window[2] ; 
     struct regs_info *regs = data->regs ; 
     wclear(inter->right_window[2]);
-    // mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
-    // wrefresh(inter->right_window[2]);
+    //update_panels();
+    //waddstr(w, "\n\n  Register Visualisation \n\n ");
+    sprintf(data->buff64, " rax      0x%llx", regs->reg->rax);
+    mvwaddstr(w, 2, 1, data->buff64);
 
-    // box(inter->right_window[2], 0, 0) ;
-    update_panels();
-    int c;
-    // mvaddstr(1, 1, "show window memory");
-    // refresh();
-    // mvwaddstr(inter->right_window[2], 2, 1, "memory panel");
-    // box(inter->right_window[2], 0, 0);
-    // wrefresh(inter->right_window[2]);
+    sprintf(data->buff64, " rbx      0x%llx", regs->reg->rbx);
+    mvwaddstr(w, 2, 30, data->buff64);
 
-    waddstr(w, "\n\n  Register Visualisation \n\n ");
-    char tmp2[30];
-    char *tmp3 = malloc(200 * sizeof(char)) ; 
-    sprintf(tmp2, " rax      0x%llx", regs->reg->rax);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " rcx      0x%llx", regs->reg->rcx);
+    mvwaddstr(w, 3, 1, data->buff64);
 
-    sprintf(tmp2, " rbx      0x%llx", regs->reg->rbx);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " rdx      0x%llx", regs->reg->rdx);
+    mvwaddstr(w, 3, 30, data->buff64);
 
-    sprintf(tmp2, " rcx      0x%llx", regs->reg->rcx);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " rdi      0x%llx", regs->reg->rdi);
+    mvwaddstr(w, 4, 1, data->buff64);
 
-    sprintf(tmp2, " rdx      0x%llx", regs->reg->rdx);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " rsi      0x%llx", regs->reg->rsi);
+    mvwaddstr(w, 4, 30, data->buff64);
 
-    sprintf(tmp2, " rdi      0x%llx", regs->reg->rdi);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " rbp      0x%llx", regs->reg->rbp);
+    mvwaddstr(w, 5, 1, data->buff64);
 
-    sprintf(tmp2, " rsi      0x%llx", regs->reg->rsi);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " rsp      0x%llx", regs->reg->rsp);
+    mvwaddstr(w, 5, 30, data->buff64);
 
-    sprintf(tmp2, " rbp      0x%llx", regs->reg->rbp);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " r8       0x%llx", regs->reg->r8);
+    mvwaddstr(w, 6, 1, data->buff64);
 
-    sprintf(tmp2, " rsp      0x%llx", regs->reg->rsp);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " r9       0x%llx", regs->reg->r9);
+    mvwaddstr(w, 6, 30, data->buff64);
 
-    sprintf(tmp2, " r8       0x%llx", regs->reg->r8);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " r10      0x%llx", regs->reg->r10);
+    mvwaddstr(w, 7, 1, data->buff64);
 
-    sprintf(tmp2, " r9       0x%llx", regs->reg->r9);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " r11      0x%llx", regs->reg->r11);
+    mvwaddstr(w, 7, 30, data->buff64);
+    sprintf(data->buff64, " r12      0x%llx", regs->reg->r12);
+    mvwaddstr(w, 8, 1, data->buff64);
 
-    sprintf(tmp2, " r10      0x%llx", regs->reg->r10);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " r13      0x%llx", regs->reg->r13);
+    mvwaddstr(w, 8, 30, data->buff64);
 
-    sprintf(tmp2, " r11      0x%llx", regs->reg->r11);
-    waddstr(w, tmp2);
-    new_main_line(w);
-    sprintf(tmp2, " r12      0x%llx", regs->reg->r12);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " r14      0x%llx", regs->reg->r14);
+    mvwaddstr(w, 9, 1, data->buff64);
 
-    sprintf(tmp2, " r13      0x%llx", regs->reg->r13);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " r15      0x%llx", regs->reg->r15);
+    mvwaddstr(w, 9, 30, data->buff64);
 
-    sprintf(tmp2, " r14      0x%llx", regs->reg->r14);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " rip      0x%llx", regs->reg->rip);
+    mvwaddstr(w, 10, 1, data->buff64);
 
-    sprintf(tmp2, " r15      0x%llx", regs->reg->r15);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " rdx      0x%llx", regs->reg->rdx);
+    mvwaddstr(w, 10, 30, data->buff64);
 
-    sprintf(tmp2, " rip      0x%llx", regs->reg->rip);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " eflags   0x%llx", regs->reg->eflags);
+    mvwaddstr(w, 11, 1, data->buff64);
 
-    sprintf(tmp2, " rdx      0x%llx", regs->reg->rdx);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " cs       0x%llx", regs->reg->cs);
+    mvwaddstr(w, 11, 30, data->buff64);
 
-    sprintf(tmp2, " eflags   0x%llx", regs->reg->eflags);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " orig_rax 0x%llx", regs->reg->orig_rax);
+    mvwaddstr(w, 12, 1, data->buff64);
 
-    sprintf(tmp2, " cs       0x%llx", regs->reg->cs);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " fs_b     0x%llx", regs->reg->fs_base);
+    mvwaddstr(w, 12, 30, data->buff64);
 
-    sprintf(tmp2, " orig_rax 0x%llx", regs->reg->orig_rax);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " gs_b     0x%llx", regs->reg->gs_base);
+    mvwaddstr(w, 13, 1, data->buff64);
 
-    sprintf(tmp2, " fs_b     0x%llx", regs->reg->fs_base);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " fs_a     0x%llx", regs->reg->fs);
+    mvwaddstr(w, 13, 30, data->buff64);
 
-    sprintf(tmp2, " gs_b     0x%llx", regs->reg->gs_base);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " gs_a     0x%llx", regs->reg->gs);
+    mvwaddstr(w, 14, 1, data->buff64);
 
-    sprintf(tmp2, " fs_a     0x%llx", regs->reg->fs);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " ss       0x%llx", regs->reg->ss);
+    mvwaddstr(w, 14, 30, data->buff64);
 
-    sprintf(tmp2, " gs_a     0x%llx", regs->reg->gs);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " ds       0x%llx", regs->reg->ds);
+    mvwaddstr(w, 15, 1, data->buff64);
 
-    sprintf(tmp2, " ss       0x%llx", regs->reg->ss);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    sprintf(data->buff64, " es       0x%llx", regs->reg->es);
+    mvwaddstr(w, 15, 30, data->buff64);
 
-    sprintf(tmp2, " ds       0x%llx", regs->reg->ds);
-    waddstr(w, tmp2);
-    new_main_line(w);
-
-    sprintf(tmp2, " es       0x%llx", regs->reg->es);
-    waddstr(w, tmp2);
-    new_main_line(w);
+    // we want to print the right amount of xmms to fill the screen
+    //    but without enfore the automatic window scrolling
+    double fp_64 ; 
+    float fp_32_1 ; 
+    float fp_32_2 ; 
+    uint64_t uint_64 ; 
+    uint32_t uint_32_1 ; 
+    uint32_t uint_32_2 ; 
+    int64_t int_64 ; 
+    int32_t int_32_1 ; 
+    int32_t int_32_2 ; 
+    char *char_8 = malloc( 8 ) ; 
+    uint8_t *uint8 = malloc( 8 * sizeof(uint8_t)) ; 
+    int8_t *int8 = malloc( 8 * sizeof(int8_t)) ; 
+    uint16_t *uint16 = malloc( 4 * sizeof(uint16_t)) ;     
+    int16_t *int16 = malloc( 4 * sizeof(int16_t)) ;      
+    
+    int ncol, nrow;
+    getmaxyx(w, nrow, ncol);  
+    int dx_of_xmm = nrow - 20 ; 
+    int debut = data->inter->scroll_position_register ;  
+    int horizontal = inter->horizontal_position_register ;     
+    if (debut > 32){
+        debut = 0 ; 
+    }
+    if (debut < 0){
+        debut = 0 ; 
+    }
+    if (debut + dx_of_xmm > 32){
+        dx_of_xmm = 32 - debut ; 
+    }
+    if ((horizontal < 0) | (horizontal > 4)){
+        horizontal = 0 ; 
+    }      
+    char *symbol[1] = {" "} ;
+    wattron(w, COLOR_PAIR(1)); 
+    for (int i = 0; i < ncol - 2; i++){
+        mvwaddstr(w, 17, i + 1, symbol[0]);
+    }
+    int nentity = nentity_horizontal[horizontal]  ; 
+    int current_position = 1 ; 
+    if(horizontal == 0){
+        mvwaddstr(w, 17, current_position, memory_type_raw[0]) ;
+        current_position += width_type_raw[0];
+        mvwaddstr(w, 17, current_position, memory_type_raw[1]) ;
+        current_position += width_type_raw[1];  
+    }
+    else if(horizontal == 1){
+        for (int i = 0 ; i < nentity ; i++){
+            mvwaddstr(w, 17, current_position, memory_type_fp[i]) ;
+            current_position += width_type_fp[i];
+        }        
+    }    
+    else if(horizontal == 2){
+        for (int i = 0 ; i < nentity ; i++){
+            mvwaddstr(w, 17, current_position, memory_type_int[i]) ;
+            current_position += width_type_int[i];
+        }        
+    } 
+    else if(horizontal == 3){
+        for (int i = 0 ; i < nentity ; i++){
+            mvwaddstr(w, 17, current_position, memory_type_char[i]) ;
+            current_position += width_type_char[i];
+        }        
+    }        
+    else if(horizontal == 4){
+        for (int i = 0 ; i < nentity ; i++){
+            mvwaddstr(w, 17, current_position, memory_type_int16[i]) ;
+            current_position += width_type_int16[i];
+        }        
+    }   
+    wattroff(w, COLOR_PAIR(1)); 
 
     // xmm register
-    for (int i = 0 ; i < 8 ; i++){
-        sprintf(tmp2, " xmm%i       ", i);
-        waddstr(w, tmp2) ; 
-        for (int j = 0 ; j < 8 ; j++){
-            sprintf(tmp2, "  0x%016x" , regs->fpreg->xmm_space[i*8+j]) ; 
-            waddstr(w, tmp2) ; 
+    waddstr(w, " ") ; 
+    //for (int i = debut ; i < debut + dx_of_xmm ; i++){
+    //    sprintf(data->buff64, "xmm%i", i);
+    //    mvwaddstr(w, 18 + i - debut, 1, data->buff64) ; 
+    //    sprintf(data->buff64, "%016x" , regs->fpreg->xmm_space[i]) ; 
+    //    mvwaddstr(w, 18 + i - debut , 10, data->buff64) ; 
+    //}
+
+    for (unsigned long long i = debut ; i < debut + dx_of_xmm ; i++){
+        current_position = 1 ;  
+        if (horizontal == 0){
+            sprintf(data->buff64, "xmm%i", i);
+            mvwaddstr(w, 18 + i - debut, 1, data->buff64) ; 
+            sprintf(data->buff64, "%016x" , regs->fpreg->xmm_space[i]) ; 
+            mvwaddstr(w, 18 + i - debut , 10, data->buff64) ;
         }
-        new_main_line(w);
-    }
+        else if (horizontal == 1){
+            // fp values
+            fp_64 =   (double)regs->fpreg->xmm_space[i] ; 
+            fp_32_1 = (float)regs->fpreg->xmm_space[2*i] ; 
+            fp_32_2 = (float)regs->fpreg->xmm_space[2*i + 1] ;  
+            sprintf(data->buff128, "%.04e\n",fp_64);
+            mvwaddstr(w, 18 + i - debut, current_position, data->buff128) ; 
+            current_position += width_type_fp[0] ; 
+            sprintf(data->buff128, "%.04e\n",fp_32_1);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+            current_position += width_type_fp[1] ; 
+            sprintf(data->buff128, "%.04e\n",fp_32_2);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+        }
+        else if(horizontal == 2){
+            // intger values
+            uint_64 = (uint64_t)regs->fpreg->xmm_space[i] ; 
+            uint_32_1 = (uint32_t*)regs->fpreg->xmm_space[2 * i] ; 
+            uint_32_2 = (uint32_t*)regs->fpreg->xmm_space[2 * i + 4] ;  
+            int_64 = (int64_t)regs->fpreg->xmm_space[i] ; 
+            int_32_1 = (int32_t*)regs->fpreg->xmm_space[2 * i] ; 
+            int_32_2 = (int32_t*)regs->fpreg->xmm_space[2 * i + 4] ;             
+            sprintf(data->buff128, "%lu\n",uint_64);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+            current_position += width_type_int[0] ; 
+            sprintf(data->buff128, "%u\n",uint_32_1);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+            current_position += width_type_int[1] ; 
+            sprintf(data->buff128, "%u\n",uint_32_2);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+            current_position += width_type_int[2] ;         
+            sprintf(data->buff128, "%ld\n",int_64);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+            current_position += width_type_int[3] ; 
+            sprintf(data->buff128, "%d\n",int_32_1);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+            current_position += width_type_int[4] ; 
+            sprintf(data->buff128, "%d\n",int_32_2);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+            current_position += width_type_int[5] ;              
+        }
+        else if(horizontal == 3){
+            for (int j = 0 ; j < 8 ; j++){
+                char_8[j] = (char*)regs->fpreg->xmm_space[8 * i + j] ; 
+                uint8[j] = (uint8_t*)regs->fpreg->xmm_space[8 * i + j] ; 
+                int8[j] = (int8_t*)regs->fpreg->xmm_space[8 * i + j] ; 
+            }          
+            sprintf(data->buff128, "%s\n",char_8);
+            mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+            current_position += width_type_char[0] ;
+            for (int j = 0 ; j < 8 ; j++){
+                sprintf(data->buff128, "%u\n",uint8[j]);
+                mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+                current_position += width_type_char[j+1] ;
+            } 
+            for (int j = 0 ; j < 8 ; j++){
+                sprintf(data->buff128, "%i\n",int8[j]);
+                mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+                current_position += width_type_char[j+8+1] ;
+            }             
+        }
+        else if(horizontal == 4){
+            for (int j = 0 ; j < 4 ; j++){
+                uint16[j] = (uint16_t*)regs->fpreg->xmm_space[4 * i + j] ; 
+                int16[j] = (int16_t*)regs->fpreg->xmm_space[4 * i + j] ; 
+            }            
+            for (int j = 0 ; j < 4 ; j++){
+                sprintf(data->buff128, "%u\n",uint16[j]);
+                mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+                current_position += width_type_int16[j+1] ;
+            }       
+            for (int j = 0 ; j < 4 ; j++){
+                sprintf(data->buff128, "%u\n",int16[j]);
+                mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
+                current_position += width_type_int16[j+4+1] ;
+            }                   
+        }        
 
+    }    
 
-    new_main_line(w);
-
-    free(tmp3);
+    free(char_8);
+    free(uint8) ; 
+    free(int8) ; 
+    free(uint16) ; 
+    free(int16) ; 
     box(w, 0, 0);
     wrefresh(w);
 }
@@ -2307,6 +2441,10 @@ void refresh_window_memory(struct Data *data){
 
     }
     free(char_8);
+    free(uint8) ; 
+    free(int8) ; 
+    free(uint16) ; 
+    free(int16) ; 
     box(win,0,0) ; 
     wrefresh(win) ; 
 }
@@ -2330,6 +2468,8 @@ int main(int argc, char **argv){
     struct Interface inter ;
     inter.scroll_position_memory  = 0 ;
     inter.horizontal_position_memory = 0 ; 
+    inter.scroll_position_register  = 0 ;
+    inter.horizontal_position_register = 0 ;     
     struct Debugger debug;
     struct maps_info maps ; 
     struct regs_info regs ; 
