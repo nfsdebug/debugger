@@ -34,9 +34,127 @@ static int dienumber = 0;
 
 struct variable_s *var;
 int count_var = 0;
-        /*Dwarf_Unsigned *lineno_ar;
-        Dwarf_Addr *lineaddr_ar ;
-        Dwarf_Signed nlines;*/
+char *namesrc ;
+
+long int set_register(char *choice, pid_t child_pid, long long content)
+{
+    struct user_regs_struct reg;
+    ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
+
+    if (strcasestr(choice, "rax"))
+    {
+        reg.rax = content;
+    }
+    else if (strcasestr(choice, "rbx"))
+    {
+        reg.rbx = content;
+    }
+    else if (strcasestr(choice, "rcx"))
+    {
+        reg.rcx = content;
+    }
+    else if (strcasestr(choice, "rdx"))
+    {
+        reg.rdx = content;
+    }
+    else if (strcasestr(choice, "rdi"))
+    {
+        reg.rdi = content;
+    }
+    else if (strcasestr(choice, "rsi"))
+    {
+        reg.rsi = content;
+    }
+    else if (strcasestr(choice, "rbp"))
+    {
+        reg.rbp = content;
+    }
+    else if (strcasestr(choice, "rsp,"))
+    {
+        reg.rsp = content;
+    }
+    else if (strcasestr(choice, "r8"))
+    {
+        reg.r8 = content;
+    }
+    else if (strcasestr(choice, "r9"))
+    {
+        reg.r9 = content;
+    }
+    else if (strcasestr(choice, "r10"))
+    {
+        reg.r10 = content;
+    }
+    else if (strcasestr(choice, "r11"))
+    {
+        reg.r11 = content;
+    }
+    else if (strcasestr(choice, "r12"))
+    {
+        reg.r12 = content;
+    }
+    else if (strcasestr(choice, "r13"))
+    {
+        reg.r13 = content;
+    }
+    else if (strcasestr(choice, "r14"))
+    {
+        reg.r14 = content;
+    }
+    else if (strcasestr(choice, "r15"))
+    {
+        reg.r15 = content;
+    }
+    else if (strcasestr(choice, "rip"))
+    {
+        reg.rip = content;
+    }
+    else if (strcasestr(choice, "rdx"))
+    {
+        reg.rdx = content;
+    }
+    else if (strcasestr(choice, "eflags"))
+    {
+        reg.eflags = content;
+    }
+    else if (strcasestr(choice, "cs"))
+    {
+        reg.cs = content;
+    }
+    else if (strcasestr(choice, "orig_rax"))
+    {
+        reg.orig_rax = content;
+    }
+    else if (strcasestr(choice, "fs_base"))
+    {
+        reg.fs_base = content;
+    }
+    else if (strcasestr(choice, "gs_base"))
+    {
+        reg.gs_base = content;
+    }
+    else if (strcasestr(choice, "fs"))
+    {
+        reg.fs = content;
+    }
+    else if (strcasestr(choice, "gs"))
+    {
+        reg.gs = content;
+    }
+    else if (strcasestr(choice, "ss"))
+    {
+        reg.ss = content;
+    }
+    else if (strcasestr(choice, "ds"))
+    {
+        reg.ds = content;
+    }
+    else if (strcasestr(choice, "es"))
+    {
+        reg.es = content;
+    }
+    ptrace(PTRACE_SETREGS, child_pid, NULL, &reg);
+}
 void get_dbg(char *name)
 {
     func = malloc(sizeof(struct functions_s) * MAX_FUNCTIONS);
@@ -103,7 +221,7 @@ void get_dbg(char *name)
         }
         if (res == DW_DLV_NO_ENTRY)
         {
-            printf("DONE\n");
+            // printf("DONE\n");
             return;
         }
 
@@ -190,10 +308,13 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     Dwarf_Attribute *attrs;
     Dwarf_Addr lowpc, highpc;
     Dwarf_Signed attrcount, i;
-        Dwarf_Line *lines;
+    Dwarf_Line *lines;
 
-        Dwarf_Addr lineaddr;
-        Dwarf_Unsigned lineno;
+    Dwarf_Addr lineaddr;
+    Dwarf_Unsigned lineno;
+    char **filesnames;
+    Dwarf_Unsigned countname;
+    Dwarf_Unsigned countfiles;
     int rc = dwarf_diename(die, &die_name, &err);
 
     if (rc == DW_DLV_ERROR)
@@ -201,34 +322,10 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     else if (rc == DW_DLV_NO_ENTRY)
         return;
     // Get all lines
-           int n;
-       /*Dwarf_Line *lines;
-        Dwarf_Signed nlines;
-        Dwarf_Addr lineaddr;
-        Dwarf_Unsigned lineno;*/
-
-
-       
-  //  printf("ça rentre ?\n");
-
-        /*  if( dwarf_srclines(die, &lines, &nlines, errp) == DW_DLV_OK)
-            {
-                        lineno_ar = calloc(sizeof(Dwarf_Unsigned),MAX_FUNCTIONS);
-        lineaddr_ar = calloc(sizeof(Dwarf_Addr),MAX_FUNCTIONS);
-           for (n = 0; n < nlines; n++) {
-               if (dwarf_linesrc(lines[n], &name, &error))
-                printf("Error in dwarf_whatform , level %d \n",level);
-               if (dwarf_lineno(lines[n], &lineno, &error))
-                printf("Error in dwarf_whatform , level %d \n",level);
-                printf("ok? %d\n",lineno);
-                lineno_ar[n] = lineno;
-               if (dwarf_lineaddr(lines[n], &lineaddr, &error))
-                printf("Error in dwarf_whatform , level %d \n",level);
-                lineaddr_ar[n] = lineaddr;
-                         // printf(" Ligne : %s %d %llx %d\n",name,lineno,lineaddr_ar[n],nlines);
-               }
-            } 
-        printf("Nbr lignes : %d\n",nlines);*/
+    int n;
+    if (dwarf_srclines(die, &lines, &countfiles, errp) == DW_DLV_OK )
+   { dwarf_linesrc(lines[0], &namesrc, 0);
+    }
     if (dwarf_tag(die, &tag, &err) != DW_DLV_OK)
         printf("Error in dwarf_tag\n");
 
@@ -241,13 +338,14 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         printf("Error in dwarf_attlist\n");
 
     Dwarf_Unsigned line = 0;
-    Dwarf_Addr adresse ;
+    Dwarf_Addr adresse;
     for (i = 0; i < attrcount; ++i)
     {
 
         Dwarf_Half attrcode;
-        if (dwarf_whatattr(attrs[i], &attrcode, &err) != DW_DLV_OK)
-            printf("Error in dwarf_whatattr\n");
+
+        dwarf_whatattr(attrs[i], &attrcode, &err);
+        // printf("Error in dwarf_whatattr\n");
         if (attrcode == DW_AT_low_pc)
             dwarf_formaddr(attrs[i], &lowpc, 0);
         else if (attrcode == DW_AT_high_pc)
@@ -255,18 +353,10 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         else if (attrcode == DW_AT_decl_line)
         {
             dwarf_formudata(attrs[i], &line, 0);
-            /*  for (n = 0; n < 30; n++) {
-             //printf("Test ? %u %u\n",line,lineaddr_ar[n]);
-                 if ((line+1) == lineno_ar[n])
-                    adresse = lineaddr_ar[n];
-              }*/
-       
+
         }
+
     }
-
-   // printf("Name %s ligne: %u adresse %llx\n", die_name, line,adresse);
-
-    // printf("%d\n", count_func);
 
     if (tag == DW_TAG_subprogram)
     {
@@ -275,10 +365,11 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
         strcpy(func[count_func].name, die_name);
         func[count_func].lowpc = lowpc;
         func[count_func].highpc = highpc;
-        func[count_func].line = line;
+        func[count_func].line = countfiles;
 
+        func[count_func].path = malloc(sizeof(char) * strlen(namesrc));
+        strcpy(func[count_func].path, namesrc);
         count_func++;
-       // printf("Name %s Low %llx, %llx High %llx\n", die_name, adresse,lowpc, highpc);
     }
     if (tag == DW_TAG_variable)
     {
