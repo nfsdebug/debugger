@@ -2164,6 +2164,7 @@ void refresh_window_code(struct Data *data){
     struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[3] ; 
     struct code_info *codes = data->codes ; 
+
     int selected_code = inter->horizontal_position_code ; 
     if (selected_code < 0){
         selected_code = 0 ; 
@@ -2174,8 +2175,7 @@ void refresh_window_code(struct Data *data){
     // we want to prijnt a specific part of the code where the bug occurs, or something else
     // protocole : we get a file, and a line
     // example : want to print line 54 in main.c --> we print from line 54-height/2 to 54+height/2
-    uint64_t line_to_print = codes->line[selected_code] + 1;
-    usleep(1000000);
+    uint64_t line_to_print = codes->line[selected_code]*10 + 1;
     int nrow, ncol;
     getmaxyx(w, nrow, ncol); // get the specific window size
     nrow--;
