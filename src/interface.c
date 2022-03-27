@@ -320,8 +320,16 @@ struct process_info{
 
 struct code_info{
     char **paths ; 
+    char **name ; 
     uint64_t *line ; 
     uint64_t count_func ; 
+};
+
+struct backtrace_info{
+    unw_addr_space_t as ; 
+    struct UPT_info *ui ; 
+    char **names ; // list of functions from deepest 
+
 };
 
 struct Debugger{
@@ -369,6 +377,7 @@ struct Data{
     struct process_info *procs ; 
     struct memory_info *mems ;
     struct code_info *codes ; 
+    struct backtrace_info *backs ; 
     
     char *buff1 ; 
     char *buff2 ; 
@@ -974,12 +983,45 @@ void get_codes(struct Data *data){
     struct code_info *codes = data->codes ; 
     codes->count_func = count_func ; 
     codes->paths = malloc( count_func * sizeof(void*))  ; 
+    codes->name = malloc( count_func * sizeof(void*))  ; 
     codes->line = malloc( sizeof(uint64_t) * count_func) ; 
     for (uint64_t i = 0 ; i < count_func ; i++){
-        codes->paths[i] = malloc( 100 ) ; 
+        codes->paths[i] = malloc( strlen(func[i].path) ) ; 
+        codes->name[i] = malloc( strlen(func[i].name) ) ; 
         strcpy(codes->paths[i] ,  func[i].path) ; 
+        strcpy(codes->name[i] ,  func[i].name) ;
         codes->line[i] = func[i].line; 
     }
+}
+
+void get_backtrace(struct Data *data){
+    struct backtrace_info *backs =  data->backs ; 
+    backs->as = as ; 
+    backs->ui = ui ; 
+    unw_word_t ip, start_ip = 0, sp, off;
+    int n = 0, ret;
+    unw_cursor_t c;
+    char buf[128];
+    char buf2[150];
+    size_t len;
+    ret = unw_init_remote(&c, as, ui);
+    char *buffspace[] = {" ", (char *)NULL};
+    uint64_t size_names = 2 ; 
+    uint64_t pass = 0 ; 
+    backs->names = (char *)malloc( size_names * sizeof(char*)) ; 
+    do{
+        if (n == 0){
+            start_ip = ip;
+        }
+        unw_get_proc_name(&c, data->buff64, 64, &off);
+        sprintf(data->buff64_2, "%s", data->buff64);
+        // copy to the files char**
+        backs->names[pass] = malloc( strlen(data->buff64_2) ) ; 
+        strcpy(backs->names[pass] , data->buff64_2) ; 
+        backs->names = realloc(backs->names , ++size_names * sizeof(char *)) ; 
+        ret = unw_step(&c);
+        pass++;
+        } while (ret > 0);
 }
 
 
@@ -1393,44 +1435,12 @@ void *spawn_thread(void *idata){
                 }
             }
         }   
-        // backtrace point
-
-        /*
-        unw_word_t ip, start_ip = 0, sp, off;
-        int n = 0, ret;
-        unw_cursor_t c;
-        char buf[128];
-        char buf2[150];
-        size_t len;
-        ret = unw_init_remote(&c, as, ui);
-        do
-        {
-            if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
-                sprintf(buf, " unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
-            waddstr(main_win, buf);
-            if (n == 0)
-                start_ip = ip;
-
-            buf[0] = '\0';
-            unw_get_proc_name(&c, buf, sizeof(buf), &off);
-
-            sprintf(buf2, "  Proc name : %s\n", buf);
-            waddstr(main_win, buf2);
-            if (off)
-            {
-                len = strlen(buf);
-                if (len >= sizeof(buf) - 32)
-                    len = sizeof(buf) - 32;
-                sprintf(buf + len, " +0x%lx", (unsigned long)off);
-            }
-            sprintf(buf2, "    - %-32s \n", buf);
-            waddstr(main_win, buf2);
-            ret = unw_step(&c);
-            waddstr(main_win, "\n");
-
-        } while (ret > 0);
-        */
-       refresh_window_tree(data, as, ui);
+        get_backtrace(data) ;
+        //sprintf(data->buff64 , "premier : %s", data->backs->names[0]) ; 
+        //waddstr(main_win, data->buff64) ; 
+        //sprintf(data->buff64 , "second : %s", data->backs->names[1]) ; 
+        //waddstr(main_win, data->buff64) ;         
+       //refresh_window_tree(data, as, ui);
 
         refresh_window_register(data);
 
@@ -2102,8 +2112,8 @@ void refresh_window_register(struct Data *data){
 
 void refresh_window_tree(struct Data *data, unw_addr_space_t as, struct UPT_info *ui ){
     struct Interface *inter = data->inter ;     
-    WINDOW *w = (WINDOW *)inter->right_window[3] ; 
-    wclear(w);
+    WINDOW *w = (WINDOW *)inter->main_window[0] ; 
+    //wclear(w);
     unw_word_t ip, start_ip = 0, sp, off;
     int n = 0, ret;
     unw_cursor_t c;
@@ -2111,48 +2121,19 @@ void refresh_window_tree(struct Data *data, unw_addr_space_t as, struct UPT_info
     char buf2[150];
     size_t len;
     ret = unw_init_remote(&c, as, ui);
-
-    int index = 10 ; 
     char *buffspace[] = {" ", (char *)NULL};
-
     do{
-            if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
-                sprintf(buf, " unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
-            waddstr(w, buf);
-            if (n == 0)
-                start_ip = ip;
-            //buf[0] = '\0';
-            unw_get_proc_name(&c, buf, sizeof(buf), &off);
-
-            for (int vv = 0 ; vv < index ; vv++){
-                waddstr(w, buffspace[0]) ; 
-            }
-            index-- ; 
-            index--;
-
-            //sprintf(buf2, "  Proc name : %s\n", buf);
-            //waddstr(w, buf2);
-            sprintf(buf2, "|%s|\n", buf);
-            waddstr(w,buf2) ;
-            /* 
-            if (off){
-                len = strlen(buf);
-                if (len >= sizeof(buf) - 32)
-                    len = sizeof(buf) - 32;
-                //sprintf(buf + len, " +0x%lx", (unsigned long)off);
-            }
-            */
-            //sprintf(buf2, "    - %-32s \n", buf);
-            //waddstr(w, buf2);
-            ret = unw_step(&c);
-            waddstr(w, "\n");
-
+        if (n == 0)
+            start_ip = ip;
+        //buf[0] = '\0';
+        unw_get_proc_name(&c, buf, sizeof(buf), &off);
+        sprintf(buf2, "%s\n", buf);
+        waddstr(w,buf2) ;
+        ret = unw_step(&c);
+        waddstr(w, "");
         } while (ret > 0);        
-
     box(w, 0, 0) ; 
     wrefresh(w); 
-
-
 }
 
 void refresh_window_code(struct Data *data){
@@ -2160,6 +2141,7 @@ void refresh_window_code(struct Data *data){
     struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[3] ; 
     struct code_info *codes = data->codes ; 
+    struct backtrace_info *backs = data->backs ; 
 
     int selected_code = inter->horizontal_position_code ; 
     if (selected_code < 0){
@@ -2168,10 +2150,39 @@ void refresh_window_code(struct Data *data){
 
     wclear(w);
 
+    // first, we need to find the path code of the backtraced function. backtraced function is from undwind 
+    // and path from dwarf. Hence, we do bad strcmp to find the path. This is CRAPPY ! we need a bijective relation
+    // between them. 
+
+    data->buff64 = backs->names[selected_code+1] ; 
+    // find the correspnding path from code_info
+    int find_index = -1 ; 
+    for (uint64_t i = 0 ; i < codes->count_func ; i++){
+        sprintf(data->buff128 , "|%s|" , data->buff64 ) ; 
+        waddstr(w, data->buff128) ; 
+        waddstr(w, " ") ; 
+        sprintf(data->buff128 , "|%s|" ,codes->name[i] ) ; 
+        waddstr(w ,data->buff128  ) ; 
+        waddstr(w, " \n ") ; 
+        if ( strcmp( data->buff64, codes->name[i] ) == 0 ){
+            waddstr(w, "trouvé !!!") ; 
+            find_index = i ; 
+            break ; 
+        }
+    }
+    if (find_index == -1){
+        return ; 
+    }
+    // the corresponding path is :
+    //data->buff128 = codes->paths[find_index] ; 
+    uint64_t line_to_print = codes->line[find_index] - 1 ; 
+
+
+
     // we want to prijnt a specific part of the code where the bug occurs, or something else
     // protocole : we get a file, and a line
     // example : want to print line 54 in main.c --> we print from line 54-height/2 to 54+height/2
-    uint64_t line_to_print = codes->line[selected_code];
+    //uint64_t line_to_print = codes->line[selected_code];
     int nrow, ncol;
     getmaxyx(w, nrow, ncol); // get the specific window size
     nrow--;
@@ -2196,10 +2207,9 @@ void refresh_window_code(struct Data *data){
     int numdigits = NumDigits(line_to_print + midheight);
     char *chline = malloc(numdigits * sizeof(char));
 
-    waddstr(w,codes->paths[0] );
+    waddstr(w,codes->paths[find_index]);
     refresh() ; 
-    usleep(1000000);
-    fp = fopen(codes->paths[selected_code], "r");
+    fp = fopen(codes->paths[find_index], "r");
     if (fp == NULL)
     {
         mvwaddstr(w, 1, 4, "cannot open the selected file...");
@@ -2517,6 +2527,7 @@ int main(int argc, char **argv){
     struct process_info procs ;
     struct memory_info mems ;  
     struct code_info codes; 
+    struct backtrace_info backs ; 
 
     mems.value = vec_new( sizeof(unsigned long long) ) ; 
     mems.adress = vec_new( sizeof(unsigned long long) ) ; 
@@ -2545,6 +2556,7 @@ int main(int argc, char **argv){
     data.procs = &procs ; 
     data.mems = &mems ; 
     data.codes = &codes ; 
+    data.backs = &backs ; 
 
 
      
