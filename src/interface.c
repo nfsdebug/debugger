@@ -285,8 +285,8 @@ struct maps_info{
      * @brief Structure of the proc/pid/maps to do easier analysis on this data
      * "start" & "stop" are the adress of the "name" data. "is_*" is from rwxp".
      */
-    unsigned long long *start ;
-    unsigned long long *stop ; 
+    uint64_t *start ;
+    uint64_t *stop ; 
     int *is_readable ; 
     int *is_writable ; 
     int *is_executable ; 
@@ -294,8 +294,8 @@ struct maps_info{
     int *is_private ; 
     char **line ;
     char **libs ; 
-    int number_lines ;
-    int number_libs ; 
+    uint64_t number_lines ;
+    uint64_t number_libs ; 
 
 };
 
@@ -786,8 +786,8 @@ void get_maps(struct Data *data){
     struct Debugger *debug = data->debug ; 
     struct process_t *process_child = procs->process_child ; 
 
-    maps->start = malloc(sizeof(unsigned long long)) ; 
-    maps->stop = malloc(sizeof(unsigned long long)) ; 
+    maps->start = malloc(sizeof(uint64_t)) ; 
+    maps->stop = malloc(sizeof(uint64_t)) ; 
     maps->is_readable = malloc( sizeof(int) );
     maps->is_writable = malloc( sizeof(int) );
     maps->is_executable = malloc( sizeof(int) );
@@ -803,8 +803,8 @@ void get_maps(struct Data *data){
     char *buffpid = data->buff2 ; 
     char *buffpath  = data->buff64 ; 
     char *buffline = data->buff1024 ; 
-    char *buffadress = data->buff32 ; 
-    char *buffadress2 = data->buff32_2 ; 
+    char *buffadress = data->buff64_2 ; 
+    char *buffadress2 = data->buff64 ; 
     //char *buffchar = data->buff1;   
     //char *line = data->dbuff1024 ;   
     //char *buffpid = (char *)malloc(10 * sizeof(char));
@@ -824,7 +824,7 @@ void get_maps(struct Data *data){
     // open the maps file 
 
 
- waddstr(win, "  lecture du fichier...\n ");
+    waddstr(win, "  lecture du fichier...\n ");
 
  
     FILE *fp = fopen(buffpath, "r");
@@ -851,6 +851,7 @@ void get_maps(struct Data *data){
       
         // we set the maps delimiter which is the space cgaracter
         const char delim[2] = " ";
+        const char delim2[2] = "-";
         // we recognize a loaded library thanks to the slash character after a space
         char slash[2] = "/\0";
         char comp[2] = "\0\0";
@@ -860,7 +861,7 @@ void get_maps(struct Data *data){
  
 
         // for each lines of the proc maps
-        for (int j = 0; j < maps->number_lines; j++){
+        for (uint64_t j = 0; j < maps->number_lines; j++){
             char *parsed_line[10];
             strcpy(line, maps->line[j]) ; 
             token = strtok((char *)line, delim);
@@ -868,13 +869,16 @@ void get_maps(struct Data *data){
             // we are going to fullfill it
             parsed_line[0] = malloc(strlen(token) * sizeof(char));
             strcpy(parsed_line[0], token);
-            int index = 0;
+            uint64_t index = 0;
 
 
             // its the start-stop memory adress
             // we want to parse with the "-" separator 
             // proposition --> strncpy with 12 characters
             // BE CAREFUL : this is not portable !!!!!
+            if ( strncmp(parsed_line[index]+12 , delim2, 1) != 0){
+                break;
+            } 
             strncpy(buffadress , parsed_line[index], 12) ;
             sprintf(buffadress2, "0x%s", buffadress) ;            
             maps->start[j] = strtoull(buffadress2, NULL, 0) ;    
@@ -914,9 +918,9 @@ void get_maps(struct Data *data){
                     // detection if its a library (begin with slash)
                     else if (strcmp(comp, slash) == 0){
                         // search if the loadd library already saved
-                        int already_saved = 0;
+                        uint64_t already_saved = 0;
                         // search if its an already finded library path
-                        for (int k = 0; k < maps->number_libs ; k++){
+                        for (uint64_t k = 0; k < maps->number_libs ; k++){
                             if (strcmp(maps->libs[k], parsed_line[index]) == 0){
                                 already_saved = 1;
                             }
@@ -936,8 +940,8 @@ void get_maps(struct Data *data){
                 }
             }
             // realloc ..
-            maps->start = realloc(maps->start,  (j+2) *  sizeof(unsigned long long)) ; 
-            maps->stop = realloc( maps->stop, (j+2) *  sizeof(unsigned long long)) ; 
+            maps->start = realloc(maps->start,  (j+2) *  sizeof(uint64_t)) ; 
+            maps->stop = realloc( maps->stop, (j+2) *  sizeof(uint64_t)) ; 
             maps->is_readable = realloc( maps->is_readable, (j+2) *   sizeof(int) );
             maps->is_writable = realloc(maps->is_writable,  (j+2) *   sizeof(int) );
             maps->is_executable = realloc(maps->is_executable, (j+2) *   sizeof(int) );
@@ -2235,16 +2239,28 @@ void get_memory(struct Data *data){
     //}    
 
     pid_t child_pid = data->procs->process_child->pid ; 
-    int position_chunk = 0 ; 
-    int chunk = 0 ; 
-    unsigned long long diff = maps->stop[chunk] - maps->start[chunk] ;  
-    unsigned long long adress ; 
-    unsigned long long value ; 
-    unsigned long long length ;
+    uint64_t position_chunk = 0 ; 
+    uint64_t chunk = 0 ; 
+    uint64_t diff = maps->stop[chunk] - maps->start[chunk] ;  
+    uint64_t adress ; 
+    uint64_t value ; 
+    uint64_t length ;
+    waddstr(inter->main_window[0] , "\n  begin for ...\n")  ;
+    wrefresh(inter->main_window[0]) ;
 
-    for (unsigned long long i = 0 ; i < maps->number_lines ; i++){
+    for (uint64_t i = 0 ; i < maps->number_lines  ; i++){
         length = maps->stop[i] - maps->start[i] ; 
-        for (unsigned long long j = 0 ; j < length ; j++){
+            sprintf(data->buff128,  " start : %lu\n", maps->start[i]) ; 
+            waddstr(inter->main_window[0] , data->buff128)  ;
+            wrefresh(inter->main_window[0]) ;            
+            sprintf(data->buff128,  " stop : %lu\n", maps->stop[i]) ; 
+            waddstr(inter->main_window[0] , data->buff128)  ;
+            wrefresh(inter->main_window[0]) ;               
+            sprintf(data->buff128,  " length : %lu\n", length) ; 
+            waddstr(inter->main_window[0] , data->buff128)  ;
+            wrefresh(inter->main_window[0]) ;       
+        for (uint64_t j = 0 ; j < length ; j++){
+
             // for every adress / data. push in the correspojding vectors
             adress = maps->start[i] + j ; 
             value = ptrace(PTRACE_PEEKDATA, child_pid, adress , 0) ; 
