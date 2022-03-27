@@ -43,7 +43,7 @@ char *choice_panel[] = {
     "Processes",
     "Register",
     "Code",
-    "Elf",
+    "Dwarf",
     "Memory",
     (char *)NULL,
 };
@@ -579,7 +579,7 @@ void refresh_window_start(struct Data *data);
 void refresh_window_processes(struct Data *data);
 void refresh_window_register(struct Data *data);
 void refresh_window_code(struct Data *data);
-void refresh_window_elf(struct Data *data);
+void refresh_window_dwarf(struct Data *data);
 void refresh_window_memory(struct Data *data);
 void refresh_window_tree(struct Data *data, unw_addr_space_t as, struct UPT_info *ui );
 int keyboard_input(struct Data *data, WINDOW *win, vec_t *input);
@@ -1329,24 +1329,7 @@ void *spawn_thread(void *idata){
         FILE *f = fopen(fname, "rb");
         fscanf(f, "%llx", &prog_offset);
 
-        waddstr(main_win, "DWARD Analysis : \n");
-        sprintf(buff, "  Function count : %d\n", count_func);
-        waddstr(main_win, buff);
-
-        for (int ii = 0; ii < count_func; ii++)
-        {
-            sprintf(buff, "    Function : %s %s at line %lld\n", func[ii].name, func[ii].path, func[ii].line);
-            waddstr(main_win, buff);
-        }
-
-        for (int ii = 0; ii < count_var; ii++)
-        {
-            sprintf(buff, "    Variable  : %s dans func : ", var[ii].name);
-            waddstr(main_win, buff);
-            sprintf(buff, "%s\n", var[ii].funcname);
-            waddstr(main_win, buff);
-        }
-
+        refresh_window_dwarf(data) ; 
         // Wait for the program (first execution)
         waitpid(child_pid, &wait_status, 0);
 
@@ -1472,12 +1455,12 @@ void *spawn_thread(void *idata){
                     break;
                 }
             }
+                    /////////
+                    //get_backtrace(data) ;       
+                    //refresh_window_tree(data, as, ui);
+                    ////////
         }   
-        get_backtrace(data) ;
-        sprintf(data->buff64 , "premier : %s", data->backs->names[0]) ; 
-        waddstr(main_win, data->buff64) ; 
-        sprintf(data->buff64 , "second : %s", data->backs->names[1]) ; 
-        waddstr(main_win, data->buff64) ;         
+        get_backtrace(data) ;       
        refresh_window_tree(data, as, ui);
 
         refresh_window_register(data);
@@ -1865,7 +1848,7 @@ void refresh_window_start(struct Data *data){
     waddstr(inter->right_window[0], "     F2 : Processes \n");
     waddstr(inter->right_window[0], "     F3 : Register \n");
     waddstr(inter->right_window[0], "     F4 : Code \n");
-    waddstr(inter->right_window[0], "     F5 : Elf \n");
+    waddstr(inter->right_window[0], "     F5 : Dwarf \n");
     waddstr(inter->right_window[0], "     F6 : Memory \n");    
     waddstr(inter->right_window[0], "     Enter : Select current input");
 
@@ -2363,13 +2346,26 @@ void refresh_window_code(struct Data *data){
     wrefresh(w);
 }
 
-void refresh_window_elf(struct Data *data){
+void refresh_window_dwarf(struct Data *data){
     struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[4] ; 
-    // box(inter->right_window[4], 0, 0);
-    // mvaddstr(1, 1, "show window start");
-    // refresh();
-    // mvwaddstr(inter->right_window[4], 2, 1, "start panel");
+    waddstr(w, "DWARD Analysis : \n");
+    sprintf(data->buff128, "  Function count : %d\n", count_func);
+    waddstr(w, data->buff128);
+
+    for (int ii = 0; ii < count_func; ii++)
+    {
+        sprintf(data->buff128, "    Function : %s %s at line %lld\n", func[ii].name, func[ii].path, func[ii].line);
+        waddstr(w, data->buff128);
+    }
+
+    for (int ii = 0; ii < count_var; ii++)
+    {
+        sprintf(data->buff128, "    Variable  : %s dans func : ", var[ii].name);
+        waddstr(w, data->buff128);
+        sprintf(data->buff128, "%s\n", var[ii].funcname);
+        waddstr(w, data->buff128);
+    }
     box(w, 0, 0);
     wrefresh(w);
 }
