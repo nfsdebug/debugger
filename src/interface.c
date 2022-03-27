@@ -70,6 +70,8 @@ char *command[] = {
      */
     "exec", 
     "breakpoint",
+    "memory",
+    "register",    
     (char *)NULL
 };
 
@@ -358,6 +360,13 @@ struct Debugger{
     int is_function;
     char *breakpoint_function;
     char *breakpoint_adress;
+    char *register_adress ; 
+    char *register_content ; 
+    char *memory_adress ; 
+    char *memory_content ;
+    int have_rmemory ; 
+    int have_wmemory ; 
+    int have_wregister ; 
 
     int singlestep;
     int get_reg;
@@ -1326,7 +1335,7 @@ void *spawn_thread(void *idata){
 
         for (int ii = 0; ii < count_func; ii++)
         {
-            sprintf(buff, "    Function : %s %s at line %d\n", func[ii].name, func[ii].path, func[ii].line);
+            sprintf(buff, "    Function : %s %s at line %lld\n", func[ii].name, func[ii].path, func[ii].line);
             waddstr(main_win, buff);
         }
 
@@ -1357,7 +1366,7 @@ void *spawn_thread(void *idata){
                 sprintf(tmp2, "DEBUG:\tSetting a breakpoint on adress %s\n", debug->breakpoint_adress);
                 waddstr(main_win, tmp2);
                 Dwarf_Addr adr = strtoll(debug->breakpoint_adress, NULL, 16) + prog_offset;
-                sprintf(tmp3, " Addresse avec offset : %llx\n", adr);
+                sprintf(tmp3, " Address avec offset : %llx\n", adr);
                 waddstr(main_win, tmp3);
                 // Add 3 to the adress
 
@@ -1383,7 +1392,7 @@ void *spawn_thread(void *idata){
                         Dwarf_Addr adr = func[j].lowpc + prog_offset;
                         // Add 3 to the adress
                         long long bef = (ptrace(PTRACE_PEEKDATA, child_pid, (void *)adr, 0) & ~0xff) | 0xcc;
-                        sprintf(tmp3, " Addresse avec offset : %llx\n", adr);
+                        sprintf(tmp3, " Address avec offset : %llx\n", adr);
                         waddstr(main_win, tmp3);
                         ptrace(PTRACE_POKEDATA, child_pid, (void *)adr, (void *)bef);
                     }
@@ -1391,6 +1400,35 @@ void *spawn_thread(void *idata){
             }
             ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
             waitpid(child_pid, &wait_status, 0);
+        }
+// add memory management
+        if (debug->have_wmemory)
+        {
+            sprintf(tmp2, "DEBUG:\tWrite %s in memory on adress %s\n", debug->memory_content, debug->memory_adress);
+            waddstr(main_win, tmp2);
+            Dwarf_Addr adr = strtoll(debug->memory_adress, NULL, 16) + prog_offset;
+            sprintf(tmp3, " Address with offset : %llx\n", adr);
+            waddstr(main_win, tmp3);
+
+            sprintf(tmp3, " Before : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
+            waddstr(main_win, tmp3);
+
+            if (ptrace(PTRACE_POKEDATA, child_pid, adr, strtoll(debug->memory_content, NULL, 16)) < 0)
+                waddstr(main_win, "Error with the adress you entered\n");
+            else
+                waddstr(main_win, "Content succesfully modified\n");
+            sprintf(tmp3, " After : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
+            waddstr(main_win, tmp3);
+        }
+
+        // add write register
+        if (debug->have_wregister)
+        {
+            sprintf(tmp2, "DEBUG:\tWrite %s on register %s\n", debug->register_content, debug->register_adress);
+            waddstr(main_win, tmp2);
+
+            set_register(debug->register_adress, child_pid, strtoll(debug->register_content, NULL, 16));
+            waddstr(main_win, "Content succesfully modified\n");
         }
         while (1)
         {
@@ -1440,7 +1478,7 @@ void *spawn_thread(void *idata){
         waddstr(main_win, data->buff64) ; 
         sprintf(data->buff64 , "second : %s", data->backs->names[1]) ; 
         waddstr(main_win, data->buff64) ;         
-       //refresh_window_tree(data, as, ui);
+       refresh_window_tree(data, as, ui);
 
         refresh_window_register(data);
 
@@ -1584,6 +1622,9 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
 
     // structure for the thread
     debug->have_breakpoint = 0;
+    debug->have_rmemory = 0 ; 
+    debug->have_wmemory = 0 ; 
+    debug->have_wregister = 0 ; 
     debug->size_args = i_a;
     debug->size_opts = i_o;
 
@@ -1639,6 +1680,71 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
                 wrefresh(win);
             }
         }
+
+        if ((strcmp(command[2], parsed[0]) == 0) & (i_a > 1))
+        {
+            waddstr(win, "\n MEMORY :");
+            new_main_line(win);
+            int thr = 1;
+            debug->have_wmemory = 1;
+            debug->memory_adress = malloc(strlen(parsed[1]) * sizeof(char));
+            strcpy(debug->memory_adress, parsed[1]);
+            debug->memory_content = malloc(strlen(parsed[2]) * sizeof(char));
+            strcpy(debug->memory_content, parsed[2]);
+
+            if (is_valid == 1)
+            {
+                for (int i = 0; i < i_a - 2; i++)
+                {
+                    //(debug.inter->main_window[0], &debug) ;
+                    strcpy(debug->args[i], debug->args[i + 2]);
+                }
+                debug->size_args -= 2;
+                debug->args[i_a - 1] = (char *)NULL;
+                debug->args[i_a - 1] = (char *)NULL;
+                debug->args[i_a] = (char *)NULL;
+
+                // print_parsed(it.inter->main_window[0], &it) ;
+
+                pthread_create(&thread, NULL, spawn_thread, data);
+                pthread_join(thread, NULL);
+                wrefresh(win);
+            }
+        }
+        if ((strcmp(command[3], parsed[0]) == 0) & (i_a > 1))
+        {
+            waddstr(win, "\n REGISTERS :");
+            new_main_line(win);
+            int thr = 1;
+            debug->have_wregister = 1;
+            debug->register_adress = malloc(strlen(parsed[1]) * sizeof(char));
+            strcpy(debug->register_adress, parsed[1]);
+            debug->register_content = malloc(strlen(parsed[2]) * sizeof(char));
+            strcpy(debug->register_content, parsed[2]);
+        }
+        else
+        {
+            is_valid = 0;
+        }
+        if (is_valid == 1)
+        {
+            for (int i = 0; i < i_a - 2; i++)
+            {
+                //(it.inter->main_window[0], &it) ;
+                strcpy(debug->args[i], debug->args[i + 2]);
+            }
+            debug->size_args -= 2;
+            debug->args[i_a - 1] = (char *)NULL;
+            debug->args[i_a - 1] = (char *)NULL;
+            debug->args[i_a] = (char *)NULL;
+
+            // print_parsed(it.inter->main_window[0], &it) ;
+
+            pthread_create(&thread, NULL, spawn_thread, data);
+            pthread_join(thread, NULL);
+            wrefresh(win);
+        }
+
     }
 
 
