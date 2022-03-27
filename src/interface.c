@@ -316,6 +316,12 @@ struct process_info{
     vec_t *vp ;  
 };
 
+struct code_info{
+    char **paths ; 
+    uint64_t *line ; 
+    uint64_t count_func ; 
+};
+
 struct Debugger{
     /**
      * @brief the ptrace is encapsuled in a pthread. Hence, we need to 
@@ -360,6 +366,7 @@ struct Data{
     struct regs_info *regs ; 
     struct process_info *procs ; 
     struct memory_info *mems ;
+    struct code_info *codes ; 
     
     char *buff1 ; 
     char *buff2 ; 
@@ -960,6 +967,19 @@ void get_maps(struct Data *data){
     
 }
 
+void get_codes(struct Data *data){
+    WINDOW *win = data->inter->main_window[0] ;
+    struct code_info *codes = data->codes ; 
+    codes->count_func = count_func ; 
+    codes->paths = malloc( count_func * sizeof(void*))  ; 
+    codes->line = malloc( sizeof(uint64_t) * count_func) ; 
+    for (uint64_t i = 0 ; i < count_func ; i++){
+        codes->paths[i] = malloc( 100 ) ; 
+        strcpy(codes->paths[i] ,  func[i].path) ; 
+        codes->line[i] = i +1; 
+    }
+}
+
 
 void show_libraries_2(struct Data *data){
     struct Interface *inter = data->inter ;         
@@ -1262,7 +1282,7 @@ void *spawn_thread(void *idata){
 
         for (int ii = 0; ii < count_func; ii++)
         {
-            sprintf(buff, "    Function : %s %s\n", func[ii].name, func[ii].path);
+            sprintf(buff, "    Function : %s %s at line %d\n", func[ii].name, func[ii].path);
             waddstr(main_win, buff);
         }
 
@@ -1421,6 +1441,8 @@ void *spawn_thread(void *idata){
 
 
         get_maps(data) ; 
+        get_codes(data) ; 
+        refresh_window_code(data) ; 
         show_libraries_2(data) ;
         get_memory(data); 
         refresh_window_memory(data) ; 
@@ -2130,21 +2152,18 @@ void refresh_window_tree(struct Data *data, unw_addr_space_t as, struct UPT_info
 }
 
 void refresh_window_code(struct Data *data){
+
     struct Interface *inter = data->inter ;     
     WINDOW *w = (WINDOW *)inter->right_window[3] ; 
+    struct code_info *codes = data->codes ; 
 
-    //wclear(w);
-    // mvaddstr(1, 1, "show window others");
-    // refresh();
-
-    //mvwaddstr(inter->right_window[3], 2, 1, "others panel");
-    // wrefresh(inter->right_window[3]);
+    wclear(w);
 
     // we want to prijnt a specific part of the code where the bug occurs, or something else
     // protocole : we get a file, and a line
     // example : want to print line 54 in main.c --> we print from line 54-height/2 to 54+height/2
-    int line_to_print = 10;
-
+    uint64_t line_to_print = codes->line[0] + 1;
+    usleep(1000000);
     int nrow, ncol;
     getmaxyx(w, nrow, ncol); // get the specific window size
     nrow--;
@@ -2169,46 +2188,52 @@ void refresh_window_code(struct Data *data){
     int numdigits = NumDigits(line_to_print + midheight);
     char *chline = malloc(numdigits * sizeof(char));
 
-    fp = fopen("/home/sbstndbs/debugger/src/interface.c", "r");
+    waddstr(w,codes->paths[0] );
+    refresh() ; 
+    usleep(1000000);
+    fp = fopen(codes->paths[0], "r");
     if (fp == NULL)
     {
         mvwaddstr(w, 1, 4, "cannot open the selected file...");
     }
-    int iline = 0;
-    int nline = 0;
-    while ((nline < nrow - 1) && (fgets(buff, ncol, fp) != NULL))
-    {
-        mvaddstr(1, 1, "begin writing the line file ");
-        if (iline >= begin)
+    else{
+        int iline = 0;
+        int nline = 0;
+        while ((nline < nrow - 1) && (fgets(buff, ncol, fp) != NULL))
         {
-
-            // print the line
-            sprintf(chline, "%d", iline + 1);
-            // wattron(inter->right_window[3], COLOR_PAIR(1));
-            mvwaddstr(w, 1 + nline, 1, chline);
-            // wattroff(inter->right_window[3], COLOR_PAIR(1));
-
-            if (nline + begin == line_to_print)
+            mvaddstr(1, 1, "begin writing the line file ");
+            if (iline >= begin)
             {
-                char *symbol[1] = {" "};
-                wattron(w, COLOR_PAIR(1));
-                for (int i = 0; i < ncol - 2; i++)
+
+                // print the line
+                sprintf(chline, "%d", iline + 1);
+                // wattron(inter->right_window[3], COLOR_PAIR(1));
+                mvwaddstr(w, 1 + nline, 1, chline);
+                // wattroff(inter->right_window[3], COLOR_PAIR(1));
+
+                if (nline + begin == line_to_print)
                 {
-                    mvwaddstr(w, 1 + nline, i + 2 + numdigits, symbol[0]);
+                    char *symbol[1] = {" "};
+                    wattron(w, COLOR_PAIR(1));
+                    for (int i = 0; i < ncol - 2; i++)
+                    {
+                        mvwaddstr(w, 1 + nline, i + 2 + numdigits, symbol[0]);
+                    }
+                    mvwaddstr(w, 1 + nline, 2 + numdigits, buff);
+                    wattroff(w, COLOR_PAIR(1));
                 }
-                mvwaddstr(w, 1 + nline, 2 + numdigits, buff);
-                wattroff(w, COLOR_PAIR(1));
+                else
+                {
+                    mvwaddstr(w, 1 + nline, 2 + numdigits, buff);
+                }
+                nline++;
             }
-            else
-            {
-                mvwaddstr(w, 1 + nline, 2 + numdigits, buff);
-            }
-            nline++;
+            iline++;
         }
-        iline++;
+    
+        // close file
+        fclose(fp);
     }
-    // close file
-    fclose(fp);
 
     box(w, 0, 0);
     wrefresh(w);
@@ -2250,15 +2275,6 @@ void get_memory(struct Data *data){
 
     for (uint64_t i = 0 ; i < maps->number_lines  ; i++){
         length = maps->stop[i] - maps->start[i] ; 
-            sprintf(data->buff128,  " start : %lu\n", maps->start[i]) ; 
-            waddstr(inter->main_window[0] , data->buff128)  ;
-            wrefresh(inter->main_window[0]) ;            
-            sprintf(data->buff128,  " stop : %lu\n", maps->stop[i]) ; 
-            waddstr(inter->main_window[0] , data->buff128)  ;
-            wrefresh(inter->main_window[0]) ;               
-            sprintf(data->buff128,  " length : %lu\n", length) ; 
-            waddstr(inter->main_window[0] , data->buff128)  ;
-            wrefresh(inter->main_window[0]) ;       
         for (uint64_t j = 0 ; j < length ; j++){
 
             // for every adress / data. push in the correspojding vectors
@@ -2491,6 +2507,7 @@ int main(int argc, char **argv){
     struct regs_info regs ; 
     struct process_info procs ;
     struct memory_info mems ;  
+    struct code_info codes; 
 
     mems.value = vec_new( sizeof(unsigned long long) ) ; 
     mems.adress = vec_new( sizeof(unsigned long long) ) ; 
@@ -2518,6 +2535,7 @@ int main(int argc, char **argv){
     data.regs = &regs ; 
     data.procs = &procs ; 
     data.mems = &mems ; 
+    data.codes = &codes ; 
 
 
      
