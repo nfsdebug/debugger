@@ -1443,7 +1443,7 @@ void *spawn_thread(void *idata){
         }
         wattron(main_win, COLOR_PAIR(6)); 
         waddstr(main_win, "\n   --- Start tracing ---\n") ;
-        wattron(main_win, COLOR_PAIR(6)); 
+        wattroff(main_win, COLOR_PAIR(6)); 
         box(main_win, 0, 0); 
         wrefresh(main_win) ; 
         while (1)
@@ -1509,13 +1509,16 @@ void *spawn_thread(void *idata){
         waddstr(main_win, "\n   Get maps ...\n") ; 
         wrefresh(main_win) ;         
         get_maps(data) ; 
-        waddstr(main_win, "   Done !\n") ;         
+        waddstr(main_win, "   Done !\n") ;    
+        wrefresh(main_win) ;                
         get_codes(data) ; 
         refresh_window_code(data) ; 
         show_libraries_2(data) ;
         waddstr(main_win, "\n   Dump memory ...\n") ; 
+        wrefresh(main_win) ;           
         get_memory(data); 
         waddstr(main_win, "   Done !\n") ; 
+        wrefresh(main_win) ;           
         refresh_window_memory(data) ; 
         //show_libraries(process_win, &process_child, debug.verbose);
     
