@@ -2149,8 +2149,8 @@ void refresh_window_register(struct Data *data){
         if (horizontal == 0){
             sprintf(data->buff64, "xmm%i", i);
             mvwaddstr(w, 18 + i - debut, 1, data->buff64) ; 
-            sprintf(data->buff64_2, "%016x" , regs->fpreg->xmm_space[i]) ; 
-            mvwaddstr(w, 18 + i - debut , 10, data->buff64_2) ;
+            sprintf(data->buff64, "%016x" , regs->fpreg->xmm_space[i]) ; 
+            mvwaddstr(w, 18 + i - debut , 10, data->buff64) ;
         }
         else if (horizontal == 1){
             // fp values
