@@ -331,6 +331,7 @@ struct backtrace_info{
     unw_addr_space_t as ; 
     struct UPT_info *ui ; 
     char **names ; // list of functions from deepest 
+    uint64_t size ;
 
 };
 
@@ -1031,6 +1032,8 @@ void get_backtrace(struct Data *data){
         ret = unw_step(&c);
         pass++;
         } while (ret > 0);
+    backs->size = pass; 
+    
 }
 
 
@@ -2243,8 +2246,43 @@ void refresh_window_code(struct Data *data){
     // and path from dwarf. Hence, we do bad strcmp to find the path. This is CRAPPY ! we need a bijective relation
     // between them. 
 
-    data->buff64 = backs->names[selected_code+1] ; 
+
+    int finded_id = -1 ; 
+    uint64_t index_dwarf = -1 ; 
+    uint64_t index_unwind = -1 ; 
+    int proposition  ;
+
+    for (uint64_t i = 0 ; i < backs->size ; i++){
+        proposition = 0 ; 
+        for (uint64_t j = 0 ; j < codes->count_func ; j++){
+            if ( strcmp( backs->names[i], codes->name[j] ) == 0 ){
+                if (proposition == 0){
+                    waddstr(w, "trouvé !!!") ; 
+                    index_dwarf = j ; 
+                    index_unwind = i ; 
+                    //find_index = i ;                       
+                }
+                proposition = 1 ;  
+            }
+        }
+        if (proposition == 1){
+            finded_id++;
+            if (finded_id == selected_code){
+                break ; 
+            }
+        }
+        
+    }
+    if ((index_dwarf < 0) | (index_unwind < 0)){
+        waddstr(w, "impossible d'afficher le code...\n") ; 
+        waddstr(w, index_dwarf) ; 
+        waddstr(w, index_unwind) ; 
+    }
+    //data->buff64 = backs->names[]
+
+    //data->buff64 = backs->names[selected_code] ; 
     // find the correspnding path from code_info
+    /*
     int find_index = -1 ; 
     for (uint64_t i = 0 ; i < codes->count_func ; i++){
         sprintf(data->buff128 , "|%s|" , data->buff64 ) ; 
@@ -2262,9 +2300,12 @@ void refresh_window_code(struct Data *data){
     if (find_index == -1){
         return ; 
     }
+    else{
+        wclear(w) ; 
+    }*/
     // the corresponding path is :
-    //data->buff128 = codes->paths[find_index] ; 
-    uint64_t line_to_print = codes->line[find_index] - 1 ; 
+    data->buff128 = codes->paths[index_dwarf] ; 
+    uint64_t line_to_print = codes->line[index_dwarf] - 1 ; 
 
 
 
@@ -2296,9 +2337,9 @@ void refresh_window_code(struct Data *data){
     int numdigits = NumDigits(line_to_print + midheight);
     char *chline = malloc(numdigits * sizeof(char));
 
-    waddstr(w,codes->paths[find_index]);
+    waddstr(w,codes->paths[index_dwarf]);
     refresh() ; 
-    fp = fopen(codes->paths[find_index], "r");
+    fp = fopen(codes->paths[index_dwarf], "r");
     if (fp == NULL)
     {
         mvwaddstr(w, 1, 4, "cannot open the selected file...");
