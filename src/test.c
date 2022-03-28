@@ -3,7 +3,9 @@
 #include <execinfo.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <immintrin.h>
 
+#include <sys/types.h>
 
 int globalvariable;
 
@@ -33,8 +35,26 @@ void sigh(int sig)
 
 void funcdetest2(){
 	int a = 0 ; 
-	char *b = malloc(512) ; 
-	free(b) ; 
+	long long *b = malloc(512 * sizeof(long long)) ; 
+	int64_t  *d = malloc(512 * sizeof(int64_t)) ;	
+	float *c = malloc(512 * sizeof(float)) ; 	
+	for (int i = 0 ; i < 512 ; i++){
+		b[i] = -1212121212 ; 
+		c[i] = 1.11111111 ; 
+		d[i] = 123123 ; 
+	}
+	__m256 ra, rb, rc ; 
+	ra = _mm256_load_ps(&c[0]) ;
+	rb = _mm256_load_ps(&c[0]) ; 
+	rc = _mm256_load_ps(&c[0]) ;
+	__m256i rd, re, rf ; 
+	rd = _mm256_load_si256(&d[0]) ;
+	re = _mm256_load_si256(&d[0]) ; 
+	rf = _mm256_load_si256(&d[0]) ;
+	//free(b) ; 
+	int aa = 0 ; 
+	int bb = 0 ; 
+	int cc = aa / bb ; 
 	kill(getpid(),SIGSEGV);
 }
 

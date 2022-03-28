@@ -1039,7 +1039,14 @@ void get_backtrace(struct Data *data){
     sprintf(data->buff64 , "     --> fetch %llu backtrace functions\n" , pass) ; 
     waddstr(data->inter->main_window[0] , data->buff64) ; 
     wrefresh(data->inter->main_window[0]);
-    
+}
+
+drop_backtrace(struct Data *data){
+    struct backtrace_info *backs =  data->backs ;
+    for (uint64_t i = 0 ; i < backs->size ; i++){
+        free(backs->names[i]);
+    }   
+    free(backs->names) ; 
 }
 
 
@@ -1049,7 +1056,7 @@ void show_libraries_2(struct Data *data){
     struct Debugger *debug = data->debug ; 
     WINDOW *win = (WINDOW *)inter->right_window[1] ; 
 
-    if (inter->horizontal_position_processes%2 == 1){
+    if ((inter->horizontal_position_processes%2 == 1) | (debug->verbose == 1)){
         waddstr(win, "\n\n\n  all lines : \n\n  ");
         for (int j = 0; j < maps->number_lines; j++){
             waddstr(win, maps->line[j]);
@@ -1335,7 +1342,9 @@ void *spawn_thread(void *idata){
         waddstr(main_win, "   Done !\n") ; 
         wrefresh(main_win) ;                 
         free(path_for_dbg);
-        if (count_func == 0){
+        int is_enter_in_elf = 0 ; 
+        if (count_func==0){
+            is_enter_in_elf = 1 ; 
             waddstr(main_win, "\n   Get elf ...\n") ; 
             wrefresh(main_win) ;             
             get_elf(debug->args[0]);
@@ -1368,17 +1377,17 @@ void *spawn_thread(void *idata){
             if (debug->is_function == 0)
             {
                 waddstr(main_win, "\n   Add address breakpoint ...\n") ; 
-                sprintf(tmp2, "DEBUG:\tSetting a breakpoint on adress %s\n", debug->breakpoint_adress);
+                sprintf(tmp2, "   DEBUG:\tSetting a breakpoint on adress %s\n", debug->breakpoint_adress);
                 waddstr(main_win, tmp2);
                 Dwarf_Addr adr = strtoll(debug->breakpoint_adress, NULL, 16) + prog_offset;
-                sprintf(tmp3, " Address avec offset : %llx\n", adr);
+                sprintf(tmp3, "   Address avec offset : %llx\n", adr);
                 waddstr(main_win, tmp3);
                 // Add 3 to the adress
 
                 u_int64_t w3 = (ptrace(PTRACE_PEEKDATA, child_pid, adr, 0) & ~0xff) | 0xcc;
                 if (ptrace(PTRACE_POKEDATA, child_pid, adr, w3) < 0)
                 {
-                    sprintf(tmp2, "Wrong adress for the breakpoint");
+                    sprintf(tmp2, "   Wrong adress for the breakpoint");
                     waddstr(main_win, tmp2);
                 }
                 else{
@@ -1416,20 +1425,20 @@ void *spawn_thread(void *idata){
         if (debug->have_wmemory)
         {
             waddstr(main_win, "\n   Write in memory ...\n") ; 
-            sprintf(tmp2, " DEBUG:\tWrite %s in memory on adress %s\n", debug->memory_content, debug->memory_adress);
+            sprintf(tmp2, "   DEBUG:\tWrite %s in memory on adress %s\n", debug->memory_content, debug->memory_adress);
             waddstr(main_win, tmp2);
             Dwarf_Addr adr = strtoll(debug->memory_adress, NULL, 16) + prog_offset;
-            sprintf(tmp3, " Address with offset : %llx\n", adr);
+            sprintf(tmp3, "   Address with offset : %llx\n", adr);
             waddstr(main_win, tmp3);
 
-            sprintf(tmp3, " Before : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
+            sprintf(tmp3, "   Before : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
             waddstr(main_win, tmp3);
 
             if (ptrace(PTRACE_POKEDATA, child_pid, adr, strtoll(debug->memory_content, NULL, 16)) < 0)
-                waddstr(main_win, " Error with the adress you entered\n");
+                waddstr(main_win, "   Error with the adress you entered\n");
             else
-                waddstr(main_win, " Content succesfully modified\n");
-            sprintf(tmp3, " After : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
+                waddstr(main_win, "   Content succesfully modified\n");
+            sprintf(tmp3, "   After : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
             waddstr(main_win, tmp3);
         }
 
@@ -1465,8 +1474,15 @@ void *spawn_thread(void *idata){
             waitpid(child_pid, &wait_status, 0);
             siginfo_t signinf;
             ptrace(PTRACE_GETSIGINFO, child_pid, NULL, &signinf);
+            //print_siginfo(data, &signinf);
+            //sprintf(data->buff32, "offset : %llx  \n" , prog_offset) ;
+            //waddstr(main_win , data->buff32) ;  
             ptrace(PTRACE_GETREGS, child_pid, NULL, data->regs->reg);
             ptrace(PTRACE_GETFPREGS, child_pid, NULL, data->regs->fpreg) ; 
+            //get_backtrace(data) ;       
+            //refresh_window_tree(data, as, ui);
+            //drop_backtrace(data) ;
+                    ////////
 
             if ((number_of_instructions % 10000 == 0) & debug->singlestep == 1)
             {
@@ -1489,16 +1505,16 @@ void *spawn_thread(void *idata){
                     break;
                 }
             }
-                    /////////
-                    //get_backtrace(data) ;       
-                    //refresh_window_tree(data, as, ui);
-                    ////////
+
         }   
-        waddstr(main_win, "\n   Get backtrace information ...\n") ; 
-        wrefresh(main_win) ;         
-        get_backtrace(data) ;       
-        waddstr(main_win, "   Done !\n") ;  
-        wrefresh(main_win) ;        
+        //refresh_window_tree(data, as, ui);
+        if (is_enter_in_elf == 0){
+            waddstr(main_win, "\n   Get backtrace information ...\n") ; 
+            wrefresh(main_win) ;         
+            get_backtrace(data) ;       
+            waddstr(main_win, "   Done !\n") ;  
+            wrefresh(main_win) ;    
+        }    
 
         //refresh_window_tree(data, as, ui);
 
@@ -1513,7 +1529,7 @@ void *spawn_thread(void *idata){
         waddstr(main_win, "   Done !\n") ;    
         wrefresh(main_win) ;                
         get_codes(data) ; 
-        if (debug->have_breakpoint == 0){
+        if ((debug->have_breakpoint == 0) & (is_enter_in_elf == 0)){
             refresh_window_code(data) ; 
         }
         show_libraries_2(data) ;
@@ -2337,7 +2353,6 @@ void refresh_window_code(struct Data *data){
                 break ; 
             }
         }
-        
     }
     if ((index_dwarf < 0) | (index_unwind < 0)){
         waddstr(w, "impossible d'afficher le code...\n") ; 
