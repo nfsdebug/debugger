@@ -1513,7 +1513,9 @@ void *spawn_thread(void *idata){
         waddstr(main_win, "   Done !\n") ;    
         wrefresh(main_win) ;                
         get_codes(data) ; 
-        refresh_window_code(data) ; 
+        if (debug->have_breakpoint == 0){
+            refresh_window_code(data) ; 
+        }
         show_libraries_2(data) ;
         waddstr(main_win, "\n   Dump memory ...\n") ; 
         wrefresh(main_win) ;           
@@ -2339,6 +2341,7 @@ void refresh_window_code(struct Data *data){
     }
     if ((index_dwarf < 0) | (index_unwind < 0)){
         waddstr(w, "impossible d'afficher le code...\n") ; 
+        return ;
         //waddstr(w, index_dwarf) ; 
         //waddstr(w, index_unwind) ; 
     }
