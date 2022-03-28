@@ -278,7 +278,8 @@ struct Interface{
     int horizontal_position_memory ;  
     int scroll_position_register ;  
     int horizontal_position_register ; 
-    int horizontal_position_code ;     
+    int horizontal_position_code ;   
+    int horizontal_position_processes ;   
 
 };
 
@@ -1048,7 +1049,7 @@ void show_libraries_2(struct Data *data){
     struct Debugger *debug = data->debug ; 
     WINDOW *win = (WINDOW *)inter->right_window[1] ; 
 
-    if (debug->verbose == 1){
+    if (inter->horizontal_position_processes%2 == 1){
         waddstr(win, "\n\n\n  all lines : \n\n  ");
         for (int j = 0; j < maps->number_lines; j++){
             waddstr(win, maps->line[j]);
@@ -1570,6 +1571,13 @@ void horizontal_window(struct Data *data, int id, int direction ){
         inter->horizontal_position_code += direction ; 
         refresh_window_code(data) ; 
     }       
+    if (id == 1){
+        // it is the memory panel : we want to scroll i
+        wrefresh(main_win) ; 
+        inter->horizontal_position_processes += direction ; 
+        refresh_window_processes(data) ; 
+        show_libraries_2(data) ; 
+    }        
 }
 
 void parse(struct Data *data, WINDOW *win, vec_t *input){
@@ -1983,6 +1991,7 @@ void refresh_window_register(struct Data *data){
     wclear(inter->right_window[2]);
     //update_panels();
     //waddstr(w, "\n\n  Register Visualisation \n\n ");
+    wattron(w, COLOR_PAIR(5));
     sprintf(data->buff64, " rax      0x%llx", regs->reg->rax);
     mvwaddstr(w, 2, 1, data->buff64);
 
@@ -2065,13 +2074,15 @@ void refresh_window_register(struct Data *data){
 
     sprintf(data->buff64, " es       0x%llx", regs->reg->es);
     mvwaddstr(w, 15, 30, data->buff64);
-
+    wattroff(w, COLOR_PAIR(5));
     // we want to print the right amount of xmms to fill the screen
     //    but without enfore the automatic window scrolling
     double fp_64 ; 
+    double *pfp_64 = &fp_64 ; 
     float fp_32_1 ; 
     float fp_32_2 ; 
     uint64_t uint_64 ; 
+    uint64_t *puint_64 = &uint_64  ;
     uint32_t uint_32_1 ; 
     uint32_t uint_32_2 ; 
     int64_t int_64 ; 
@@ -2147,6 +2158,7 @@ void refresh_window_register(struct Data *data){
     //    sprintf(data->buff64, "%016x" , regs->fpreg->xmm_space[i]) ; 
     //    mvwaddstr(w, 18 + i - debut , 10, data->buff64) ; 
     //}
+        wattron(w, COLOR_PAIR(7));
     for (unsigned long long i = debut ; i < debut + dx_of_xmm ; i++){
         current_position = 1 ;  
         if (horizontal == 0){
@@ -2157,9 +2169,19 @@ void refresh_window_register(struct Data *data){
         }
         else if (horizontal == 1){
             // fp values
+            //char tmp64[sizeof(8)] ; 
+            //char *tmp32_1 = malloc(sizeof(4)) ;         
+            //char *tmp32_2 = malloc(sizeof(4)) ;
+            //char bf8[8] ; 
+            //sprintf(bf8 , "%x" ,regs->fpreg->xmm_space[i] ) ;  
+            //memcpy(tmp64, regs->fpreg->xmm_space[i], sizeof(double) ) ;        
+            //memcpy(&pfp_64, tmp64, sizeof(double) ) ; 
+            //uint_64 =     regs->fpreg->xmm_space[i] ; 
+            //memcpy(&pfp_64 , bf8 , sizeof(64)) ;            
             fp_64 =   (double)regs->fpreg->xmm_space[i] ; 
             fp_32_1 = (float)regs->fpreg->xmm_space[2*i] ; 
             fp_32_2 = (float)regs->fpreg->xmm_space[2*i + 1] ;  
+            //fp_64 = (double)tmp64 ; 
             sprintf(data->buff128, "%.04e\n",fp_64);
             mvwaddstr(w, 18 + i - debut, current_position, data->buff128) ; 
             current_position += width_type_fp[0] ; 
@@ -2234,7 +2256,7 @@ void refresh_window_register(struct Data *data){
         }        
 
     }    
-
+    wattroff(w, COLOR_PAIR(7));
     free(char_8);
     free(uint8) ; 
     free(int8) ; 
@@ -2320,7 +2342,6 @@ void refresh_window_code(struct Data *data){
         //waddstr(w, index_dwarf) ; 
         //waddstr(w, index_unwind) ; 
     }
-    usleep(1000000);
     //data->buff64 = backs->names[]
 
     //data->buff64 = backs->names[selected_code] ; 
@@ -2399,7 +2420,9 @@ void refresh_window_code(struct Data *data){
                 // print the line
                 sprintf(chline, "%d", iline + 1);
                 // wattron(inter->right_window[3], COLOR_PAIR(1));
+                wattron(w, COLOR_PAIR(6));
                 mvwaddstr(w, 1 + nline, 1, chline);
+                wattroff(w, COLOR_PAIR(6));
                 // wattroff(inter->right_window[3], COLOR_PAIR(1));
 
                 if (nline + begin == line_to_print)
@@ -2437,12 +2460,15 @@ void refresh_window_dwarf(struct Data *data){
     sprintf(data->buff128, "  Function count : %d\n", count_func);
     waddstr(w, data->buff128);
 
+    wattron(w, COLOR_PAIR(5));
+
     for (int ii = 0; ii < count_func; ii++)
     {
         sprintf(data->buff128, "    Function : %s %s at line %lld\n", func[ii].name, func[ii].path, func[ii].line);
         waddstr(w, data->buff128);
     }
-
+    wattroff(w, COLOR_PAIR(5));
+    wattron(w, COLOR_PAIR(7));
     for (int ii = 0; ii < count_var; ii++)
     {
         sprintf(data->buff128, "    Variable  : %s dans func : ", var[ii].name);
@@ -2450,7 +2476,10 @@ void refresh_window_dwarf(struct Data *data){
         sprintf(data->buff128, "%s\n", var[ii].funcname);
         waddstr(w, data->buff128);
     }
+    wattron(w, COLOR_PAIR(7));
+    wattron(w, COLOR_PAIR(6));
     box(w, 0, 0);
+    wattroff(w, COLOR_PAIR(6));
     wrefresh(w);
 }
 void get_memory(struct Data *data){
@@ -2709,6 +2738,7 @@ int main(int argc, char **argv){
     inter.scroll_position_register  = 0 ;
     inter.horizontal_position_register = 0 ;   
     inter.horizontal_position_code = 0 ;         
+    inter.horizontal_position_processes = 0 ; 
     struct Debugger debug;
     struct maps_info maps ; 
     struct regs_info regs ; 
@@ -2764,7 +2794,7 @@ int main(int argc, char **argv){
     init_pair(4, COLOR_RED, COLOR_WHITE);
     init_pair(5, COLOR_RED, COLOR_BLACK);    
     init_pair(6, COLOR_GREEN, COLOR_BLACK);  
-
+    init_pair(7, COLOR_CYAN, COLOR_BLACK); 
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
 
 
