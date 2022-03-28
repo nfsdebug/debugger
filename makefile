@@ -15,7 +15,7 @@ $(TARGET)/utilities : $(SRC)/utilities.h $(SRC)/utilities.c
 	gcc -o $(TARGET)/utilities.o -c $(SRC)/utilities.c
 
 $(TARGET)/interface :  $(SRC)/interface.c
-	gcc  -L./$(VEC) -Wl,-rpath=./$(VEC) $< $(TARGET)/utilities.o -o $@  -lvec -lncursest -lpanelt -lmenut -lformt	-pthread -lpthread -ldwarf -lunwind -lunwind-ptrace -lunwind-generic
+	gcc  -g -gdwarf-2 -L./$(VEC) -Wl,-rpath=./$(VEC) $< $(TARGET)/utilities.o -o $@  -lvec -lncursest -lpanelt -lmenut -lformt	-pthread -lpthread -ldwarf -lunwind -lunwind-ptrace -lunwind-generic
 
 
 
@@ -24,7 +24,7 @@ $(TARGET)/test_process :  $(EXP)/test_process.c
 	gcc -L./$(VEC) -Wl,-rpath=./$(VEC) $< -o $@ -lvec
 	
 $(TARGET)/mon_programme:  $(SRC)/mon_programme.c
-	gcc $< -o $@ 	
+	gcc $< -g -gdwarf-2 -o $@ 	
 
 $(TARGET)/test:  $(SRC)/test.c
 	gcc $< -g -gdwarf-2 -mavx2  -o $@ 	

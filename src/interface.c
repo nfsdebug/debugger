@@ -1441,6 +1441,11 @@ void *spawn_thread(void *idata){
             set_register(debug->register_adress, child_pid, strtoll(debug->register_content, NULL, 16));
             waddstr(main_win, "Content succesfully modified\n");
         }
+        wattron(main_win, COLOR_PAIR(6)); 
+        waddstr(main_win, "\n   --- Start tracing ---\n") ;
+        wattron(main_win, COLOR_PAIR(6)); 
+        box(main_win, 0, 0); 
+        wrefresh(main_win) ; 
         while (1)
         {
 
@@ -2139,14 +2144,13 @@ void refresh_window_register(struct Data *data){
     //    sprintf(data->buff64, "%016x" , regs->fpreg->xmm_space[i]) ; 
     //    mvwaddstr(w, 18 + i - debut , 10, data->buff64) ; 
     //}
-
     for (unsigned long long i = debut ; i < debut + dx_of_xmm ; i++){
         current_position = 1 ;  
         if (horizontal == 0){
             sprintf(data->buff64, "xmm%i", i);
             mvwaddstr(w, 18 + i - debut, 1, data->buff64) ; 
-            sprintf(data->buff64, "%016x" , regs->fpreg->xmm_space[i]) ; 
-            mvwaddstr(w, 18 + i - debut , 10, data->buff64) ;
+            sprintf(data->buff64_2, "%016x" , regs->fpreg->xmm_space[i]) ; 
+            mvwaddstr(w, 18 + i - debut , 10, data->buff64_2) ;
         }
         else if (horizontal == 1){
             // fp values
@@ -2313,6 +2317,7 @@ void refresh_window_code(struct Data *data){
         //waddstr(w, index_dwarf) ; 
         //waddstr(w, index_unwind) ; 
     }
+    usleep(1000000);
     //data->buff64 = backs->names[]
 
     //data->buff64 = backs->names[selected_code] ; 
@@ -2755,6 +2760,7 @@ int main(int argc, char **argv){
     init_pair(3, COLOR_BLACK, COLOR_RED);    
     init_pair(4, COLOR_RED, COLOR_WHITE);
     init_pair(5, COLOR_RED, COLOR_BLACK);    
+    init_pair(6, COLOR_GREEN, COLOR_BLACK);  
 
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
 
