@@ -754,13 +754,15 @@ void print_parsed(struct Data *data){
      */
     WINDOW *main_win = data->inter->main_window[0] ;\
     struct Debugger *d = data->debug ;  
-    waddstr(main_win, "\n Arguments list :");
+    waddstr(main_win, "\n   Arguments list :  ");
     for (int j = 0; j < d->size_args + 1; j++){
         waddstr(main_win, d->args[j]);
+        waddstr(main_win, "   ") ; 
     }
-    waddstr(main_win, "\n Options list :");
+    waddstr(main_win, "\n   Options list :  ");
     for (int j = 0; j < d->size_opts; j++){
         waddstr(main_win, d->opts[j]);
+        waddstr(main_win, "   ") ;         
     }
     waddstr(main_win, "\n\n ");
 }
@@ -845,14 +847,14 @@ void get_maps(struct Data *data){
 
     // print the mapos localisation is the dedicated window
     sprintf(buffpid, "%d", process_child->pid);
-    waddstr(win, " \n\n  Maps localisation :  ");
+    waddstr(win, "     --> Maps localisation :  ");
     sprintf(buffpath, "/proc/%s/maps", buffpid);
     waddstr(win, buffpath);
-    waddstr(win, " \n\n");
+    waddstr(win, " \n");
     // open the maps file 
 
 
-    waddstr(win, "  lecture du fichier...\n ");
+    //waddstr(win, "  lecture du fichier...\n ");
 
  
     FILE *fp = fopen(buffpath, "r");
@@ -862,7 +864,7 @@ void get_maps(struct Data *data){
     else{
 
         
-            waddstr(win, "  --> Lecture du /proc/pid/maps ... \n ");
+        //waddstr(win, "  --> Lecture du /proc/pid/maps ... \n ");
        // now we want to show loaded libraries We save line after line the maps file
         size_t line_buf_size = 0;
         maps->number_lines = 0;
@@ -1033,6 +1035,9 @@ void get_backtrace(struct Data *data){
         pass++;
         } while (ret > 0);
     backs->size = pass; 
+    sprintf(data->buff64 , "     --> fetch %llu backtrace functions\n" , pass) ; 
+    waddstr(data->inter->main_window[0] , data->buff64) ; 
+    wrefresh(data->inter->main_window[0]);
     
 }
 
@@ -1205,13 +1210,16 @@ void print_siginfo(struct Data *data, siginfo_t *signinf){
     sprintf(tmp2, "%s", strsignal(signinf->si_signo));
     sprintf(tmp3, "%d", signinf->si_signo);
     sprintf(tmp4, "%llx", regs->reg->rip);
-    waddstr(main_win, "\n Child stopped : ");
+    wattron(main_win, COLOR_PAIR(5)); 
+    waddstr(main_win, "\n   Child stopped : ");
     waddstr(main_win, tmp2);
     waddstr(main_win, " (");
     waddstr(main_win, tmp3);
     waddstr(main_win, ") at adress 0x");
     waddstr(main_win, tmp4);
+    wattroff(main_win, COLOR_PAIR(5)); 
     new_main_line(main_win);
+    box(main_win, 0, 0) ; 
     wrefresh(main_win);
 }
 
@@ -1316,14 +1324,23 @@ void *spawn_thread(void *idata){
         char *path_for_dbg = malloc( sizeof(strlen(debug->args[0])) * sizeof(char)) ; 
             strcpy(path_for_dbg, debug->args[0] + 2);
         char *buff = malloc(128 * sizeof(char));        
-        sprintf(buff, "    modified path : %s\n",path_for_dbg);
-        waddstr(main_win, buff);
+        //sprintf(buff, "    modified path : %s\n",path_for_dbg);
+        //waddstr(main_win, buff);
         wrefresh(main_win);
         //
+        waddstr(main_win, "\n   Get dgb ...\n") ; 
+        wrefresh(main_win) ;         
         get_dbg(path_for_dbg);
+        waddstr(main_win, "   Done !\n") ; 
+        wrefresh(main_win) ;                 
         free(path_for_dbg);
-        if (count_func == 0)
+        if (count_func == 0){
+            waddstr(main_win, "\n   Get elf ...\n") ; 
+            wrefresh(main_win) ;             
             get_elf(debug->args[0]);
+            waddstr(main_win, "   Done !\n") ; 
+            wrefresh(main_win) ;             
+        }
         long long prog_offset;
         char fname[128];
 
@@ -1349,6 +1366,7 @@ void *spawn_thread(void *idata){
         {
             if (debug->is_function == 0)
             {
+                waddstr(main_win, "\n   Add address breakpoint ...\n") ; 
                 sprintf(tmp2, "DEBUG:\tSetting a breakpoint on adress %s\n", debug->breakpoint_adress);
                 waddstr(main_win, tmp2);
                 Dwarf_Addr adr = strtoll(debug->breakpoint_adress, NULL, 16) + prog_offset;
@@ -1362,9 +1380,14 @@ void *spawn_thread(void *idata){
                     sprintf(tmp2, "Wrong adress for the breakpoint");
                     waddstr(main_win, tmp2);
                 }
+                else{
+                    waddstr(main_win, " Done !\n") ; 
+                    wrefresh(main_win) ; 
+                }
             }
             else
             {
+                waddstr(main_win, "\n   Add function breakpoint ...\n") ; 
                 for (int j = 0; j < count_func; j++)
                 {
                     if (strcmp(debug->breakpoint_function, func[j].name) == 0)
@@ -1383,6 +1406,7 @@ void *spawn_thread(void *idata){
                         ptrace(PTRACE_POKEDATA, child_pid, (void *)adr, (void *)bef);
                     }
                 }
+                waddstr(main_win, "   Done !\n") ; 
             }
             ptrace(PTRACE_SYSCALL, child_pid, 0, 0);
             waitpid(child_pid, &wait_status, 0);
@@ -1390,7 +1414,8 @@ void *spawn_thread(void *idata){
 // add memory management
         if (debug->have_wmemory)
         {
-            sprintf(tmp2, "DEBUG:\tWrite %s in memory on adress %s\n", debug->memory_content, debug->memory_adress);
+            waddstr(main_win, "\n   Write in memory ...\n") ; 
+            sprintf(tmp2, " DEBUG:\tWrite %s in memory on adress %s\n", debug->memory_content, debug->memory_adress);
             waddstr(main_win, tmp2);
             Dwarf_Addr adr = strtoll(debug->memory_adress, NULL, 16) + prog_offset;
             sprintf(tmp3, " Address with offset : %llx\n", adr);
@@ -1400,9 +1425,9 @@ void *spawn_thread(void *idata){
             waddstr(main_win, tmp3);
 
             if (ptrace(PTRACE_POKEDATA, child_pid, adr, strtoll(debug->memory_content, NULL, 16)) < 0)
-                waddstr(main_win, "Error with the adress you entered\n");
+                waddstr(main_win, " Error with the adress you entered\n");
             else
-                waddstr(main_win, "Content succesfully modified\n");
+                waddstr(main_win, " Content succesfully modified\n");
             sprintf(tmp3, " After : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
             waddstr(main_win, tmp3);
         }
@@ -1463,20 +1488,29 @@ void *spawn_thread(void *idata){
                     //refresh_window_tree(data, as, ui);
                     ////////
         }   
+        waddstr(main_win, "\n   Get backtrace information ...\n") ; 
+        wrefresh(main_win) ;         
         get_backtrace(data) ;       
-       refresh_window_tree(data, as, ui);
+        waddstr(main_win, "   Done !\n") ;  
+        wrefresh(main_win) ;        
+
+        //refresh_window_tree(data, as, ui);
 
         refresh_window_register(data);
 
         
         refresh_window_processes(data);
 
-
+        waddstr(main_win, "\n   Get maps ...\n") ; 
+        wrefresh(main_win) ;         
         get_maps(data) ; 
+        waddstr(main_win, "   Done !\n") ;         
         get_codes(data) ; 
         refresh_window_code(data) ; 
         show_libraries_2(data) ;
+        waddstr(main_win, "\n   Dump memory ...\n") ; 
         get_memory(data); 
+        waddstr(main_win, "   Done !\n") ; 
         refresh_window_memory(data) ; 
         //show_libraries(process_win, &process_child, debug.verbose);
     
@@ -1621,7 +1655,7 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
     if (is_valid){
         /// for EXEC command ; simple execution
         if ((strcmp(command[0], parsed[0]) == 0) & (i_a > 0)){
-            waddstr(win, "\n EXEC :");
+            waddstr(win, "\n --> Start standard execution mode ... ");
             new_main_line(win);
             int thr = 1;
             debug->opts = opts;
@@ -1632,7 +1666,7 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
         }
         /// for BREAKPOINT command : define an explicit breakpoint
         if ((strcmp(command[1], parsed[0]) == 0) & (i_a > 1)){
-            waddstr(win, "\n BREAKPOINT :");
+            waddstr(win, "\n --> Start breakpoint execution mode ... ");
             new_main_line(win);
             int thr = 1;
             debug->have_breakpoint = 1;
@@ -1669,7 +1703,7 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
 
         if ((strcmp(command[2], parsed[0]) == 0) & (i_a > 1))
         {
-            waddstr(win, "\n MEMORY :");
+            waddstr(win, "\n --> Start Memory execution mode ... ");
             new_main_line(win);
             int thr = 1;
             debug->have_wmemory = 1;
@@ -1699,7 +1733,7 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
         }
         if ((strcmp(command[3], parsed[0]) == 0) & (i_a > 1))
         {
-            waddstr(win, "\n REGISTERS :");
+            waddstr(win, "\n --> Start Register execution mode ... ");
             new_main_line(win);
             int thr = 1;
             debug->have_wregister = 1;
@@ -1737,10 +1771,11 @@ void parse(struct Data *data, WINDOW *win, vec_t *input){
 
 
     if (is_valid == 0){
-        waddstr(win, "Please enter a valid command... ");
-        new_main_line(win);
-        waddstr(win, "Select Help panel for more information.");
-        new_main_line(win);
+        wattron(win, COLOR_PAIR(5));
+        waddstr(win, "\n    Please enter a valid command... \n");
+        waddstr(win, "    Select Help panel for more information.\n");
+        wattroff(win, COLOR_PAIR(5));        
+
     }
 
     ///////////////////
@@ -2275,8 +2310,8 @@ void refresh_window_code(struct Data *data){
     }
     if ((index_dwarf < 0) | (index_unwind < 0)){
         waddstr(w, "impossible d'afficher le code...\n") ; 
-        waddstr(w, index_dwarf) ; 
-        waddstr(w, index_unwind) ; 
+        //waddstr(w, index_dwarf) ; 
+        //waddstr(w, index_unwind) ; 
     }
     //data->buff64 = backs->names[]
 
@@ -2414,8 +2449,8 @@ void get_memory(struct Data *data){
     struct Interface *inter = data->inter ;     
     struct maps_info *maps  = data->maps ; 
     struct memory_info *mems = data->mems; 
-    waddstr(inter->main_window[0] , "\n  Dump memory ...\n")  ;
-    wrefresh(inter->main_window[0]) ;
+    //waddstr(inter->main_window[0] , "\n  Dump memory ...\n")  ;
+    //wrefresh(inter->main_window[0]) ;
 
     //if (mems->adress->data != NULL){
     //    vec_clear(mems->adress) ; 
@@ -2431,8 +2466,8 @@ void get_memory(struct Data *data){
     uint64_t adress ; 
     uint64_t value ; 
     uint64_t length ;
-    waddstr(inter->main_window[0] , "\n  begin for ...\n")  ;
-    wrefresh(inter->main_window[0]) ;
+    //waddstr(inter->main_window[0] , "\n  begin for ...\n")  ;
+    //wrefresh(inter->main_window[0]) ;
 
     for (uint64_t i = 0 ; i < maps->number_lines  ; i++){
         length = maps->stop[i] - maps->start[i] ; 
@@ -2445,7 +2480,9 @@ void get_memory(struct Data *data){
             vec_push(mems->value , &value ) ; 
         }
     }
-    waddstr(inter->main_window[0] , "  Done !\n")  ;
+    sprintf(data->buff64 , "     --> fetch %lu chunks !\n", maps->number_lines)  ;
+    waddstr(inter->main_window[0], data->buff64) ; 
+    box(inter->main_window[0], 0, 0) ; 
     wrefresh(inter->main_window[0]);
 }
 
@@ -2715,6 +2752,9 @@ int main(int argc, char **argv){
     start_color();
     init_pair(1, COLOR_BLACK, COLOR_WHITE);
     init_pair(2, COLOR_WHITE, COLOR_RED);
+    init_pair(3, COLOR_BLACK, COLOR_RED);    
+    init_pair(4, COLOR_RED, COLOR_WHITE);
+    init_pair(5, COLOR_RED, COLOR_BLACK);    
 
     int n_choice = sizeof(choice_panel) / sizeof(choice_panel[0]);
 
