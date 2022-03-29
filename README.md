@@ -1,1 +1,1 @@
-This is the interface branch. This branch is for experiments with Ncurses.
+This is an old branch. This branch is for experiments with Ncurses.
