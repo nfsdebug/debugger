@@ -1,5 +1,5 @@
 CC?=gcc
-CFLAGS?=-g -gdwarf-2 -O0
+CFLAGS?=  -O0
 
 ALL_C=$(wildcard *.c)
 ALL_T=$(patsubst %.c,%.bin,$(ALL_C))
