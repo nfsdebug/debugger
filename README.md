@@ -1,3 +1,6 @@
+
+**Disclaimer** : This repository is an experimental project consisting of various branches that have not been merged into the main branch (main). Each branch may explore different features or alternative approaches. Some branches may be incomplete, untested, or unstable. Use this code at your own risk.
+
 This is an experimental tool for debugging purposes. The application uses ptrace to get the child process information. The Dwarf and the Unwind libraries allows it to obtain additional information on the tracked byte code execution. There are two platforms :
 
  - the first one is the console version of the debugger. It is the most advanced tool of both ;
