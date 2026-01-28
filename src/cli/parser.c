@@ -104,6 +104,62 @@ int parser_parse_command(const char *input, command_t *cmd) {
     cmd->type = lookup_command(token_lower);
     free(token_lower);
 
+    /* Special handling for multi-word commands */
+    if (cmd->type == CMD_REGISTER_DUMP) {
+        /* Check for "register read <reg>" or "register dump" */
+        char *subcmd = tolower_str(strtok(NULL, " \t\n"));
+        if (subcmd && strcmp(subcmd, "read") == 0) {
+            cmd->type = CMD_REGISTER_READ;
+            free(subcmd);
+            cmd->string_arg = tolower_str(strtok(NULL, " \t\n"));
+            free(copy);
+            return 0;
+        } else if (subcmd && strcmp(subcmd, "write") == 0) {
+            cmd->type = CMD_REGISTER_WRITE;
+            char *reg = tolower_str(strtok(NULL, " \t\n"));
+            char *val = strtok(NULL, " \t\n");
+            if (reg) {
+                cmd->string_arg = reg;
+                if (val) {
+                    cmd->value_arg = strtoll(val, NULL, 0);
+                }
+            }
+            free(subcmd);
+            free(copy);
+            return 0;
+        }
+        free(subcmd);
+        /* "register dump" or just "register" */
+    }
+
+    /* Special handling for memory read/write */
+    if (cmd->type == CMD_MEMORY_READ) {
+        char *subcmd = tolower_str(strtok(NULL, " \t\n"));
+        if (subcmd && strcmp(subcmd, "write") == 0) {
+            cmd->type = CMD_MEMORY_WRITE;
+            char *addr = strtok(NULL, " \t\n");
+            char *val = strtok(NULL, " \t\n");
+            if (addr && val) {
+                cmd->addr_arg = strtoll(addr, NULL, 0);
+                cmd->value_arg = strtoll(val, NULL, 0);
+            }
+            free(subcmd);
+            free(copy);
+            return 0;
+        } else if (subcmd && strcmp(subcmd, "read") == 0) {
+            /* "memory read <addr>" - already CMD_MEMORY_READ */
+            char *addr = strtok(NULL, " \t\n");
+            if (addr) {
+                cmd->addr_arg = strtoll(addr, NULL, 0);
+            }
+            free(subcmd);
+            free(copy);
+            return 0;
+        }
+        /* "memory <addr>" - just read */
+        free(subcmd);
+    }
+
     /* Parse command-specific arguments */
     switch (cmd->type) {
         case CMD_CONTINUE:
