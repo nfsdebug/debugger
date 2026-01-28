@@ -38,14 +38,16 @@
 /* Core modules */
 #include "core/breakpoints.h"
 #include "core/symbols.h"
-#include "core/dwarf.h"
+/* DWARF disabled due to libdwarf abort issue */
+/* #include "core/dwarf.h" */
 
 /* Global state */
 static pid_t g_child_pid = -1;
 static int g_running = 1;
 static breakpoint_state_t g_breakpoints;
 static symbol_table_t g_symbols;
-static dwarf_state_t g_dwarf;
+/* DWARF disabled due to libdwarf abort issue */
+/* static dwarf_state_t g_dwarf; */
 static uint64_t g_base_address = 0;  /* Runtime base address */
 static int g_at_breakpoint = 0;
 static int g_current_bp_index = -1;
@@ -74,15 +76,16 @@ static uint64_t get_base_address(pid_t pid) {
         /* Look for the executable segment with r-x permissions */
         unsigned long start, end;
         char perms[5];
-        int offset;
+        unsigned long offset;
         char dev[32];
         unsigned long inode;
         char pathname[256];
 
-        if (sscanf(line, "%lx-%lx %4s %x %s %lu %s", &start, &end, perms, &offset, dev, &inode, pathname) == 7) {
+        if (sscanf(line, "%lx-%lx %4s %lx %s %lu %s", &start, &end, perms, &offset, dev, &inode, pathname) == 7) {
             /* Check if this is the executable segment */
             if (strstr(perms, "r-x") && pathname[0] == '/') {
-                base = start;
+                /* For PIE, ELF vaddr 0 maps to: start - offset */
+                base = start - offset;
                 break;
             }
         }
@@ -176,7 +179,23 @@ static int cmd_continue(void) {
 
     /* If we're at a breakpoint, step past it first */
     if (g_at_breakpoint && g_current_bp_index >= 0) {
-        breakpoints_step_past(&g_breakpoints, g_child_pid, g_current_bp_index);
+        /* Prepare to step past: restore instruction and adjust RIP */
+        breakpoints_step_past_prepare(&g_breakpoints, g_child_pid, g_current_bp_index);
+
+        /* Single step to execute the original instruction */
+        ptrace(PTRACE_SINGLESTEP, g_child_pid, 0, 0);
+        waitpid(g_child_pid, &status, 0);
+
+        /* Check if exited during single step */
+        if (WIFEXITED(status)) {
+            output_normal(CAT_PROCESS, "Process exited with code %d\n", WEXITSTATUS(status));
+            g_running = 0;
+            return 0;
+        }
+
+        /* Re-set the INT3 breakpoint */
+        breakpoints_step_past_finish(&g_breakpoints, g_child_pid, g_current_bp_index);
+
         g_at_breakpoint = 0;
         g_current_bp_index = -1;
     }
@@ -243,7 +262,23 @@ static int cmd_single_step(void) {
 
     /* If we're at a breakpoint, step past it first */
     if (g_at_breakpoint && g_current_bp_index >= 0) {
-        breakpoints_step_past(&g_breakpoints, g_child_pid, g_current_bp_index);
+        /* Prepare to step past: restore instruction and adjust RIP */
+        breakpoints_step_past_prepare(&g_breakpoints, g_child_pid, g_current_bp_index);
+
+        /* Single step to execute the original instruction */
+        ptrace(PTRACE_SINGLESTEP, g_child_pid, 0, 0);
+        waitpid(g_child_pid, &status, 0);
+
+        /* Check if exited during single step */
+        if (WIFEXITED(status)) {
+            output_normal(CAT_PROCESS, "Process exited with code %d\n", WEXITSTATUS(status));
+            g_running = 0;
+            return 0;
+        }
+
+        /* Re-set the INT3 breakpoint */
+        breakpoints_step_past_finish(&g_breakpoints, g_child_pid, g_current_bp_index);
+
         g_at_breakpoint = 0;
         g_current_bp_index = -1;
         return 1;
@@ -374,7 +409,14 @@ static int cmd_backtrace(void) {
 /* === BREAKPOINT COMMANDS === */
 
 static int cmd_breakpoint_set_addr(uint64_t addr) {
-    int idx = breakpoints_add_addr(&g_breakpoints, (void *)addr, g_child_pid);
+    /* If address is small (< 0x10000), treat it as a virtual address that needs base adjustment */
+    uint64_t runtime_addr = addr;
+    if (addr < 0x10000) {
+        runtime_addr = addr + g_base_address;
+        output_normal(CAT_BREAKPOINT, "Virtual address 0x%lx -> runtime 0x%lx (base: 0x%lx)\n",
+                      addr, runtime_addr, g_base_address);
+    }
+    int idx = breakpoints_add_addr(&g_breakpoints, (void *)runtime_addr, g_child_pid);
     if (idx >= 0) {
         output_stats_inc_breakpoint();
     }
@@ -394,49 +436,12 @@ static int cmd_breakpoint_set_current(void) {
 }
 
 static int cmd_breakpoint_set_func(const char *func_spec) {
-    /* Check for "function:line" format */
+    /* Check for "function:line" format - DWARF disabled, show error */
     char *colon = strchr(func_spec, ':');
     if (colon) {
-        /* Split "main:42" into "main" and "42" */
-        char *func_name = strdup(func_spec);
-        char *colon2 = strchr(func_name, ':');
-        if (colon2) *colon2 = '\0';
-        int line_num = atoi(colon + 1);
-
-        /* Find the function's file */
-        uint64_t func_vaddr = symbols_find_address(&g_symbols, func_name);
-        if (func_vaddr == 0) {
-            output_error("Function not found: %s", func_name);
-            free(func_name);
-            return -1;
-        }
-
-        /* Adjust to runtime address */
-        uint64_t func_addr = func_vaddr + g_base_address;
-
-        /* Use DWARF to resolve line to address */
-        const source_location_t *loc = dwarf_addr_to_line(&g_dwarf, func_addr);
-        if (!loc) {
-            output_error("No source info for function: %s", func_name);
-            free(func_name);
-            return -1;
-        }
-
-        /* Find the specific line */
-        uint64_t dwarf_addr = dwarf_line_to_addr(&g_dwarf, loc->file, line_num);
-        if (dwarf_addr == 0) {
-            output_error("Line %d not found in %s", line_num, loc->file);
-            free(func_name);
-            return -1;
-        }
-
-        /* Adjust to runtime address */
-        uint64_t addr = dwarf_addr + g_base_address;
-
-        output_normal(CAT_BREAKPOINT, "Breakpoint at %s:%d -> 0x%lx (dwarf: 0x%lx + base: 0x%lx)\n",
-                      func_name, line_num, addr, dwarf_addr, g_base_address);
-        free(func_name);
-        return cmd_breakpoint_set_addr(addr);
+        output_error("Line number breakpoints (func:line) require DWARF support (currently disabled)");
+        output_error("Use address breakpoints instead: disassemble target to find address");
+        return -1;
     }
 
     /* Just function name - use symbol table */
@@ -455,8 +460,8 @@ static int cmd_breakpoint_set_func(const char *func_spec) {
 }
 
 static int cmd_list_source(const char *file, int line, int count) {
-    dwarf_list_source(&g_dwarf, file, line, count);
-    return 0;
+    output_error("Source listing requires DWARF support (currently disabled)");
+    return -1;
 }
 
 static int cmd_breakpoint_list(void) {
@@ -737,9 +742,10 @@ int main(int argc, char **argv) {
     }
 
     /* Initialize DWARF from program */
-    if (dwarf_load(&g_dwarf, argv[1]) < 0) {
-        output_error("No DWARF info - compile with -g for source-level debugging\n");
-    }
+    // TODO: Fix libdwarf abort() issue - temporarily disabled
+    // if (dwarf_load(&g_dwarf, argv[1]) < 0) {
+    //     output_error("No DWARF info - compile with -g for source-level debugging\n");
+    // }
 
     /* Print process info */
     section_print_separator(60);
@@ -754,7 +760,7 @@ int main(int argc, char **argv) {
     run_interactive();
 
     /* Cleanup */
-    dwarf_free(&g_dwarf);
+    /* dwarf_free(&g_dwarf); DWARF disabled */
     symbols_cleanup(&g_symbols);
     breakpoints_cleanup(&g_breakpoints, g_child_pid);
 #ifdef HAVE_LIBUNWIND

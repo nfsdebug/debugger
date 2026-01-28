@@ -7,7 +7,7 @@ VEC = ext/vec
 TARGET = target
 EXP = exp
 
-all : $(TARGET)/utilities $(TARGET)/interface $(TARGET)/debug_console $(TARGET)/test_process $(TARGET)/mon_programme $(TARGET)/test $(TARGET)/multifunction $(TARGET)/new_tty $(TARGET)/write_on_new_tty
+all : $(TARGET)/utilities $(TARGET)/interface $(TARGET)/debug_console $(TARGET)/main_interactive $(TARGET)/test_process $(TARGET)/mon_programme $(TARGET)/test $(TARGET)/multifunction $(TARGET)/new_tty $(TARGET)/write_on_new_tty
 
 $(TARGET)/utilities : $(SRC)/utilities.h $(SRC)/utilities.c
 	gcc -o $(TARGET)/utilities.o -c $(SRC)/utilities.c
@@ -17,6 +17,9 @@ $(TARGET)/interface :  $(SRC)/interface.c
 
 $(TARGET)/debug_console : $(SRC)/debug_console.c $(SRC)/utilities.c
 	gcc -Wall -Wextra -g $(SRC)/debug_console.c $(TARGET)/utilities.o -o $@ -ldwarf -lunwind -lunwind-ptrace -lunwind-generic
+
+$(TARGET)/main_interactive : $(SRC)/main_interactive.c $(SRC)/core/breakpoints.c $(SRC)/core/symbols.c $(SRC)/display/output.c $(SRC)/display/sections.c $(SRC)/display/theme.c $(SRC)/cli/config.c $(SRC)/cli/parser.c
+	gcc -Wall -Wextra -g -I$(SRC) -I$(SRC)/core -I$(SRC)/display -I$(SRC)/cli $(SRC)/main_interactive.c $(SRC)/core/breakpoints.c $(SRC)/core/symbols.c $(SRC)/display/output.c $(SRC)/display/sections.c $(SRC)/display/theme.c $(SRC)/cli/config.c $(SRC)/cli/parser.c -o $@ -lunwind -lunwind-ptrace -lunwind-generic
 
 $(TARGET)/test_process :  $(EXP)/test_process.c
 	gcc -L./$(VEC) -Wl,-rpath=./$(VEC) $< -o $@ -lvec

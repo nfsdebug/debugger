@@ -9,6 +9,7 @@
 #include <sys/ptrace.h>
 #include <sys/user.h>
 #include <sys/wait.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -93,6 +94,33 @@ static int restore_breakpoint(pid_t pid, breakpoint_t *bp) {
     return 0;
 }
 
+int breakpoints_add_addr(breakpoint_state_t *state, void *addr, pid_t pid) {
+    if (state->count >= state->capacity) {
+        output_error("Breakpoint list full (max %d)", state->capacity);
+        return -1;
+    }
+
+    breakpoint_t *bp = &state->bps[state->count];
+
+    bp->type = BP_ADDRESS;
+    bp->location.address = addr;
+    bp->actual_address = (uint64_t)addr;
+    bp->enabled = 0;
+    bp->hit_count = 0;
+
+    /* Set INT3 */
+    if (set_breakpoint_int3(pid, bp) < 0) {
+        return -1;
+    }
+    bp->enabled = 1;
+
+    output_normal(CAT_BREAKPOINT, "Breakpoint #%d set at 0x%lx\n",
+                  state->count, (uint64_t)addr);
+
+    state->count++;
+    return state->count - 1;  /* Return breakpoint index */
+}
+
 int breakpoints_add_func(breakpoint_state_t *state, const char *func_name,
                          pid_t pid, uint64_t offset) {
     if (state->count >= state->capacity) {
@@ -118,33 +146,6 @@ int breakpoints_add_func(breakpoint_state_t *state, const char *func_name,
 
     output_normal(CAT_BREAKPOINT, "Breakpoint #%d set at %s (0x%lx)\n",
                   state->count, func_name, offset);
-
-    state->count++;
-    return state->count - 1;  /* Return breakpoint index */
-}
-
-int breakpoints_add_addr(breakpoint_state_t *state, void *addr, pid_t pid) {
-    if (state->count >= state->capacity) {
-        output_error("Breakpoint list full (max %d)", state->capacity);
-        return -1;
-    }
-
-    breakpoint_t *bp = &state->bps[state->count];
-
-    bp->type = BP_ADDRESS;
-    bp->location.address = addr;
-    bp->actual_address = (uint64_t)addr;
-    bp->enabled = 0;
-    bp->hit_count = 0;
-
-    /* Set INT3 */
-    if (set_breakpoint_int3(pid, bp) < 0) {
-        return -1;
-    }
-    bp->enabled = 1;
-
-    output_normal(CAT_BREAKPOINT, "Breakpoint #%d set at 0x%lx\n",
-                  state->count, (uint64_t)addr);
 
     state->count++;
     return state->count - 1;  /* Return breakpoint index */
@@ -257,8 +258,8 @@ int breakpoints_check_hit(breakpoint_state_t *state, pid_t pid, uint64_t rip) {
     return -1;
 }
 
-/* Step past a breakpoint (restore instruction, single step, re-set INT3) */
-int breakpoints_step_past(breakpoint_state_t *state, pid_t pid, int bp_index) {
+/* Prepare to step past a breakpoint (restore instruction, adjust RIP) - NO WAIT */
+int breakpoints_step_past_prepare(breakpoint_state_t *state, pid_t pid, int bp_index) {
     if (bp_index < 0 || bp_index >= state->count) {
         return -1;
     }
@@ -271,30 +272,31 @@ int breakpoints_step_past(breakpoint_state_t *state, pid_t pid, int bp_index) {
         return -1;
     }
 
-    /* 2. Single step (execute the original instruction) */
+    /* 2. Adjust RIP back to breakpoint address */
     struct user_regs_struct regs;
     if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) < 0) {
         output_error("Failed to get registers");
         return -1;
     }
 
-    /* Adjust RIP back by 1 (since we're past the INT3) */
     regs.rip = bp->actual_address;
     if (ptrace(PTRACE_SETREGS, pid, NULL, &regs) < 0) {
         output_error("Failed to set RIP");
         return -1;
     }
 
-    /* Single step */
-    if (ptrace(PTRACE_SINGLESTEP, pid, 0, 0) < 0) {
-        output_error("Failed to single step");
+    return 0;
+}
+
+/* Re-set breakpoint after stepping past (called after single step completes) */
+int breakpoints_step_past_finish(breakpoint_state_t *state, pid_t pid, int bp_index) {
+    if (bp_index < 0 || bp_index >= state->count) {
         return -1;
     }
 
-    int status;
-    waitpid(pid, &status, 0);
+    breakpoint_t *bp = &state->bps[bp_index];
 
-    /* 3. Re-set INT3 */
+    /* Re-set INT3 */
     if (set_breakpoint_int3(pid, bp) < 0) {
         output_error("Failed to re-set breakpoint");
         return -1;

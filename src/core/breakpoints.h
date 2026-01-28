@@ -71,4 +71,10 @@ int breakpoints_check_hit(breakpoint_state_t *state, pid_t pid, uint64_t rip);
 /* Step past a breakpoint (restore instruction, single step, re-set INT3) */
 int breakpoints_step_past(breakpoint_state_t *state, pid_t pid, int bp_index);
 
+/* Prepare to step past a breakpoint (restore instruction, adjust RIP) - NO WAIT */
+int breakpoints_step_past_prepare(breakpoint_state_t *state, pid_t pid, int bp_index);
+
+/* Re-set breakpoint after stepping past (called after single step completes) */
+int breakpoints_step_past_finish(breakpoint_state_t *state, pid_t pid, int bp_index);
+
 #endif /* BREAKPOINTS_H */
