@@ -38,12 +38,15 @@
 /* Core modules */
 #include "core/breakpoints.h"
 #include "core/symbols.h"
+#include "core/dwarf.h"
 
 /* Global state */
 static pid_t g_child_pid = -1;
 static int g_running = 1;
 static breakpoint_state_t g_breakpoints;
 static symbol_table_t g_symbols;
+static dwarf_state_t g_dwarf;
+static uint64_t g_base_address = 0;  /* Runtime base address */
 static int g_at_breakpoint = 0;
 static int g_current_bp_index = -1;
 
@@ -53,6 +56,41 @@ static struct UPT_info *g_ui;
 #endif
 
 /* === TARGET SPAWN === */
+
+/* Get runtime base address from /proc/PID/maps */
+static uint64_t get_base_address(pid_t pid) {
+    char path[128];
+    snprintf(path, sizeof(path), "/proc/%d/maps", pid);
+
+    FILE *fp = fopen(path, "r");
+    if (!fp) {
+        return 0;
+    }
+
+    char line[512];
+    uint64_t base = 0;
+
+    while (fgets(line, sizeof(line), fp)) {
+        /* Look for the executable segment with r-x permissions */
+        unsigned long start, end;
+        char perms[5];
+        int offset;
+        char dev[32];
+        unsigned long inode;
+        char pathname[256];
+
+        if (sscanf(line, "%lx-%lx %4s %x %s %lu %s", &start, &end, perms, &offset, dev, &inode, pathname) == 7) {
+            /* Check if this is the executable segment */
+            if (strstr(perms, "r-x") && pathname[0] == '/') {
+                base = start;
+                break;
+            }
+        }
+    }
+
+    fclose(fp);
+    return base;
+}
 
 static pid_t spawn_target(const char *program) {
     pid_t pid = fork();
@@ -355,17 +393,70 @@ static int cmd_breakpoint_set_current(void) {
     return cmd_breakpoint_set_addr(regs.rip);
 }
 
-static int cmd_breakpoint_set_func(const char *func_name) {
-    /* Resolve function name to address using symbol table */
-    uint64_t addr = symbols_find_address(&g_symbols, func_name);
-    if (addr == 0) {
-        output_error("Function not found: %s", func_name);
+static int cmd_breakpoint_set_func(const char *func_spec) {
+    /* Check for "function:line" format */
+    char *colon = strchr(func_spec, ':');
+    if (colon) {
+        /* Split "main:42" into "main" and "42" */
+        char *func_name = strdup(func_spec);
+        char *colon2 = strchr(func_name, ':');
+        if (colon2) *colon2 = '\0';
+        int line_num = atoi(colon + 1);
+
+        /* Find the function's file */
+        uint64_t func_vaddr = symbols_find_address(&g_symbols, func_name);
+        if (func_vaddr == 0) {
+            output_error("Function not found: %s", func_name);
+            free(func_name);
+            return -1;
+        }
+
+        /* Adjust to runtime address */
+        uint64_t func_addr = func_vaddr + g_base_address;
+
+        /* Use DWARF to resolve line to address */
+        const source_location_t *loc = dwarf_addr_to_line(&g_dwarf, func_addr);
+        if (!loc) {
+            output_error("No source info for function: %s", func_name);
+            free(func_name);
+            return -1;
+        }
+
+        /* Find the specific line */
+        uint64_t dwarf_addr = dwarf_line_to_addr(&g_dwarf, loc->file, line_num);
+        if (dwarf_addr == 0) {
+            output_error("Line %d not found in %s", line_num, loc->file);
+            free(func_name);
+            return -1;
+        }
+
+        /* Adjust to runtime address */
+        uint64_t addr = dwarf_addr + g_base_address;
+
+        output_normal(CAT_BREAKPOINT, "Breakpoint at %s:%d -> 0x%lx (dwarf: 0x%lx + base: 0x%lx)\n",
+                      func_name, line_num, addr, dwarf_addr, g_base_address);
+        free(func_name);
+        return cmd_breakpoint_set_addr(addr);
+    }
+
+    /* Just function name - use symbol table */
+    uint64_t vaddr = symbols_find_address(&g_symbols, func_spec);
+    if (vaddr == 0) {
+        output_error("Function not found: %s", func_spec);
         output_normal(CAT_PROCESS, "Tip: Use 'info functions' to list available functions\n");
         return -1;
     }
 
-    output_normal(CAT_BREAKPOINT, "Function '%s' resolved to 0x%lx\n", func_name, addr);
+    /* Adjust to runtime address */
+    uint64_t addr = vaddr + g_base_address;
+    output_normal(CAT_BREAKPOINT, "Function '%s' resolved to 0x%lx (vaddr: 0x%lx + base: 0x%lx)\n",
+                  func_spec, addr, vaddr, g_base_address);
     return cmd_breakpoint_set_addr(addr);
+}
+
+static int cmd_list_source(const char *file, int line, int count) {
+    dwarf_list_source(&g_dwarf, file, line, count);
+    return 0;
 }
 
 static int cmd_breakpoint_list(void) {
@@ -538,6 +629,14 @@ static int run_interactive(void) {
                 cmd_backtrace();
                 break;
 
+            case CMD_LIST_SOURCE:
+                if (cmd.string_arg) {
+                    int line = (cmd.int_arg > 0) ? cmd.int_arg : 1;
+                    int count = (cmd.value_arg > 0) ? (int)cmd.value_arg : 10;
+                    cmd_list_source(cmd.string_arg, line, count);
+                }
+                break;
+
             case CMD_INFO_FUNCTIONS:
                 cmd_info_functions();
                 break;
@@ -613,6 +712,9 @@ int main(int argc, char **argv) {
     int status;
     waitpid(g_child_pid, &status, 0);
 
+    /* Get runtime base address */
+    g_base_address = get_base_address(g_child_pid);
+
 #ifdef HAVE_LIBUNWIND
     /* Initialize libunwind */
     g_as = unw_create_addr_space(&_UPT_accessors, 0);
@@ -634,6 +736,11 @@ int main(int argc, char **argv) {
         output_error("Failed to load symbols (continuing anyway)\n");
     }
 
+    /* Initialize DWARF from program */
+    if (dwarf_load(&g_dwarf, argv[1]) < 0) {
+        output_error("No DWARF info - compile with -g for source-level debugging\n");
+    }
+
     /* Print process info */
     section_print_separator(60);
     output_normal(CAT_PROCESS, "Target: %s\n", argv[1]);
@@ -647,6 +754,7 @@ int main(int argc, char **argv) {
     run_interactive();
 
     /* Cleanup */
+    dwarf_free(&g_dwarf);
     symbols_cleanup(&g_symbols);
     breakpoints_cleanup(&g_breakpoints, g_child_pid);
 #ifdef HAVE_LIBUNWIND

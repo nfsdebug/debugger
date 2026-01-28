@@ -29,6 +29,7 @@ static const struct {
     {"quit", CMD_QUIT},
     {"exit", CMD_QUIT},
     {"help", CMD_HELP},
+    {"list", CMD_LIST_SOURCE},
     {"info", CMD_INFO_FUNCTIONS},
     {"set", CMD_SET_OUTPUT},
     {"filter", CMD_FILTER},
@@ -40,6 +41,7 @@ static const struct {
     {"m", CMD_MEMORY_READ},
     {"bt", CMD_BACKTRACE},
     {"b", CMD_BREAKPOINT_ADDR},
+    {"l", CMD_LIST_SOURCE},
     {"q", CMD_QUIT},
     {"h", CMD_HELP},
     {NULL, CMD_UNKNOWN}
@@ -307,6 +309,24 @@ int parser_parse_command(const char *input, command_t *cmd) {
             /* Already handled by special parsing above */
             break;
 
+        case CMD_LIST_SOURCE: {
+            /* list [file] [line] [count] */
+            char *file = strtok(NULL, " \t\n");
+            char *line_str = strtok(NULL, " \t\n");
+            char *count_str = strtok(NULL, " \t\n");
+
+            if (file) {
+                cmd->string_arg = strdup(file);
+            }
+            if (line_str) {
+                cmd->int_arg = atoi(line_str);
+            }
+            if (count_str) {
+                cmd->value_arg = atoi(count_str);
+            }
+            break;
+        }
+
         case CMD_SET_OUTPUT: {
             char *subtoken = tolower_str(strtok(NULL, " \t\n"));
             if (subtoken) {
@@ -457,6 +477,7 @@ void parser_print_usage(void) {
     /* Information display */
     printf("%sInformation Display:%s\n", bold, reset);
     printf("  backtrace, bt         Show backtrace\n");
+    printf("  list <file> [n] [c]   Show source code (n lines starting at line n)\n");
     printf("  register dump, r      Dump all registers\n");
     printf("  register read <reg>   Read a register (e.g., rax, rip)\n");
     printf("  memory read <addr>    Read memory at address\n");
@@ -467,6 +488,7 @@ void parser_print_usage(void) {
     printf("  b                     Set breakpoint at current RIP\n");
     printf("  b <addr>              Set breakpoint at address\n");
     printf("  b <function>          Set breakpoint at function\n");
+    printf("  b <function>:<line>   Set breakpoint at source line\n");
     printf("  breakpoint list, bl   List all breakpoints\n");
     printf("  breakpoint enable <n> Enable breakpoint #n\n");
     printf("  breakpoint disable <n> Disable breakpoint #n\n");

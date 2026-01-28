@@ -31,6 +31,7 @@ typedef enum {
     CMD_MEMORY_READ,
     CMD_MEMORY_WRITE,
     CMD_BACKTRACE,
+    CMD_LIST_SOURCE,        /* New: list source code */
     CMD_INFO_FUNCTIONS,     /* New: list all functions */
     CMD_SET_OUTPUT,
     CMD_SET_EXPAND,
