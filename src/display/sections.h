@@ -9,15 +9,15 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+/* Include debugger.h for the actual types */
+#include "../core/debugger.h"
+
 /* Section expansion state */
 typedef enum {
     EXPAND_NONE = 0,      /* Show summary only */
     EXPAND_NORMAL,        /* Show details */
     EXPAND_FULL           /* Show everything */
 } expand_level_t;
-
-/* Forward declarations */
-typedef struct debugger_state debugger_state_t;
 
 /* === BACKTRACE SECTION === */
 
@@ -57,6 +57,14 @@ void memory_print(const memory_config_t *config);
 /* === PROCESS INFO SECTION === */
 
 void process_info_print(const debugger_state_t *state);
+
+/* === SIGNAL INFO SECTION === */
+
+void signal_info_print(const debugger_state_t *state);
+
+/* === BREAKPOINT INFO SECTION === */
+
+void breakpoint_hit_print(uint64_t addr, const char *func_name);
 
 /* === GLOBAL EXPANSION === */
 
