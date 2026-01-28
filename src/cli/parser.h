@@ -23,6 +23,7 @@ typedef enum {
     CMD_REGISTER_WRITE,
     CMD_BREAKPOINT_FUNC,
     CMD_BREAKPOINT_ADDR,
+    CMD_BREAKPOINT_CURRENT, /* New: breakpoint at current RIP */
     CMD_BREAKPOINT_LIST,    /* New: list all breakpoints */
     CMD_BREAKPOINT_ENABLE,  /* New: enable a breakpoint */
     CMD_BREAKPOINT_DISABLE, /* New: disable a breakpoint */
@@ -30,6 +31,7 @@ typedef enum {
     CMD_MEMORY_READ,
     CMD_MEMORY_WRITE,
     CMD_BACKTRACE,
+    CMD_INFO_FUNCTIONS,     /* New: list all functions */
     CMD_SET_OUTPUT,
     CMD_SET_EXPAND,
     CMD_FILTER,

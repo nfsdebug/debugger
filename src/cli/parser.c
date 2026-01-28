@@ -29,6 +29,7 @@ static const struct {
     {"quit", CMD_QUIT},
     {"exit", CMD_QUIT},
     {"help", CMD_HELP},
+    {"info", CMD_INFO_FUNCTIONS},
     {"set", CMD_SET_OUTPUT},
     {"filter", CMD_FILTER},
     /* Short aliases */
@@ -196,24 +197,47 @@ int parser_parse_command(const char *input, command_t *cmd) {
                 free(subcmd);
                 free(copy);
                 return 0;
-            } else if (strcmp(subcmd, "func") == 0) {
+            }
+            /* Check if it's a hex address (starts with 0x) or a function name */
+            if (strncmp(subcmd, "0x", 2) == 0) {
+                /* Hex address */
+                cmd->addr_arg = strtoll(subcmd, NULL, 0);
+                free(subcmd);
+                free(copy);
+                return 0;
+            } else {
+                /* Function name */
                 cmd->type = CMD_BREAKPOINT_FUNC;
-                char *func_name = strtok(NULL, " \t\n");
-                if (func_name) {
-                    cmd->string_arg = strdup(func_name);
-                }
+                cmd->string_arg = strdup(subcmd);
                 free(subcmd);
                 free(copy);
                 return 0;
             }
-            /* "breakpoint <addr>" or "b <addr>" - parse address */
-            cmd->addr_arg = strtoll(subcmd, NULL, 0);
-            free(subcmd);
-            free(copy);
-            return 0;
         }
-        /* Just "breakpoint" with no args - will be handled by switch */
+        /* "b" with no argument - breakpoint at current RIP */
+        cmd->type = CMD_BREAKPOINT_CURRENT;
         free(subcmd);
+        free(copy);
+        return 0;
+    }
+
+    /* Special handling for "info" subcommands */
+    if (cmd->type == CMD_INFO_FUNCTIONS) {
+        char *subcmd = tolower_str(strtok(NULL, " \t\n"));
+        if (subcmd) {
+            if (strcmp(subcmd, "functions") == 0 || strcmp(subcmd, "func") == 0 || strcmp(subcmd, "f") == 0) {
+                /* info functions - already the right type */
+            } else {
+                /* Unknown info subcommand */
+                output_error("Unknown info command: %s", subcmd);
+            }
+            free(subcmd);
+        } else {
+            /* Just "info" - show functions by default */
+            /* Already CMD_INFO_FUNCTIONS */
+        }
+        free(copy);
+        return 0;
     }
 
     /* Parse command-specific arguments */
@@ -274,10 +298,12 @@ int parser_parse_command(const char *input, command_t *cmd) {
         }
 
         case CMD_STEP_OVER:
+        case CMD_BREAKPOINT_CURRENT:
         case CMD_BREAKPOINT_LIST:
         case CMD_BREAKPOINT_ENABLE:
         case CMD_BREAKPOINT_DISABLE:
         case CMD_BREAKPOINT_DELETE:
+        case CMD_INFO_FUNCTIONS:
             /* Already handled by special parsing above */
             break;
 
@@ -438,8 +464,9 @@ void parser_print_usage(void) {
 
     /* Breakpoints */
     printf("%sBreakpoints:%s\n", bold, reset);
+    printf("  b                     Set breakpoint at current RIP\n");
     printf("  b <addr>              Set breakpoint at address\n");
-    printf("  breakpoint func <nm>  Set breakpoint at function\n");
+    printf("  b <function>          Set breakpoint at function\n");
     printf("  breakpoint list, bl   List all breakpoints\n");
     printf("  breakpoint enable <n> Enable breakpoint #n\n");
     printf("  breakpoint disable <n> Disable breakpoint #n\n");

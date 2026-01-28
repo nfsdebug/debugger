@@ -37,11 +37,13 @@
 
 /* Core modules */
 #include "core/breakpoints.h"
+#include "core/symbols.h"
 
 /* Global state */
 static pid_t g_child_pid = -1;
 static int g_running = 1;
 static breakpoint_state_t g_breakpoints;
+static symbol_table_t g_symbols;
 static int g_at_breakpoint = 0;
 static int g_current_bp_index = -1;
 
@@ -341,13 +343,29 @@ static int cmd_breakpoint_set_addr(uint64_t addr) {
     return idx;
 }
 
-static int cmd_breakpoint_set_func(const char *func_name, uint64_t addr) {
-    /* For now, addr is the offset - DWARF resolution later */
-    int idx = breakpoints_add_func(&g_breakpoints, func_name, g_child_pid, addr);
-    if (idx >= 0) {
-        output_stats_inc_breakpoint();
+static int cmd_breakpoint_set_current(void) {
+    /* Set breakpoint at current RIP */
+    struct user_regs_struct regs;
+    if (ptrace(PTRACE_GETREGS, g_child_pid, NULL, &regs) < 0) {
+        output_error("Failed to read registers");
+        return -1;
     }
-    return idx;
+
+    output_normal(CAT_BREAKPOINT, "Setting breakpoint at current RIP: 0x%lx\n", regs.rip);
+    return cmd_breakpoint_set_addr(regs.rip);
+}
+
+static int cmd_breakpoint_set_func(const char *func_name) {
+    /* Resolve function name to address using symbol table */
+    uint64_t addr = symbols_find_address(&g_symbols, func_name);
+    if (addr == 0) {
+        output_error("Function not found: %s", func_name);
+        output_normal(CAT_PROCESS, "Tip: Use 'info functions' to list available functions\n");
+        return -1;
+    }
+
+    output_normal(CAT_BREAKPOINT, "Function '%s' resolved to 0x%lx\n", func_name, addr);
+    return cmd_breakpoint_set_addr(addr);
 }
 
 static int cmd_breakpoint_list(void) {
@@ -361,6 +379,11 @@ static int cmd_breakpoint_enable(int index, int enable) {
 
 static int cmd_breakpoint_delete(int index) {
     return breakpoints_remove(&g_breakpoints, index, g_child_pid);
+}
+
+static int cmd_info_functions(void) {
+    symbols_list_functions(&g_symbols);
+    return 0;
 }
 
 /* === STEP OVER === */
@@ -469,9 +492,12 @@ static int run_interactive(void) {
 
             case CMD_BREAKPOINT_FUNC:
                 if (cmd.string_arg) {
-                    /* For now, use 0 as address - DWARF will resolve later */
-                    cmd_breakpoint_set_func(cmd.string_arg, cmd.addr_arg);
+                    cmd_breakpoint_set_func(cmd.string_arg);
                 }
+                break;
+
+            case CMD_BREAKPOINT_CURRENT:
+                cmd_breakpoint_set_current();
                 break;
 
             case CMD_BREAKPOINT_LIST:
@@ -510,6 +536,10 @@ static int run_interactive(void) {
 
             case CMD_BACKTRACE:
                 cmd_backtrace();
+                break;
+
+            case CMD_INFO_FUNCTIONS:
+                cmd_info_functions();
                 break;
 
             case CMD_SET_OUTPUT:
@@ -599,6 +629,11 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    /* Initialize symbols from ELF file */
+    if (symbols_init(&g_symbols, argv[1]) < 0) {
+        output_error("Failed to load symbols (continuing anyway)\n");
+    }
+
     /* Print process info */
     section_print_separator(60);
     output_normal(CAT_PROCESS, "Target: %s\n", argv[1]);
@@ -612,6 +647,7 @@ int main(int argc, char **argv) {
     run_interactive();
 
     /* Cleanup */
+    symbols_cleanup(&g_symbols);
     breakpoints_cleanup(&g_breakpoints, g_child_pid);
 #ifdef HAVE_LIBUNWIND
     if (g_ui) _UPT_destroy(g_ui);
