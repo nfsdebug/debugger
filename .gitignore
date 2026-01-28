@@ -1,0 +1,43 @@
+# Compiled binaries
+*.o
+*.out
+*.bin
+debug
+interface
+test
+mon_programme
+test_process
+multifunction
+new_tty
+write_on_new_tty
+
+# Target directory
+target/
+
+# Libraries and temporary build files
+*.a
+*.so
+utilities.o
+
+# NCurses tarballs
+*.tar.gz
+*.tar.gz.1
+
+# IDE and editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# Debug and history files
+history.txt
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Plan files (internal documentation)
+PLAN_*.md
