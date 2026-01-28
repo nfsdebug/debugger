@@ -7,7 +7,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # === OPTIONS ===
 option(BUILD_INTERACTIVE "Build with linenoise (interactive mode)" ON)
 option(BUILD_CONFIG "Build with libconfig (config file support)" ON)
-option(BUILD_TUI "Build ncurses TUI interface" OFF)  # Désactivé par défaut
 option(BUILD_TESTS "Build tests" OFF)
 option(ENABLE_WARNINGS "Enable all compiler warnings" ON)
 
@@ -104,16 +103,6 @@ endif()
 if(BUILD_CONFIG)
     target_link_libraries(debug_console ${LibConfig_LIBRARIES})
     target_compile_definitions(debug_console PRIVATE HAVE_CONFIG)
-endif()
-
-# NCurses TUI (legacy, optionnelle)
-if(BUILD_TUI)
-    add_executable(interface
-        src/interface.c
-        ${UTILS_SOURCES}
-    )
-    # Note: nécessite libncurses, libpanel, etc.
-    # target_link_libraries(interface ...)
 endif()
 
 # === INSTALLATION ===
