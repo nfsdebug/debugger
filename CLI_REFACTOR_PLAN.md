@@ -342,7 +342,10 @@ brew install libconfig          # macOS
    - theme.c: Détection multi-niveaux, 16 couleurs, styles combinés
    - output.c: Préfixes, couleurs par catégorie, statistiques
    - sections.c: Intégration avec output/theme
-4. **Phase 3** : Mode interactif ⏳ PENDING
+4. **Phase 3** : Mode interactif ✅ TERMINÉE
+   - parser.c: Table de lookup, commandes set/filter
+   - repl.c: Intégration output/theme, mode fallback
+   - config.c/h: Configuration unifiée
 5. **Phase 4** : Fonctionnalités avancées ⏳ PENDING
 6. **Phase 5** : Tests et validation ⏳ PENDING
 7. **Documentation** : README mis à jour ⏳ PENDING
@@ -354,10 +357,44 @@ brew install libconfig          # macOS
 | Phase | Statut | Détails |
 |-------|--------|---------|
 | Phase 1 | ✅ TERMINÉE | Architecture modulaire créée, 20 fichiers créés |
-| Phase 2 | ✅ TERMINÉE | Système d'affichage: détection terminale, 16 couleurs, styles combinés, préfixes, statistiques |
-| Phase 3 | ⏳ PENDING | Intégration linenoise, REPL, historique |
+| Phase 2 | ✅ TERMINÉE | Détection terminale, 16 couleurs, styles combinés, préfixes, statistiques |
+| Phase 3 | ✅ TERMINÉE | Parser avec lookup, REPL intégré, configuration unifiée |
 | Phase 4 | ⏳ PENDING | Expansion sections, filtres, log fichier |
 | Phase 5 | ⏳ PENDING | Tests régression, validation |
+
+---
+
+## 📝 PHASE 3 - DÉTAILS
+
+### parser.c/h (Terminé)
+- **Table de lookup**: Recherche rapide des commandes par nom
+- **Commandes supportées**:
+  - `set output <level>`: quiet|normal|verbose|debug
+  - `set expand <level>`: none|normal|full
+  - `filter <cats>`: Liste séparée par virgules
+- **Aide**: `parser_print_usage()` avec affichage coloré
+- **Aide détaillée**: `parser_print_command_help()` par commande
+
+### repl.c/h (Terminé)
+- **Intégration output/theme**: Affichage coloré des messages
+- **Fonction execute_command()**: Traitement centralisé
+- **Commandes implémentées**:
+  - `set output`: Change le niveau de verbosité
+  - `set expand`: Change le niveau d'expansion
+  - `filter`: Filtre les catégories de sortie
+- **Mode fallback**: Basic fgets() sans linenoise
+- **Auto-complétion**: Suggestions pour set output/expand
+- **Hints inline**: Aide contextuelle pendant la frappe
+
+### config.c/h (Terminé)
+- **Configuration unifiée**: output + theme + sections + REPL
+- **config_apply()**: Applique toute la configuration aux systèmes
+- **Fonctions de modification**:
+  - `config_set_output_level()`
+  - `config_set_color_mode()`
+  - `config_set_timestamps()`
+  - `config_set_expand()`
+- **config_reset()**: Retour aux valeurs par défaut
 
 ---
 

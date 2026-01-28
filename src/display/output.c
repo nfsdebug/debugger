@@ -26,6 +26,21 @@ static output_config_t g_output_config = {
     .stats = {0}
 };
 
+/* Global log configuration */
+static log_config_t g_log_config = {
+    .rotation = LOG_ROTATION_NONE,
+    .max_size = 10 * 1024 * 1024,  /* 10 MB default */
+    .max_files = 5,
+    .rotate_interval = 3600,         /* 1 hour default */
+    .base_path = ""
+};
+
+/* Current log file size */
+static size_t g_current_log_size = 0;
+
+/* Forward declaration */
+static void check_log_rotation(size_t bytes_written);
+
 /* Category names */
 static const char *category_names[] = {
     "PROCESS", "SIGNAL", "BACKTRACE", "REGISTERS", "MEMORY", "BREAKPOINT"
@@ -139,8 +154,19 @@ void output_print(output_level_t level, output_category_t cat,
 
     /* Print to log file if open */
     if (g_output_config.log_file) {
+        /* Get formatted length for rotation tracking */
+        va_list args_copy;
+        va_copy(args_copy, args);
+        int len = vsnprintf(NULL, 0, fmt, args_copy);
+        va_end(args_copy);
+
         vfprintf(g_output_config.log_file, fmt, args);
         fflush(g_output_config.log_file);
+
+        /* Track size and check rotation */
+        if (len > 0) {
+            check_log_rotation((size_t)len);
+        }
     }
 
     va_end(args);
@@ -352,4 +378,87 @@ void output_close_log(void) {
         fclose(g_output_config.log_file);
         g_output_config.log_file = NULL;
     }
+}
+
+/* === LOG ROTATION === */
+
+static void rotate_log_files(const char *base_path, int max_files) {
+    char old_path[512];
+    char new_path[512];
+
+    /* Remove the oldest file if it exists */
+    snprintf(old_path, sizeof(old_path), "%s.%d", base_path, max_files);
+    remove(old_path);
+
+    /* Rotate existing files */
+    for (int i = max_files - 1; i >= 1; i--) {
+        snprintf(old_path, sizeof(old_path), "%s.%d", base_path, i);
+        snprintf(new_path, sizeof(new_path), "%s.%d", base_path, i + 1);
+        rename(old_path, new_path);
+    }
+
+    /* Rotate current log to .1 */
+    snprintf(new_path, sizeof(new_path), "%s.1", base_path);
+    rename(base_path, new_path);
+}
+
+void output_rotate_log(void) {
+    if (!g_output_config.log_file || g_log_config.rotation == LOG_ROTATION_NONE) {
+        return;
+    }
+
+    /* Close current log */
+    output_close_log();
+
+    /* Rotate files if configured */
+    if (g_log_config.base_path[0] != '\0') {
+        rotate_log_files(g_log_config.base_path, g_log_config.max_files);
+    }
+
+    /* Reopen log */
+    output_open_log(g_output_config.log_path);
+}
+
+static void check_log_rotation(size_t bytes_written) {
+    if (g_log_config.rotation == LOG_ROTATION_SIZE) {
+        g_current_log_size += bytes_written;
+        if (g_current_log_size >= g_log_config.max_size) {
+            output_rotate_log();
+            g_current_log_size = 0;
+        }
+    }
+}
+
+void output_set_log_config(const log_config_t *config) {
+    if (config) {
+        memcpy(&g_log_config, config, sizeof(g_log_config));
+    }
+}
+
+int output_open_log_with_config(const char *path, const log_config_t *config) {
+    if (config) {
+        output_set_log_config(config);
+    }
+
+    /* Store base path for rotation */
+    if (path) {
+        strncpy(g_log_config.base_path, path, sizeof(g_log_config.base_path) - 1);
+    }
+
+    return output_open_log(path);
+}
+
+/* === PERIODIC SUMMARIES === */
+
+void output_enable_periodic_summary(int interval_seconds) {
+    g_output_config.summary_interval = interval_seconds;
+    g_output_config.last_summary = time(NULL);
+}
+
+void output_disable_periodic_summary(void) {
+    g_output_config.summary_interval = 0;
+}
+
+int output_get_summary_interval(void) {
+    return g_output_config.summary_interval;
 }

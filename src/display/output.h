@@ -100,6 +100,32 @@ int output_open_log(const char *path);
 void output_close_log(void);
 void output_summary(void);
 
+/* Log rotation */
+typedef enum {
+    LOG_ROTATION_NONE,     /* No rotation */
+    LOG_ROTATION_SIZE,     /* Rotate by size */
+    LOG_ROTATION_TIME      /* Rotate by time */
+} log_rotation_t;
+
+/* Log configuration */
+typedef struct {
+    log_rotation_t rotation;
+    size_t max_size;       /* Max size before rotation (bytes) */
+    int max_files;         /* Max number of rotated files to keep */
+    int rotate_interval;   /* Rotation interval in seconds (for TIME rotation) */
+    char base_path[512];   /* Base path for log files */
+} log_config_t;
+
+/* Advanced logging */
+int output_open_log_with_config(const char *path, const log_config_t *config);
+void output_set_log_config(const log_config_t *config);
+void output_rotate_log(void);
+
+/* Periodic summaries */
+void output_enable_periodic_summary(int interval_seconds);
+void output_disable_periodic_summary(void);
+int output_get_summary_interval(void);
+
 /* Category name for prefixes */
 const char *output_category_name(output_category_t cat);
 
