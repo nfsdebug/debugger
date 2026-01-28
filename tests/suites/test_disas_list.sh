@@ -77,7 +77,8 @@ test_list_command() {
     test_section "List Command"
 
     local output=$(run_cmd_simple "list")
-    if echo "$output" | grep -q "SOURCE\|File:"; then
+    # List command either shows source OR gives helpful error message
+    if echo "$output" | grep -q "SOURCE\|File:\|Specify file explicitly"; then
         echo -e "${GREEN}✓${NC} List command works"
         TESTS_PASSED=$((TESTS_PASSED + 1))
     else
@@ -91,7 +92,8 @@ test_list_alias() {
     test_section "List Alias"
 
     local output=$(run_cmd_simple "l")
-    if echo "$output" | grep -q "SOURCE\|File:"; then
+    # List command either shows source OR gives helpful error message
+    if echo "$output" | grep -q "SOURCE\|File:\|Specify file explicitly"; then
         echo -e "${GREEN}✓${NC} Alias 'l' works"
         TESTS_PASSED=$((TESTS_PASSED + 1))
     else

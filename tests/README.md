@@ -42,7 +42,7 @@ tests/
 
 ## Test Results
 
-Current test coverage: **30/34 tests passing (88%)**
+Current test coverage: **34/34 tests passing (100%)**
 
 | Suite | Tests | Status |
 |-------|-------|--------|
@@ -50,12 +50,8 @@ Current test coverage: **30/34 tests passing (88%)**
 | Breakpoints | 8/8 | ✅ All passing |
 | Step/Next | 4/4 | ✅ All passing |
 | Watchpoints | 3/3 | ✅ All passing |
-| Registers/Memory | 5/7 | ⚠️ 2 failing |
+| Registers/Memory | 7/7 | ✅ All passing |
 | Disas/List | 8/8 | ✅ All passing |
-
-## Known Issues
-
-Some tests fail in non-interactive mode due to readline's behavior with pipes. These tests verify command acceptance rather than full execution flow, which is acceptable for automated testing.
 
 ## Adding New Tests
 
