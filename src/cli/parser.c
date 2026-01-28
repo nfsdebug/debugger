@@ -20,7 +20,7 @@ static const struct {
     /* Full names */
     {"continue", CMD_CONTINUE},
     {"step", CMD_SINGLE_STEP},
-    {"next", CMD_SINGLE_STEP},  /* Alias for step */
+    {"next", CMD_STEP_OVER},     /* Changed: step over */
     {"register", CMD_REGISTER_DUMP},
     {"memory", CMD_MEMORY_READ},
     {"backtrace", CMD_BACKTRACE},
@@ -34,7 +34,7 @@ static const struct {
     /* Short aliases */
     {"c", CMD_CONTINUE},
     {"s", CMD_SINGLE_STEP},
-    {"n", CMD_SINGLE_STEP},
+    {"n", CMD_STEP_OVER},
     {"r", CMD_REGISTER_DUMP},
     {"m", CMD_MEMORY_READ},
     {"bt", CMD_BACKTRACE},
@@ -160,6 +160,62 @@ int parser_parse_command(const char *input, command_t *cmd) {
         free(subcmd);
     }
 
+    /* Special handling for breakpoint subcommands */
+    if (cmd->type == CMD_BREAKPOINT_ADDR) {
+        char *subcmd = tolower_str(strtok(NULL, " \t\n"));
+        if (subcmd) {
+            if (strcmp(subcmd, "list") == 0 || strcmp(subcmd, "l") == 0) {
+                cmd->type = CMD_BREAKPOINT_LIST;
+                free(subcmd);
+                free(copy);
+                return 0;
+            } else if (strcmp(subcmd, "enable") == 0 || strcmp(subcmd, "e") == 0) {
+                cmd->type = CMD_BREAKPOINT_ENABLE;
+                char *index_str = strtok(NULL, " \t\n");
+                if (index_str) {
+                    cmd->int_arg = atoi(index_str);
+                }
+                free(subcmd);
+                free(copy);
+                return 0;
+            } else if (strcmp(subcmd, "disable") == 0 || strcmp(subcmd, "d") == 0) {
+                cmd->type = CMD_BREAKPOINT_DISABLE;
+                char *index_str = strtok(NULL, " \t\n");
+                if (index_str) {
+                    cmd->int_arg = atoi(index_str);
+                }
+                free(subcmd);
+                free(copy);
+                return 0;
+            } else if (strcmp(subcmd, "delete") == 0 || strcmp(subcmd, "del") == 0) {
+                cmd->type = CMD_BREAKPOINT_DELETE;
+                char *index_str = strtok(NULL, " \t\n");
+                if (index_str) {
+                    cmd->int_arg = atoi(index_str);
+                }
+                free(subcmd);
+                free(copy);
+                return 0;
+            } else if (strcmp(subcmd, "func") == 0) {
+                cmd->type = CMD_BREAKPOINT_FUNC;
+                char *func_name = strtok(NULL, " \t\n");
+                if (func_name) {
+                    cmd->string_arg = strdup(func_name);
+                }
+                free(subcmd);
+                free(copy);
+                return 0;
+            }
+            /* "breakpoint <addr>" or "b <addr>" - parse address */
+            cmd->addr_arg = strtoll(subcmd, NULL, 0);
+            free(subcmd);
+            free(copy);
+            return 0;
+        }
+        /* Just "breakpoint" with no args - will be handled by switch */
+        free(subcmd);
+    }
+
     /* Parse command-specific arguments */
     switch (cmd->type) {
         case CMD_CONTINUE:
@@ -216,6 +272,14 @@ int parser_parse_command(const char *input, command_t *cmd) {
             }
             break;
         }
+
+        case CMD_STEP_OVER:
+        case CMD_BREAKPOINT_LIST:
+        case CMD_BREAKPOINT_ENABLE:
+        case CMD_BREAKPOINT_DISABLE:
+        case CMD_BREAKPOINT_DELETE:
+            /* Already handled by special parsing above */
+            break;
 
         case CMD_SET_OUTPUT: {
             char *subtoken = tolower_str(strtok(NULL, " \t\n"));
@@ -317,11 +381,16 @@ const char* command_type_name(command_type_t type) {
     switch (type) {
         case CMD_CONTINUE:        return "continue";
         case CMD_SINGLE_STEP:     return "step";
+        case CMD_STEP_OVER:       return "next";
         case CMD_REGISTER_DUMP:   return "register dump";
         case CMD_REGISTER_READ:   return "register read";
         case CMD_REGISTER_WRITE:  return "register write";
         case CMD_BREAKPOINT_FUNC: return "breakpoint function";
         case CMD_BREAKPOINT_ADDR: return "breakpoint address";
+        case CMD_BREAKPOINT_LIST: return "breakpoint list";
+        case CMD_BREAKPOINT_ENABLE: return "breakpoint enable";
+        case CMD_BREAKPOINT_DISABLE: return "breakpoint disable";
+        case CMD_BREAKPOINT_DELETE: return "breakpoint delete";
         case CMD_MEMORY_READ:     return "memory read";
         case CMD_MEMORY_WRITE:    return "memory write";
         case CMD_BACKTRACE:       return "backtrace";
@@ -356,7 +425,7 @@ void parser_print_usage(void) {
     printf("%sExecution Control:%s\n", bold, reset);
     printf("  continue, c           Continue execution\n");
     printf("  step, s               Single step\n");
-    printf("  next, n               Step over (alias for step)\n");
+    printf("  next, n               Step over (skip function calls)\n");
     printf("\n");
 
     /* Information display */
@@ -369,8 +438,12 @@ void parser_print_usage(void) {
 
     /* Breakpoints */
     printf("%sBreakpoints:%s\n", bold, reset);
-    printf("  b func <name>         Set breakpoint at function\n");
     printf("  b <addr>              Set breakpoint at address\n");
+    printf("  breakpoint func <nm>  Set breakpoint at function\n");
+    printf("  breakpoint list, bl   List all breakpoints\n");
+    printf("  breakpoint enable <n> Enable breakpoint #n\n");
+    printf("  breakpoint disable <n> Disable breakpoint #n\n");
+    printf("  breakpoint delete <n> Delete breakpoint #n\n");
     printf("\n");
 
     /* Settings */

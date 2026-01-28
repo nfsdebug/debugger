@@ -35,10 +35,15 @@
 #include "cli/parser.h"
 #include "cli/config.h"
 
+/* Core modules */
+#include "core/breakpoints.h"
+
 /* Global state */
 static pid_t g_child_pid = -1;
 static int g_running = 1;
-static int g_breakpoint_set = 0;
+static breakpoint_state_t g_breakpoints;
+static int g_at_breakpoint = 0;
+static int g_current_bp_index = -1;
 
 #ifdef HAVE_LIBUNWIND
 static unw_addr_space_t g_as;
@@ -126,9 +131,18 @@ static void print_backtrace(void) {
 /* === COMMAND EXECUTION === */
 
 static int cmd_continue(void) {
-    /* Continue execution - target will run until next syscall */
+    /* Continue execution - target will run until breakpoint or signal */
     int status;
-    ptrace(PTRACE_SYSCALL, g_child_pid, 0, 0);
+
+    /* If we're at a breakpoint, step past it first */
+    if (g_at_breakpoint && g_current_bp_index >= 0) {
+        breakpoints_step_past(&g_breakpoints, g_child_pid, g_current_bp_index);
+        g_at_breakpoint = 0;
+        g_current_bp_index = -1;
+    }
+
+    /* Use PTRACE_CONT to run until breakpoint/signal (not syscall) */
+    ptrace(PTRACE_CONT, g_child_pid, 0, 0);
     waitpid(g_child_pid, &status, 0);
 
     /* Check if exited */
@@ -136,6 +150,41 @@ static int cmd_continue(void) {
         output_normal(CAT_PROCESS, "Process exited with code %d\n", WEXITSTATUS(status));
         g_running = 0;
         return 0;
+    }
+
+    /* Check for signal */
+    if (WIFSTOPPED(status)) {
+        int sig = WSTOPSIG(status);
+
+        if (sig == SIGTRAP) {
+            /* Check if we hit a breakpoint */
+            struct user_regs_struct regs;
+            if (ptrace(PTRACE_GETREGS, g_child_pid, NULL, &regs) < 0) {
+                output_error("Failed to read registers after SIGTRAP");
+            } else {
+                int bp_idx = breakpoints_check_hit(&g_breakpoints, g_child_pid, regs.rip);
+                if (bp_idx >= 0) {
+                    /* Hit a breakpoint */
+                    g_at_breakpoint = 1;
+                    g_current_bp_index = bp_idx;
+                    int hit_count = breakpoints_hit(&g_breakpoints, bp_idx);
+                    output_normal(CAT_BREAKPOINT, "\n");
+                    section_print_header("BREAKPOINT HIT", sections_get_global_expand(), NULL);
+                    output_normal(CAT_BREAKPOINT, "  Breakpoint #%d hit at 0x%016lx (count: %d)\n\n",
+                                  bp_idx, regs.rip - 1, hit_count);
+                    return 1;
+                }
+            }
+        } else if (sig == SIGSEGV || sig == SIGILL || sig == SIGFPE) {
+            /* Crash signal */
+            output_signal(sig, strsignal(sig));
+            print_backtrace();
+            g_running = 0;
+            return 0;
+        } else if (sig != SIGSTOP && sig != SIGTRAP) {
+            /* Other signals */
+            output_signal(sig, strsignal(sig));
+        }
     }
 
     if (WIFSIGNALED(status)) {
@@ -151,6 +200,15 @@ static int cmd_continue(void) {
 
 static int cmd_single_step(void) {
     int status;
+
+    /* If we're at a breakpoint, step past it first */
+    if (g_at_breakpoint && g_current_bp_index >= 0) {
+        breakpoints_step_past(&g_breakpoints, g_child_pid, g_current_bp_index);
+        g_at_breakpoint = 0;
+        g_current_bp_index = -1;
+        return 1;
+    }
+
     ptrace(PTRACE_SINGLESTEP, g_child_pid, 0, 0);
     waitpid(g_child_pid, &status, 0);
 
@@ -273,6 +331,83 @@ static int cmd_backtrace(void) {
     return 0;
 }
 
+/* === BREAKPOINT COMMANDS === */
+
+static int cmd_breakpoint_set_addr(uint64_t addr) {
+    int idx = breakpoints_add_addr(&g_breakpoints, (void *)addr, g_child_pid);
+    if (idx >= 0) {
+        output_stats_inc_breakpoint();
+    }
+    return idx;
+}
+
+static int cmd_breakpoint_set_func(const char *func_name, uint64_t addr) {
+    /* For now, addr is the offset - DWARF resolution later */
+    int idx = breakpoints_add_func(&g_breakpoints, func_name, g_child_pid, addr);
+    if (idx >= 0) {
+        output_stats_inc_breakpoint();
+    }
+    return idx;
+}
+
+static int cmd_breakpoint_list(void) {
+    breakpoints_list(&g_breakpoints);
+    return 0;
+}
+
+static int cmd_breakpoint_enable(int index, int enable) {
+    return breakpoints_enable(&g_breakpoints, index, g_child_pid, enable);
+}
+
+static int cmd_breakpoint_delete(int index) {
+    return breakpoints_remove(&g_breakpoints, index, g_child_pid);
+}
+
+/* === STEP OVER === */
+
+static int cmd_step_over(void) {
+    /* Step over: execute until next line in current function */
+    /* This is a simple implementation - for full step-over we need to:
+     * 1. Detect if current instruction is a CALL
+     * 2. If yes, set breakpoint at return address and continue
+     * 3. If no, just single step
+     */
+
+    struct user_regs_struct regs;
+    if (ptrace(PTRACE_GETREGS, g_child_pid, NULL, &regs) < 0) {
+        output_error("Failed to read registers");
+        return -1;
+    }
+
+    /* Read current instruction */
+    errno = 0;
+    unsigned long instr = ptrace(PTRACE_PEEKTEXT, g_child_pid, (void *)regs.rip, NULL);
+    if (errno != 0) {
+        output_error("Failed to read instruction");
+        return -1;
+    }
+
+    /* Check for CALL instruction (0xE8 for rel call, 0xFF /2 for indirect) */
+    unsigned char opcode = instr & 0xFF;
+    int is_call = (opcode == 0xE8) || ((opcode == 0xFF) && (((instr >> 8) & 0x38) == 0x10));
+
+    if (is_call) {
+        /* Set breakpoint at return address and continue */
+        uint64_t ret_addr = regs.rip + 5; /* Approximate - should decode instruction */
+        int bp_idx = breakpoints_add_addr(&g_breakpoints, (void *)ret_addr, g_child_pid);
+        if (bp_idx < 0) {
+            output_error("Failed to set breakpoint for step over");
+            return -1;
+        }
+
+        output_normal(CAT_PROCESS, "Stepping over function call (bp at 0x%lx)\n", ret_addr);
+        return cmd_continue();
+    } else {
+        /* Not a call, just single step */
+        return cmd_single_step();
+    }
+}
+
 /* === MAIN LOOP === */
 
 static int run_interactive(void) {
@@ -312,7 +447,10 @@ static int run_interactive(void) {
         switch (cmd.type) {
             case CMD_CONTINUE:
             case CMD_SINGLE_STEP:
-                if (cmd.type == CMD_SINGLE_STEP) {
+            case CMD_STEP_OVER:
+                if (cmd.type == CMD_STEP_OVER) {
+                    cmd_step_over();
+                } else if (cmd.type == CMD_SINGLE_STEP) {
                     cmd_single_step();
                 } else {
                     cmd_continue();
@@ -321,6 +459,35 @@ static int run_interactive(void) {
 
             case CMD_REGISTER_DUMP:
                 cmd_register_dump();
+                break;
+
+            case CMD_BREAKPOINT_ADDR:
+                if (cmd.addr_arg > 0) {
+                    cmd_breakpoint_set_addr(cmd.addr_arg);
+                }
+                break;
+
+            case CMD_BREAKPOINT_FUNC:
+                if (cmd.string_arg) {
+                    /* For now, use 0 as address - DWARF will resolve later */
+                    cmd_breakpoint_set_func(cmd.string_arg, cmd.addr_arg);
+                }
+                break;
+
+            case CMD_BREAKPOINT_LIST:
+                cmd_breakpoint_list();
+                break;
+
+            case CMD_BREAKPOINT_ENABLE:
+                cmd_breakpoint_enable(cmd.int_arg, 1);
+                break;
+
+            case CMD_BREAKPOINT_DISABLE:
+                cmd_breakpoint_enable(cmd.int_arg, 0);
+                break;
+
+            case CMD_BREAKPOINT_DELETE:
+                cmd_breakpoint_delete(cmd.int_arg);
                 break;
 
             case CMD_REGISTER_READ:
@@ -426,6 +593,12 @@ int main(int argc, char **argv) {
     }
 #endif
 
+    /* Initialize breakpoints */
+    if (breakpoints_init(&g_breakpoints, 32) < 0) {
+        output_error("Failed to initialize breakpoints");
+        return 1;
+    }
+
     /* Print process info */
     section_print_separator(60);
     output_normal(CAT_PROCESS, "Target: %s\n", argv[1]);
@@ -439,6 +612,7 @@ int main(int argc, char **argv) {
     run_interactive();
 
     /* Cleanup */
+    breakpoints_cleanup(&g_breakpoints, g_child_pid);
 #ifdef HAVE_LIBUNWIND
     if (g_ui) _UPT_destroy(g_ui);
     if (g_as) unw_destroy_addr_space(g_as);

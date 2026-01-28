@@ -1,6 +1,6 @@
 /**
  * @file breakpoints.h
- * @brief Breakpoint management
+ * @brief Breakpoint management with INT3
  */
 
 #ifndef BREAKPOINTS_H
@@ -40,29 +40,35 @@ typedef struct {
 /* Initialize breakpoint state */
 int breakpoints_init(breakpoint_state_t *state, int capacity);
 
-/* Cleanup breakpoint state */
-void breakpoints_cleanup(breakpoint_state_t *state);
+/* Cleanup breakpoint state (restores all breakpoints) */
+void breakpoints_cleanup(breakpoint_state_t *state, pid_t pid);
 
 /* Add breakpoint by function name */
 int breakpoints_add_func(breakpoint_state_t *state, const char *func_name,
-                         uint64_t offset, uint64_t *actual_addr);
+                         pid_t pid, uint64_t offset);
 
 /* Add breakpoint by address */
-int breakpoints_add_addr(breakpoint_state_t *state, void *addr);
+int breakpoints_add_addr(breakpoint_state_t *state, void *addr, pid_t pid);
 
 /* Remove breakpoint */
-int breakpoints_remove(breakpoint_state_t *state, int index);
+int breakpoints_remove(breakpoint_state_t *state, int index, pid_t pid);
 
 /* Find breakpoint by address */
 int breakpoints_find_by_addr(breakpoint_state_t *state, uint64_t addr);
 
 /* Enable/disable breakpoint */
-int breakpoints_enable(breakpoint_state_t *state, int index, int enable);
+int breakpoints_enable(breakpoint_state_t *state, int index, pid_t pid, int enable);
 
 /* Hit breakpoint (call when breakpoint is hit) */
 int breakpoints_hit(breakpoint_state_t *state, int index);
 
 /* List all breakpoints */
 void breakpoints_list(breakpoint_state_t *state);
+
+/* Check if we hit a breakpoint and return the breakpoint index */
+int breakpoints_check_hit(breakpoint_state_t *state, pid_t pid, uint64_t rip);
+
+/* Step past a breakpoint (restore instruction, single step, re-set INT3) */
+int breakpoints_step_past(breakpoint_state_t *state, pid_t pid, int bp_index);
 
 #endif /* BREAKPOINTS_H */

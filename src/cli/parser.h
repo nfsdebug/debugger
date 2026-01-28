@@ -17,11 +17,16 @@ typedef void arg_end;
 typedef enum {
     CMD_CONTINUE,
     CMD_SINGLE_STEP,
+    CMD_STEP_OVER,          /* New: step over function calls */
     CMD_REGISTER_DUMP,
     CMD_REGISTER_READ,
     CMD_REGISTER_WRITE,
     CMD_BREAKPOINT_FUNC,
     CMD_BREAKPOINT_ADDR,
+    CMD_BREAKPOINT_LIST,    /* New: list all breakpoints */
+    CMD_BREAKPOINT_ENABLE,  /* New: enable a breakpoint */
+    CMD_BREAKPOINT_DISABLE, /* New: disable a breakpoint */
+    CMD_BREAKPOINT_DELETE,  /* New: delete a breakpoint */
     CMD_MEMORY_READ,
     CMD_MEMORY_WRITE,
     CMD_BACKTRACE,
