@@ -41,6 +41,7 @@ $(TARGET)/write_on_new_tty:  $(SRC)/write_on_new_tty.c
 
 clean:
 	rm target/*
+	rm -rf tests/binaries
 
 run_interface:
 	@LD_LIBRARY_PATH=. target/interface
@@ -50,3 +51,38 @@ run_debug_console:
 
 run_exp:
 	./target/test_process
+
+# Test targets
+test: all
+	@echo "Running test suite..."
+	@./tests/all_tests.sh
+
+test-basic: all
+	@echo "Running basic tests..."
+	@./tests/all_tests.sh test_basic
+
+test-breakpoints: all
+	@echo "Running breakpoint tests..."
+	@./tests/all_tests.sh test_breakpoints
+
+test-step: all
+	@echo "Running step tests..."
+	@./tests/all_tests.sh test_step
+
+test-watchpoints: all
+	@echo "Running watchpoint tests..."
+	@./tests/all_tests.sh test_watchpoints
+
+test-registers: all
+	@echo "Running register/memory tests..."
+	@./tests/all_tests.sh test_registers_memory
+
+test-disas: all
+	@echo "Running disas/list tests..."
+	@./tests/all_tests.sh test_disas_list
+
+test-verbose: all
+	@echo "Running all tests with verbose output..."
+	@./tests/all_tests.sh
+
+.PHONY: all clean test test-basic test-breakpoints test-step test-watchpoints test-registers test-disas test-verbose
