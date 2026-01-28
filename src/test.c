@@ -47,10 +47,10 @@ void funcdetest2(){
 	ra = _mm256_load_ps(&c[0]) ;
 	rb = _mm256_load_ps(&c[0]) ; 
 	rc = _mm256_load_ps(&c[0]) ;
-	__m256i rd, re, rf ; 
-	rd = _mm256_load_si256(&d[0]) ;
-	re = _mm256_load_si256(&d[0]) ; 
-	rf = _mm256_load_si256(&d[0]) ;
+	__m256i rd, re, rf ;
+	rd = _mm256_load_si256((__m256i*)&d[0]) ;
+	re = _mm256_load_si256((__m256i*)&d[0]) ;
+	rf = _mm256_load_si256((__m256i*)&d[0]) ;
 	//free(b) ; 
 	int aa = 0 ; 
 	int bb = 0 ; 

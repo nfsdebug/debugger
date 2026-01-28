@@ -8,7 +8,6 @@
 #include <sys/ptrace.h>
 #include <signal.h>
 #include <sys/user.h>
-#include <proc/readproc.h> // get ppid from pid
 #include <sys/personality.h>
 
 #include <string.h>
@@ -1021,7 +1020,7 @@ void get_backtrace(struct Data *data){
     char *buffspace[] = {" ", (char *)NULL};
     uint64_t size_names = 2 ; 
     uint64_t pass = 0 ; 
-    backs->names = (char *)malloc( size_names * sizeof(char*)) ; 
+    backs->names = (char **)malloc( size_names * sizeof(char*)) ; 
     do{
         if (n == 0){
             start_ip = ip;
@@ -1036,12 +1035,12 @@ void get_backtrace(struct Data *data){
         pass++;
         } while (ret > 0);
     backs->size = pass; 
-    sprintf(data->buff64 , "     --> fetch %llu backtrace functions\n" , pass) ; 
+    sprintf(data->buff64 , "     --> fetch %lu backtrace functions\n" , pass) ; 
     waddstr(data->inter->main_window[0] , data->buff64) ; 
     wrefresh(data->inter->main_window[0]);
 }
 
-drop_backtrace(struct Data *data){
+void drop_backtrace(struct Data *data){
     struct backtrace_info *backs =  data->backs ;
     for (uint64_t i = 0 ; i < backs->size ; i++){
         free(backs->names[i]);
@@ -1296,8 +1295,10 @@ void *spawn_thread(void *idata){
         // TRACEE 
         personality(ADDR_NO_RANDOMIZE);
         get_pid(data->procs->process_child);
-        if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) < 0)
-            return printf("Error with ptrace, check the manual"), -2;
+        if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) < 0) {
+            printf("Error with ptrace, check the manual");
+            return (void *)-2;
+        }
     }
     if (child_pid != 0){
         data->procs->process_child->pid = child_pid;
@@ -1431,14 +1432,14 @@ void *spawn_thread(void *idata){
             sprintf(tmp3, "   Address with offset : %llx\n", adr);
             waddstr(main_win, tmp3);
 
-            sprintf(tmp3, "   Before : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
+            sprintf(tmp3, "   Before : %lx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
             waddstr(main_win, tmp3);
 
             if (ptrace(PTRACE_POKEDATA, child_pid, adr, strtoll(debug->memory_content, NULL, 16)) < 0)
                 waddstr(main_win, "   Error with the adress you entered\n");
             else
                 waddstr(main_win, "   Content succesfully modified\n");
-            sprintf(tmp3, "   After : %llx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
+            sprintf(tmp3, "   After : %lx\n", ptrace(PTRACE_PEEKDATA, child_pid, adr, 0));
             waddstr(main_win, tmp3);
         }
 
@@ -2180,7 +2181,7 @@ void refresh_window_register(struct Data *data){
     for (unsigned long long i = debut ; i < debut + dx_of_xmm ; i++){
         current_position = 1 ;  
         if (horizontal == 0){
-            sprintf(data->buff64, "xmm%i", i);
+            sprintf(data->buff64, "xmm%llu", i);
             mvwaddstr(w, 18 + i - debut, 1, data->buff64) ; 
             sprintf(data->buff64, "%016x" , regs->fpreg->xmm_space[i]) ; 
             mvwaddstr(w, 18 + i - debut , 10, data->buff64) ;
@@ -2211,12 +2212,12 @@ void refresh_window_register(struct Data *data){
         }
         else if(horizontal == 2){
             // intger values
-            uint_64 = (uint64_t)regs->fpreg->xmm_space[i] ; 
-            uint_32_1 = (uint32_t*)regs->fpreg->xmm_space[2 * i] ; 
-            uint_32_2 = (uint32_t*)regs->fpreg->xmm_space[2 * i + 4] ;  
-            int_64 = (int64_t)regs->fpreg->xmm_space[i] ; 
-            int_32_1 = (int32_t*)regs->fpreg->xmm_space[2 * i] ; 
-            int_32_2 = (int32_t*)regs->fpreg->xmm_space[2 * i + 4] ;             
+            uint_64 = (uint64_t)regs->fpreg->xmm_space[i] ;
+            uint_32_1 = (uint32_t)regs->fpreg->xmm_space[2 * i] ;
+            uint_32_2 = (uint32_t)regs->fpreg->xmm_space[2 * i + 4] ;
+            int_64 = (int64_t)regs->fpreg->xmm_space[i] ;
+            int_32_1 = (int32_t)regs->fpreg->xmm_space[2 * i] ;
+            int_32_2 = (int32_t)regs->fpreg->xmm_space[2 * i + 4] ;             
             sprintf(data->buff128, "%lu\n",uint_64);
             mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
             current_position += width_type_int[0] ; 
@@ -2238,9 +2239,9 @@ void refresh_window_register(struct Data *data){
         }
         else if(horizontal == 3){
             for (int j = 0 ; j < 8 ; j++){
-                char_8[j] = (char*)regs->fpreg->xmm_space[8 * i + j] ; 
-                uint8[j] = (uint8_t*)regs->fpreg->xmm_space[8 * i + j] ; 
-                int8[j] = (int8_t*)regs->fpreg->xmm_space[8 * i + j] ; 
+                char_8[j] = (char)regs->fpreg->xmm_space[8 * i + j] ;
+                uint8[j] = (uint8_t)regs->fpreg->xmm_space[8 * i + j] ;
+                int8[j] = (int8_t)regs->fpreg->xmm_space[8 * i + j] ;
             }          
             sprintf(data->buff128, "%s\n",char_8);
             mvwaddstr(w, 18 + i - debut,  current_position, data->buff128) ; 
@@ -2258,8 +2259,8 @@ void refresh_window_register(struct Data *data){
         }
         else if(horizontal == 4){
             for (int j = 0 ; j < 4 ; j++){
-                uint16[j] = (uint16_t*)regs->fpreg->xmm_space[4 * i + j] ; 
-                int16[j] = (int16_t*)regs->fpreg->xmm_space[4 * i + j] ; 
+                uint16[j] = (uint16_t)regs->fpreg->xmm_space[4 * i + j] ;
+                int16[j] = (int16_t)regs->fpreg->xmm_space[4 * i + j] ;
             }            
             for (int j = 0 ; j < 4 ; j++){
                 sprintf(data->buff128, "%u\n",uint16[j]);

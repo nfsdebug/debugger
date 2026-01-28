@@ -15,7 +15,7 @@ $(TARGET)/utilities : $(SRC)/utilities.h $(SRC)/utilities.c
 	gcc -o $(TARGET)/utilities.o -c $(SRC)/utilities.c
 
 $(TARGET)/interface :  $(SRC)/interface.c
-	gcc  -g -gdwarf-2 -L./$(VEC) -Wl,-rpath=./$(VEC) $< $(TARGET)/utilities.o -o $@  -lvec -lncursest -lpanelt -lmenut -lformt	-pthread -lpthread -ldwarf -lunwind -lunwind-ptrace -lunwind-generic
+	gcc  -g -gdwarf-2 -L./$(VEC) -Wl,-rpath=./$(VEC) $< $(TARGET)/utilities.o -o $@  -lvec -lncursesw -lpanelw -lmenuw -lformw	-pthread -lpthread -ldwarf -lunwind -lunwind-ptrace -lunwind-generic
 
 
 
