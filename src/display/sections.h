@@ -1,0 +1,66 @@
+/**
+ * @file sections.h
+ * @brief Modular output sections (backtrace, registers, memory)
+ */
+
+#ifndef SECTIONS_H
+#define SECTIONS_H
+
+#include <stdint.h>
+#include <sys/types.h>
+
+/* Section expansion state */
+typedef enum {
+    EXPAND_NONE = 0,      /* Show summary only */
+    EXPAND_NORMAL,        /* Show details */
+    EXPAND_FULL           /* Show everything */
+} expand_level_t;
+
+/* Forward declarations */
+typedef struct debugger_state debugger_state_t;
+
+/* === BACKTRACE SECTION === */
+
+typedef struct {
+    int frame_count;
+    expand_level_t expand;
+    int show_addresses;
+    int show_locals;
+} backtrace_config_t;
+
+void backtrace_print(const debugger_state_t *state, const backtrace_config_t *config);
+void backtrace_set_expand(expand_level_t level);
+
+/* === REGISTERS SECTION === */
+
+typedef struct {
+    expand_level_t expand;
+    int groups;           /* 1 = compact (3 per line), 2 = detailed */
+    char *filter_regs;    /* NULL = all, or comma-separated list */
+} registers_config_t;
+
+void registers_print(const registers_config_t *config);
+void registers_set_expand(expand_level_t level);
+void registers_set_filter(const char *regs);
+
+/* === MEMORY SECTION === */
+
+typedef struct {
+    expand_level_t expand;
+    void *address;
+    size_t length;
+    int show_changes_only;  /* Only show modified bytes */
+} memory_config_t;
+
+void memory_print(const memory_config_t *config);
+
+/* === PROCESS INFO SECTION === */
+
+void process_info_print(const debugger_state_t *state);
+
+/* === GLOBAL EXPANSION === */
+
+void sections_set_global_expand(expand_level_t level);
+expand_level_t sections_get_global_expand(void);
+
+#endif /* SECTIONS_H */
