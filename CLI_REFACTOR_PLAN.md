@@ -335,19 +335,10 @@ brew install libconfig          # macOS
 
 1. **Validation du plan** : Relecture et approbation ✅
 2. **Phase 1** : Création de l'architecture modulaire ✅
-   - Headers créés (10 fichiers)
-   - Sources créés (10 fichiers)
-   - Erreurs de compilation corrigées (4)
 3. **Phase 2** : Système d'affichage ✅ TERMINÉE
-   - theme.c: Détection multi-niveaux, 16 couleurs, styles combinés
-   - output.c: Préfixes, couleurs par catégorie, statistiques
-   - sections.c: Intégration avec output/theme
 4. **Phase 3** : Mode interactif ✅ TERMINÉE
-   - parser.c: Table de lookup, commandes set/filter
-   - repl.c: Intégration output/theme, mode fallback
-   - config.c/h: Configuration unifiée
-5. **Phase 4** : Fonctionnalités avancées ⏳ PENDING
-6. **Phase 5** : Tests et validation ⏳ PENDING
+5. **Phase 4** : Fonctionnalités avancées ✅ TERMINÉE
+6. **Phase 5** : Tests et validation ✅ TERMINÉE
 7. **Documentation** : README mis à jour ⏳ PENDING
 
 ---
@@ -359,8 +350,67 @@ brew install libconfig          # macOS
 | Phase 1 | ✅ TERMINÉE | Architecture modulaire créée, 20 fichiers créés |
 | Phase 2 | ✅ TERMINÉE | Détection terminale, 16 couleurs, styles combinés, préfixes, statistiques |
 | Phase 3 | ✅ TERMINÉE | Parser avec lookup, REPL intégré, configuration unifiée |
-| Phase 4 | ⏳ PENDING | Expansion sections, filtres, log fichier |
-| Phase 5 | ⏳ PENDING | Tests régression, validation |
+| Phase 4 | ✅ TERMINÉE | Toggle expansion, rotation log, résumés périodiques |
+| Phase 5 | ✅ TERMINÉE | Tests validés, toutes fonctionnalités OK |
+| Documentation | ⏳ PENDING | README à mettre à jour |
+
+---
+
+## 📝 PHASE 5 - DÉTAILS (Tests)
+
+### Tests effectués
+
+**test_modules.c** - Validation des modules de base:
+- Theme Detection: Détection automatique TTY/couleurs ✅
+- Output Levels: QUIET/NORMAL/VERBOSE/DEBUG ✅
+- Color Output: 16 couleurs, styles combinés ✅
+- Sections: Indicateurs (-/+/ *) ✅
+- Toggle Expansion: Cycle NONE→NORMAL→FULL ✅
+- Section Visibility: show/hide/is_visible ✅
+- Command Parser: Toutes les commandes parsées ✅
+- Statistics: Résumés formatés ✅
+- Help Display: Affichage structuré ✅
+
+**test_interactive.c** - Mode interactif:
+- Commandes SET_OUTPUT: Changement de niveau ✅
+- Commandes SET_EXPAND: Changement d'expansion ✅
+- Commandes FILTER: Filtrage par catégorie ✅
+- Affichage des sections: Registers, Backtrace ✅
+
+**test_long_running.c** - Long-running:
+- Periodic Summaries: Résumé toutes les 3 secondes ✅
+- Log Rotation: Fichiers de log créés ✅
+- Statistics Tracking: Accumulation correcte ✅
+
+**Détection automatique des couleurs**:
+- Avec TTY (script): Couleurs activées ✅
+- Redirection (> file): Couleurs désactivées ✅
+- Variable NO_COLOR: Respectée ✅
+
+---
+
+### sections.c/h (Terminé)
+- **Toggle expansion**: `backtrace_toggle_expand()`, `registers_toggle_expand()`, `memory_toggle_expand()`
+- **Getters**: `*_get_expand()` pour connaître le niveau actuel
+- **Visibility**: `sections_show()`, `sections_hide()`, `sections_is_visible(section)`
+- **Formatting helpers**: `section_print_header()` avec indicateur visuel (-/+/ *)
+- **Section type enum**: SECTION_BACKTRACE, SECTION_REGISTERS, SECTION_MEMORY, SECTION_PROCESS, SECTION_SIGNAL
+
+### output.c/h (Terminé)
+- **Log rotation**:
+  - `LOG_ROTATION_NONE`: Pas de rotation
+  - `LOG_ROTATION_SIZE`: Rotation par taille (max_size)
+  - `LOG_ROTATION_TIME`: Rotation par intervalle (rotate_interval)
+- **log_config_t**: Configuration de rotation (max_size, max_files, rotate_interval, base_path)
+- **Fonctions de rotation**:
+  - `output_rotate_log()`: Rotation manuelle
+  - `output_set_log_config()`: Configuration de la rotation
+  - `output_open_log_with_config()`: Ouverture avec configuration
+  - Rotation automatique par taille (tracking bytes écrits)
+- **Periodic summaries**:
+  - `output_enable_periodic_summary(interval_seconds)`: Active les résumés
+  - `output_disable_periodic_summary()`: Désactive
+  - `output_get_summary_interval()`: Retourne l'intervalle actuel
 
 ---
 
