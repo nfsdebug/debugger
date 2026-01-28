@@ -460,32 +460,47 @@ int main(int argc, char **argv)
             size_t len;
             ret = unw_init_remote(&c, as, ui);
 
-            do
+            if (ret < 0)
             {
-                if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
-                    printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
-
-                if (n == 0)
-                    start_ip = ip;
-
-                buf[0] = '\0';
-                unw_get_proc_name(&c, buf, sizeof(buf), &off);
-
-                printf("Nom du proc : %s\n", buf);
-
-                if (off)
+                printf("ERROR: unw_init_remote failed (ret=%d). Process may be in an invalid state.\n", ret);
+                printf("Try running 'continue' first to let the process reach a stable state.\n");
+            }
+            else
+            {
+                do
                 {
-                    len = strlen(buf);
-                    if (len >= sizeof(buf) - 32)
-                        len = sizeof(buf) - 32;
-                    sprintf(buf + len, "+0x%lx", (unsigned long)off);
-                }
-                printf(" - %-32s \n", buf);
+                    if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
+                        printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
 
-                ret = unw_step(&c);
-                printf("\n");
+                    if (n == 0)
+                        start_ip = ip;
 
-            } while (ret > 0);
+                    buf[0] = '\0';
+                    unw_get_proc_name(&c, buf, sizeof(buf), &off);
+
+                    printf("Nom du proc : %s\n", buf);
+
+                    if (off)
+                    {
+                        len = strlen(buf);
+                        if (len >= sizeof(buf) - 32)
+                            len = sizeof(buf) - 32;
+                        snprintf(buf + len, sizeof(buf) - len, "+0x%lx", (unsigned long)off);
+                    }
+                    printf(" - %-32s \n", buf);
+
+                    ret = unw_step(&c);
+                    printf("\n");
+
+                    n++;
+                    if (n > 100)
+                    {
+                        printf("WARNING: Backtrace limit reached (100 frames). Stopping to avoid infinite loop.\n");
+                        break;
+                    }
+
+                } while (ret > 0);
+            }
         }
 
         /*  struct user_regs_struct reg;
@@ -517,32 +532,42 @@ int main(int argc, char **argv)
                     size_t len;
                     ret = unw_init_remote(&c, as, ui);
 
-                    do
+                    if (ret >= 0)
                     {
-                        if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
-                            printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
-
-                        if (n == 0)
-                            start_ip = ip;
-
-                        buf[0] = '\0';
-                        unw_get_proc_name(&c, buf, sizeof(buf), &off);
-
-                        printf("Nom du proc : %s\n", buf);
-
-                        if (off)
+                        do
                         {
-                            len = strlen(buf);
-                            if (len >= sizeof(buf) - 32)
-                                len = sizeof(buf) - 32;
-                            sprintf(buf + len, "+0x%lx", (unsigned long)off);
-                        }
-                        printf(" - %-32s \n", buf);
+                            if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
+                                printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
 
-                        ret = unw_step(&c);
-                        printf("\n");
+                            if (n == 0)
+                                start_ip = ip;
 
-                    } while (ret > 0);
+                            buf[0] = '\0';
+                            unw_get_proc_name(&c, buf, sizeof(buf), &off);
+
+                            printf("Nom du proc : %s\n", buf);
+
+                            if (off)
+                            {
+                                len = strlen(buf);
+                                if (len >= sizeof(buf) - 32)
+                                    len = sizeof(buf) - 32;
+                                snprintf(buf + len, sizeof(buf) - len, "+0x%lx", (unsigned long)off);
+                            }
+                            printf(" - %-32s \n", buf);
+
+                            ret = unw_step(&c);
+                            printf("\n");
+
+                            n++;
+                            if (n > 100)
+                            {
+                                printf("WARNING: Backtrace limit reached (100 frames). Stopping to avoid infinite loop.\n");
+                                break;
+                            }
+
+                        } while (ret > 0);
+                    }
                     break;
                 }
                 else if ((signinf.si_signo == 5) && (breakpoint == 1))
@@ -555,32 +580,42 @@ int main(int argc, char **argv)
                     size_t len;
                     ret = unw_init_remote(&c, as, ui);
 
-                    do
+                    if (ret >= 0)
                     {
-                        if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
-                            printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
-
-                        if (n == 0)
-                            start_ip = ip;
-
-                        buf[0] = '\0';
-                        unw_get_proc_name(&c, buf, sizeof(buf), &off);
-
-                        printf("Nom du proc : %s\n", buf);
-
-                        if (off)
+                        do
                         {
-                            len = strlen(buf);
-                            if (len >= sizeof(buf) - 32)
-                                len = sizeof(buf) - 32;
-                            sprintf(buf + len, "+0x%lx", (unsigned long)off);
-                        }
-                        printf(" - %-32s \n", buf);
+                            if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
+                                printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
 
-                        ret = unw_step(&c);
-                        printf("\n");
+                            if (n == 0)
+                                start_ip = ip;
 
-                    } while (ret > 0);
+                            buf[0] = '\0';
+                            unw_get_proc_name(&c, buf, sizeof(buf), &off);
+
+                            printf("Nom du proc : %s\n", buf);
+
+                            if (off)
+                            {
+                                len = strlen(buf);
+                                if (len >= sizeof(buf) - 32)
+                                    len = sizeof(buf) - 32;
+                                snprintf(buf + len, sizeof(buf) - len, "+0x%lx", (unsigned long)off);
+                            }
+                            printf(" - %-32s \n", buf);
+
+                            ret = unw_step(&c);
+                            printf("\n");
+
+                            n++;
+                            if (n > 100)
+                            {
+                                printf("WARNING: Backtrace limit reached (100 frames). Stopping to avoid infinite loop.\n");
+                                break;
+                            }
+
+                        } while (ret > 0);
+                    }
                     break;
                 }
             }
