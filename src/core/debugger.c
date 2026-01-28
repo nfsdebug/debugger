@@ -79,6 +79,7 @@ int debugger_wait(debugger_state_t *state) {
         state->running = 0;
         state->exited = 1;
         state->signal.signo = WTERMSIG(status);
+        state->signal.err_no = 0;
         return 0;
     }
 
@@ -88,6 +89,7 @@ int debugger_wait(debugger_state_t *state) {
             /* Breakpoint hit */
         } else {
             state->signal.signo = sig;
+            state->signal.err_no = 0;
             state->signal.name = signal_get_name(sig);
         }
     }

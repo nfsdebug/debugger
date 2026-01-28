@@ -26,7 +26,7 @@ typedef struct {
 /* Signal information */
 typedef struct {
     int signo;
-    int errno;
+    int err_no;
     int code;
     void *addr;
     const char *name;
