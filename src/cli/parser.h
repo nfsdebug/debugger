@@ -1,6 +1,6 @@
 /**
  * @file parser.h
- * @brief Command parsing (argtable3)
+ * @brief Command parsing
  */
 
 #ifndef PARSER_H
@@ -45,7 +45,7 @@ typedef struct {
 } command_t;
 
 /* Initialize argtable (for command line args) */
-int parser_init_args(int argc, char *argv[], arg_end *argtable);
+int parser_init_args(int argc, char *argv[], void *argtable);
 
 /* Parse a single command string (for REPL) */
 int parser_parse_command(const char *input, command_t *cmd);
@@ -53,7 +53,11 @@ int parser_parse_command(const char *input, command_t *cmd);
 /* Free command resources */
 void parser_free_command(command_t *cmd);
 
-/* Print usage */
+/* Get command name as string */
+const char* command_type_name(command_type_t type);
+
+/* Print usage/help */
 void parser_print_usage(void);
+void parser_print_command_help(command_type_t type);
 
 #endif /* PARSER_H */

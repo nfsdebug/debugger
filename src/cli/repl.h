@@ -1,10 +1,13 @@
 /**
  * @file repl.h
- * @brief Interactive mode (REPL with linenoise)
+ * @brief Interactive mode (REPL)
  */
 
 #ifndef REPL_H
 #define REPL_H
+
+/* Include debugger.h for the actual types */
+#include "../core/debugger.h"
 
 #ifdef HAVE_LINENOISE
 #include <linenoise.h>
@@ -19,6 +22,9 @@ typedef struct {
 
 /* Initialize REPL */
 int repl_init(const repl_config_t *config);
+
+/* Set debugger state for REPL to use */
+void repl_set_debugger_state(debugger_state_t *state);
 
 /* REPL main loop */
 int repl_run(void);

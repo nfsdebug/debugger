@@ -1,6 +1,6 @@
 /**
  * @file config.h
- * @brief User preferences and configuration (libconfig)
+ * @brief User preferences and configuration
  */
 
 #ifndef CONFIG_H
@@ -10,9 +10,9 @@
 #include <libconfig.h>
 #endif
 
-#include "display/output.h"
-#include "display/theme.h"
-#include "display/sections.h"
+#include "../display/output.h"
+#include "../display/theme.h"
+#include "../display/sections.h"
 
 /* Global configuration */
 typedef struct {
@@ -36,6 +36,10 @@ typedef struct {
 
     /* Summary interval (seconds, 0 = disabled) */
     int summary_interval;
+
+    /* Color mode */
+    int use_colors;
+    int show_timestamps;
 } debugger_config_t;
 
 /* Initialize configuration with defaults */
@@ -51,8 +55,16 @@ int config_save(const char *path, const debugger_config_t *config);
 void config_set_output_level(output_level_t level);
 void config_set_prompt(const char *prompt);
 void config_set_expand(expand_level_t level);
+void config_set_color_mode(int enable);
+void config_set_timestamps(int enable);
+
+/* Apply configuration to output/theme/sections systems */
+void config_apply(const debugger_config_t *config);
 
 /* Get global configuration */
 debugger_config_t *config_get(void);
+
+/* Reset to defaults */
+void config_reset(void);
 
 #endif /* CONFIG_H */

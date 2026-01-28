@@ -338,11 +338,14 @@ brew install libconfig          # macOS
    - Headers créés (10 fichiers)
    - Sources créés (10 fichiers)
    - Erreurs de compilation corrigées (4)
-3. **Phase 2** : Système d'affichage ⏳ EN COURS
-4. **Phase 3** : Mode interactif
-5. **Phase 4** : Fonctionnalités avancées
-6. **Phase 5** : Tests et validation
-7. **Documentation** : README mis à jour
+3. **Phase 2** : Système d'affichage ✅ TERMINÉE
+   - theme.c: Détection multi-niveaux, 16 couleurs, styles combinés
+   - output.c: Préfixes, couleurs par catégorie, statistiques
+   - sections.c: Intégration avec output/theme
+4. **Phase 3** : Mode interactif ⏳ PENDING
+5. **Phase 4** : Fonctionnalités avancées ⏳ PENDING
+6. **Phase 5** : Tests et validation ⏳ PENDING
+7. **Documentation** : README mis à jour ⏳ PENDING
 
 ---
 
@@ -351,12 +354,37 @@ brew install libconfig          # macOS
 | Phase | Statut | Détails |
 |-------|--------|---------|
 | Phase 1 | ✅ TERMINÉE | Architecture modulaire créée, 20 fichiers créés |
-| Phase 2 | ⏳ EN COURS | Système d'affichage en développement |
-| Phase 3 | ⏳ PENDING | Attente Phase 2 |
-| Phase 4 | ⏳ PENDING | Attente Phase 2 |
-| Phase 5 | ⏳ PENDING | Attente Phase 4 |
+| Phase 2 | ✅ TERMINÉE | Système d'affichage: détection terminale, 16 couleurs, styles combinés, préfixes, statistiques |
+| Phase 3 | ⏳ PENDING | Intégration linenoise, REPL, historique |
+| Phase 4 | ⏳ PENDING | Expansion sections, filtres, log fichier |
+| Phase 5 | ⏳ PENDING | Tests régression, validation |
+
+---
+
+## 📝 PHASE 2 - DÉTAILS
+
+### theme.c/h (Terminé)
+- Détection multi-niveaux: isatty(), NO_COLOR, TERM, COLORTERM
+- 16 couleurs: 8 normales + 8 bright variants
+- Styles combinés: bold + color (theme_format)
+- Mapping automatique des couleurs par catégorie
+
+### output.c/h (Terminé)
+- Préfixes par catégorie: [PROCESS], [SIGNAL], [BACKTRACE], etc.
+- Couleurs automatiques par catégorie
+- Statistiques: signals_received, breakpoints_hit, steps_executed, memory_reads/writes
+- Fonctions spécialisées: output_signal(), output_process_info(), output_error()
+- Timestamps optionnels
+- Niveau de verbosité: QUIET/NORMAL/VERBOSE/DEBUG
+
+### sections.c/h (Terminé)
+- Intégration complète avec output.c et theme.c
+- signal_info_print(): Affichage des signaux avec couleurs
+- breakpoint_hit_print(): Affichage des breakpoints
+- Expansion: EXPAND_NONE (compact), EXPAND_NORMAL, EXPAND_FULL
+- Affichage conditionnel selon le niveau de verbosité
 
 ---
 
 *Créé le 2026-01-28*
-*Statut : Plan à valider*
+*Dernière mise à jour: Phase 2 terminée*
