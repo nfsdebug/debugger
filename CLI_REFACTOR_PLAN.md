@@ -356,7 +356,31 @@ brew install libconfig          # macOS
 
 ---
 
-## 📝 PHASE 5 - DÉTAILS (Tests)
+## 📝 ÉTAT ACTUEL
+
+### Commits sur la branche fix/fusion_complete
+- `1a5a145` - Phase 1: Architecture modulaire (20 fichiers créés)
+- `d4a1a62` - Phase 2: Système d'affichage (16 couleurs, styles combinés)
+- `0a5ff4c` - Phase 3: Mode interactif (parser, REPL, configuration)
+- `48de56c` - Phase 4: Fonctionnalités avancées (toggle, rotation, résumés)
+- `74179cb` - Phase 5: Tests et validation
+- `e5c3315` - Fix: Conflit errno dans signal_info_t
+
+### Nouveau main.c créé
+- Utilise tous les nouveaux modules display/cli
+- Commandes implémentées: continue, register dump/read, memory read, backtrace
+- Intégration complète avec theme/output/sections
+- Compatible avec libunwind-ptrace pour backtrace
+- Prêt pour l'extension avec DWARF
+
+### Architecture testée et validée
+- Tous les modules compilent et fonctionnent
+- Détection automatique des couleurs (TTY/redirection)
+- Periodic summaries pour long-running
+- Log rotation par taille
+- Toggle expansion par section
+
+---
 
 ### Tests effectués
 
