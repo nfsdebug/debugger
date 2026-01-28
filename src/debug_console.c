@@ -161,7 +161,10 @@ int main(int argc, char **argv)
                 token = strtok(NULL, " ");
                 token = strtok(NULL, " ");
 
-                printf("%lx\n", ptrace(PTRACE_PEEKDATA, child, token, NULL));
+                // Convert hex address string to long, then cast to void* for ptrace
+                long long addr = strtoll(token, NULL, 0);
+                long data = ptrace(PTRACE_PEEKDATA, child, (void *)addr, NULL);
+                printf("0x%lx\n", data);
             }
             else if (strcasestr(cmd, "write"))
             {
