@@ -34,10 +34,13 @@
 /* CLI modules */
 #include "cli/parser.h"
 #include "cli/config.h"
+#include "cli/readline.h"
 
 /* Core modules */
 #include "core/breakpoints.h"
 #include "core/symbols.h"
+#include "core/disasm.h"
+#include "core/watchpoints.h"
 /* DWARF disabled due to libdwarf abort issue */
 /* #include "core/dwarf.h" */
 
@@ -46,6 +49,8 @@ static pid_t g_child_pid = -1;
 static int g_running = 1;
 static breakpoint_state_t g_breakpoints;
 static symbol_table_t g_symbols;
+static wp_state_t g_watchpoints;  /* Hardware watchpoints */
+static char *g_program_path = NULL;  /* Path to target program */
 /* DWARF disabled due to libdwarf abort issue */
 /* static dwarf_state_t g_dwarf; */
 static uint64_t g_base_address = 0;  /* Runtime base address */
@@ -231,6 +236,16 @@ static int cmd_continue(void) {
                     section_print_header("BREAKPOINT HIT", sections_get_global_expand(), NULL);
                     output_normal(CAT_BREAKPOINT, "  Breakpoint #%d hit at 0x%016lx (count: %d)\n\n",
                                   bp_idx, regs.rip - 1, hit_count);
+                    return 1;
+                }
+
+                /* Check if we hit a watchpoint */
+                int wp_idx = wp_check_hit(&g_watchpoints);
+                if (wp_idx >= 0) {
+                    output_normal(CAT_BREAKPOINT, "\n");
+                    section_print_header("WATCHPOINT HIT", sections_get_global_expand(), NULL);
+                    output_normal(CAT_BREAKPOINT, "  Watchpoint #%d hit at 0x%016lx\n\n",
+                                  wp_idx, regs.rip);
                     return 1;
                 }
             }
@@ -460,8 +475,103 @@ static int cmd_breakpoint_set_func(const char *func_spec) {
 }
 
 static int cmd_list_source(const char *file, int line, int count) {
-    output_error("Source listing requires DWARF support (currently disabled)");
-    return -1;
+    char source_file[512] = {0};
+    int current_line = line;
+
+    /* If no file specified, try to get it from current RIP using addr2line */
+    if (!file) {
+        if (g_child_pid < 0) {
+            output_error("No process running");
+            return -1;
+        }
+
+        /* Get current RIP */
+        struct user_regs_struct regs;
+        if (ptrace(PTRACE_GETREGS, g_child_pid, NULL, &regs) < 0) {
+            output_error("Failed to read registers");
+            return -1;
+        }
+
+        /* Use addr2line to find source file and line */
+        /* Note: addr2line needs virtual address, not runtime address */
+        uint64_t vaddr = regs.rip - g_base_address;
+        char cmd[1024];
+        snprintf(cmd, sizeof(cmd), "addr2line -e \"%s\" 0x%llx 2>/dev/null",
+                 g_program_path, (unsigned long long)vaddr);
+
+        FILE *fp = popen(cmd, "r");
+        if (fp) {
+            char result[512];
+            if (fgets(result, sizeof(result), fp)) {
+                /* Parse result: format is "file:line" or "??:0" */
+                char *colon = strrchr(result, ':');
+                if (colon && strncmp(result, "??", 2) != 0) {
+                    *colon = '\0';
+                    strncpy(source_file, result, sizeof(source_file) - 1);
+                    if (colon[1] != '?') {
+                        current_line = atoi(colon + 1);
+                    }
+                }
+            }
+            pclose(fp);
+        }
+
+        if (source_file[0] == '\0') {
+            output_error("Cannot determine source file for current address");
+            output_normal(CAT_PROCESS, "  Tip: Specify file explicitly: list <file> [line] [count]\n");
+            return -1;
+        }
+
+        file = source_file;
+    }
+
+    /* Open source file */
+    FILE *src_fp = fopen(file, "r");
+    if (!src_fp) {
+        output_error("Cannot open source file: %s", file);
+        return -1;
+    }
+
+    /* Read file and find requested lines */
+    char buffer[1024];
+    int line_num = 1;
+    int start_line = (line > 0) ? line : 1;
+    int end_line = start_line + count - 1;
+    int found_start = 0;
+
+    section_print_header("SOURCE", sections_get_global_expand(), NULL);
+    output_normal(CAT_PROCESS, "  File: %s\n", file);
+    output_normal(CAT_PROCESS, "  Lines: %d-%d\n\n", start_line, end_line);
+
+    while (fgets(buffer, sizeof(buffer), src_fp)) {
+        if (line_num >= start_line && line_num <= end_line) {
+            /* Remove trailing newline */
+            char *nl = strchr(buffer, '\n');
+            if (nl) *nl = '\0';
+
+            /* Print line with number */
+            const char *prefix = "  ";
+            if (line_num == current_line) {
+                prefix = "→";
+            }
+            output_normal(CAT_PROCESS, "%s %4d  %s\n", prefix, line_num, buffer);
+            found_start = 1;
+        }
+        line_num++;
+
+        if (line_num > end_line) {
+            break;
+        }
+    }
+
+    fclose(src_fp);
+
+    if (!found_start) {
+        output_error("Line %d not found in file", start_line);
+        return -1;
+    }
+
+    return 0;
 }
 
 static int cmd_breakpoint_list(void) {
@@ -477,9 +587,51 @@ static int cmd_breakpoint_delete(int index) {
     return breakpoints_remove(&g_breakpoints, index, g_child_pid);
 }
 
+/* === WATCHPOINTS === */
+
+static int cmd_watchpoint_add(uint64_t addr, int wp_type_int, int size) {
+    wp_type_t type;
+    switch (wp_type_int) {
+        case 0: type = WP_READ; break;
+        case 1: type = WP_WRITE; break;
+        case 2: type = WP_READ_WRITE; break;
+        default: type = WP_WRITE; break;
+    }
+
+    int idx = wp_add(&g_watchpoints, addr, type, size);
+    if (idx >= 0) {
+        const char *type_str = (type == WP_WRITE) ? "write" :
+                               (type == WP_READ) ? "read" : "read/write";
+        output_normal(CAT_PROCESS, "Watchpoint #%d set at 0x%lx (%s, %d bytes)\n",
+                     idx, addr, type_str, size);
+    }
+    return idx;
+}
+
+static int cmd_watchpoint_list(void) {
+    wp_list(&g_watchpoints);
+    return 0;
+}
+
+static int cmd_watchpoint_delete(int index) {
+    return wp_remove(&g_watchpoints, index);
+}
+
 static int cmd_info_functions(void) {
     symbols_list_functions(&g_symbols);
     return 0;
+}
+
+/* === DISASSEMBLY === */
+
+static int cmd_disas(uint64_t addr, int before, int after) {
+    int result;
+    if (addr != 0) {
+        result = disasm_around_addr(g_child_pid, addr, before, after);
+    } else {
+        result = disasm_around_rip(g_child_pid, before, after);
+    }
+    return result;
 }
 
 /* === STEP OVER === */
@@ -498,7 +650,7 @@ static int cmd_step_over(void) {
         return -1;
     }
 
-    /* Read current instruction */
+    /* Read current instruction to decode it */
     errno = 0;
     unsigned long instr = ptrace(PTRACE_PEEKTEXT, g_child_pid, (void *)regs.rip, NULL);
     if (errno != 0) {
@@ -506,13 +658,36 @@ static int cmd_step_over(void) {
         return -1;
     }
 
+    /* Get instruction length using our decoder */
+    uint8_t *bytes = (uint8_t *)&instr;
+    int insn_len = 1;
+
+    /* Simple length detection for common CALL instructions */
+    unsigned char opcode = bytes[0];
+    if (opcode == 0xE8) {
+        /* CALL rel32 - 5 bytes */
+        insn_len = 5;
+    } else if (opcode == 0xFF) {
+        /* CALL r/m32 - need to check ModR/M byte */
+        unsigned char modrm = bytes[1];
+        if ((modrm & 0xc0) == 0xc0) {
+            /* CALL reg - 2 bytes */
+            insn_len = 2;
+        } else {
+            /* CALL [mem] - 2-7 bytes depending on addressing mode */
+            insn_len = 2;  /* Minimum, actual may be longer */
+        }
+    } else if (opcode == 0x9A) {
+        /* CALL ptr16:32 - 7 bytes */
+        insn_len = 7;
+    }
+
     /* Check for CALL instruction (0xE8 for rel call, 0xFF /2 for indirect) */
-    unsigned char opcode = instr & 0xFF;
-    int is_call = (opcode == 0xE8) || ((opcode == 0xFF) && (((instr >> 8) & 0x38) == 0x10));
+    int is_call = (opcode == 0xE8) || ((opcode == 0xFF) && (((bytes[1]) & 0x38) == 0x10)) || (opcode == 0x9A);
 
     if (is_call) {
         /* Set breakpoint at return address and continue */
-        uint64_t ret_addr = regs.rip + 5; /* Approximate - should decode instruction */
+        uint64_t ret_addr = regs.rip + insn_len;
         int bp_idx = breakpoints_add_addr(&g_breakpoints, (void *)ret_addr, g_child_pid);
         if (bp_idx < 0) {
             output_error("Failed to set breakpoint for step over");
@@ -537,21 +712,25 @@ static int run_interactive(void) {
     printf("\n");
 
     while (g_running) {
-        /* Show prompt */
-        const char *prompt = "dbg> ";
-        printf("%s", prompt);
-        fflush(stdout);
-
-        /* Read command */
-        if (!fgets(line, sizeof(line), stdin)) {
-            break;
+        /* Read command with readline */
+        char *input = rl_readline("dbg> ");
+        if (!input) {
+            break;  /* EOF */
         }
 
-        /* Remove newline */
-        line[strcspn(line, "\n")] = 0;
-
         /* Skip empty lines */
-        if (line[0] == '\0') continue;
+        if (input[0] == '\0') {
+            continue;
+        }
+
+        /* Add to history */
+        rl_add_history(input);
+
+        /* Copy to line buffer for parsing */
+        strncpy(line, input, sizeof(line) - 1);
+        line[sizeof(line) - 1] = '\0';
+
+        /* Note: readline handles memory internally, no need to free */
 
         /* Parse command */
         command_t cmd;
@@ -612,6 +791,26 @@ static int run_interactive(void) {
                 cmd_breakpoint_delete(cmd.int_arg);
                 break;
 
+            case CMD_WATCHPOINT_ADDR: {
+                /* Add base address for PIE if address looks like vaddr (< 1GB usually means vaddr) */
+                uint64_t addr = cmd.addr_arg;
+                if (addr < 0x40000000) {  /* If < 1GB, assume vaddr */
+                    addr += g_base_address;
+                    output_normal(CAT_PROCESS, "Watchpoint address adjusted: 0x%lx + 0x%lx = 0x%lx\n",
+                                 cmd.addr_arg, g_base_address, addr);
+                }
+                cmd_watchpoint_add(addr, cmd.int_arg, cmd.value_arg);
+                break;
+            }
+
+            case CMD_WATCHPOINT_LIST:
+                cmd_watchpoint_list();
+                break;
+
+            case CMD_WATCHPOINT_DELETE:
+                cmd_watchpoint_delete(cmd.int_arg);
+                break;
+
             case CMD_REGISTER_READ:
                 if (cmd.string_arg) {
                     cmd_register_read(cmd.string_arg);
@@ -635,7 +834,7 @@ static int run_interactive(void) {
                 break;
 
             case CMD_LIST_SOURCE:
-                if (cmd.string_arg) {
+                {
                     int line = (cmd.int_arg > 0) ? cmd.int_arg : 1;
                     int count = (cmd.value_arg > 0) ? (int)cmd.value_arg : 10;
                     cmd_list_source(cmd.string_arg, line, count);
@@ -645,6 +844,28 @@ static int run_interactive(void) {
             case CMD_INFO_FUNCTIONS:
                 cmd_info_functions();
                 break;
+
+            case CMD_DISASM: {
+                int before = (cmd.int_arg > 0) ? cmd.int_arg : 5;
+                int after = (cmd.value_arg > 0) ? (int)cmd.value_arg : 5;
+                uint64_t addr = cmd.addr_arg;
+
+                /* If string_arg is set, it's a function name - resolve it */
+                if (cmd.string_arg) {
+                    addr = symbols_find_address(&g_symbols, cmd.string_arg);
+                    if (addr == 0) {
+                        output_error("Function '%s' not found", cmd.string_arg);
+                        output_normal(CAT_PROCESS, "  Tip: Use 'info functions' to list available functions\n");
+                        break;
+                    }
+                    /* Add base address for PIE binaries */
+                    addr += g_base_address;
+                    output_normal(CAT_PROCESS, "Function '%s' resolved to 0x%lx\n", cmd.string_arg, addr);
+                }
+
+                cmd_disas(addr, before, after);
+                break;
+            }
 
             case CMD_SET_OUTPUT:
                 if (cmd.int_arg >= OUTPUT_QUIET && cmd.int_arg <= OUTPUT_DEBUG) {
@@ -688,6 +909,9 @@ int main(int argc, char **argv) {
     output_init(NULL);
     config_init(NULL);
 
+    /* Initialize readline (history, completion) */
+    rl_init();
+
     /* Check arguments */
     if (argc < 2) {
         output_error("Usage: %s <program> [args...]", argv[0]);
@@ -705,6 +929,9 @@ int main(int argc, char **argv) {
         printf("  quit, q          - Quit debugger\n");
         return 1;
     }
+
+    /* Store program path for source listing */
+    g_program_path = strdup(argv[1]);
 
     /* Spawn target process */
     g_child_pid = spawn_target(argv[1]);
@@ -741,6 +968,11 @@ int main(int argc, char **argv) {
         output_error("Failed to load symbols (continuing anyway)\n");
     }
 
+    /* Initialize watchpoints */
+    if (wp_init(&g_watchpoints, g_child_pid) < 0) {
+        output_error("Failed to initialize watchpoints\n");
+    }
+
     /* Initialize DWARF from program */
     // TODO: Fix libdwarf abort() issue - temporarily disabled
     // if (dwarf_load(&g_dwarf, argv[1]) < 0) {
@@ -763,11 +995,13 @@ int main(int argc, char **argv) {
     /* dwarf_free(&g_dwarf); DWARF disabled */
     symbols_cleanup(&g_symbols);
     breakpoints_cleanup(&g_breakpoints, g_child_pid);
+    wp_cleanup(&g_watchpoints);
 #ifdef HAVE_LIBUNWIND
     if (g_ui) _UPT_destroy(g_ui);
     if (g_as) unw_destroy_addr_space(g_as);
 #endif
 
+    rl_cleanup();
     output_close_log();
 
     printf("\nDebugger exited.\n");

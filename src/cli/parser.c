@@ -26,11 +26,15 @@ static const struct {
     {"backtrace", CMD_BACKTRACE},
     {"breakpoint", CMD_BREAKPOINT_ADDR},
     {"break", CMD_BREAKPOINT_ADDR},
+    {"watch", CMD_WATCHPOINT_ADDR},
+    {"watchpoint", CMD_WATCHPOINT_ADDR},
     {"quit", CMD_QUIT},
     {"exit", CMD_QUIT},
     {"help", CMD_HELP},
     {"list", CMD_LIST_SOURCE},
     {"info", CMD_INFO_FUNCTIONS},
+    {"disas", CMD_DISASM},
+    {"disassemble", CMD_DISASM},
     {"set", CMD_SET_OUTPUT},
     {"filter", CMD_FILTER},
     /* Short aliases */
@@ -41,6 +45,7 @@ static const struct {
     {"m", CMD_MEMORY_READ},
     {"bt", CMD_BACKTRACE},
     {"b", CMD_BREAKPOINT_ADDR},
+    {"w", CMD_WATCHPOINT_ADDR},
     {"l", CMD_LIST_SOURCE},
     {"q", CMD_QUIT},
     {"h", CMD_HELP},
@@ -223,6 +228,46 @@ int parser_parse_command(const char *input, command_t *cmd) {
         return 0;
     }
 
+    /* Special handling for watchpoint subcommands */
+    if (cmd->type == CMD_WATCHPOINT_ADDR) {
+        char *subcmd = tolower_str(strtok(NULL, " \t\n"));
+        if (subcmd) {
+            if (strcmp(subcmd, "list") == 0 || strcmp(subcmd, "l") == 0) {
+                cmd->type = CMD_WATCHPOINT_LIST;
+                free(subcmd);
+                free(copy);
+                return 0;
+            } else if (strcmp(subcmd, "delete") == 0 || strcmp(subcmd, "del") == 0) {
+                cmd->type = CMD_WATCHPOINT_DELETE;
+                char *index_str = strtok(NULL, " \t\n");
+                if (index_str) {
+                    cmd->int_arg = atoi(index_str);
+                }
+                free(subcmd);
+                free(copy);
+                return 0;
+            } else {
+                /* It's an address - set watchpoint there */
+                if (strncmp(subcmd, "0x", 2) == 0) {
+                    cmd->addr_arg = strtoll(subcmd, NULL, 0);
+                } else {
+                    cmd->addr_arg = strtoll(subcmd, NULL, 0);
+                }
+                /* Default: write watchpoint, size 1 (most compatible) */
+                cmd->int_arg = 1;  /* 1 = WP_WRITE */
+                cmd->value_arg = 1; /* size = 1 byte */
+                free(subcmd);
+                free(copy);
+                return 0;
+            }
+        }
+        /* No subcommand - list watchpoints */
+        cmd->type = CMD_WATCHPOINT_LIST;
+        free(subcmd);
+        free(copy);
+        return 0;
+    }
+
     /* Special handling for "info" subcommands */
     if (cmd->type == CMD_INFO_FUNCTIONS) {
         char *subcmd = tolower_str(strtok(NULL, " \t\n"));
@@ -305,24 +350,59 @@ int parser_parse_command(const char *input, command_t *cmd) {
         case CMD_BREAKPOINT_ENABLE:
         case CMD_BREAKPOINT_DISABLE:
         case CMD_BREAKPOINT_DELETE:
+        case CMD_WATCHPOINT_ADDR:
+        case CMD_WATCHPOINT_LIST:
+        case CMD_WATCHPOINT_DELETE:
         case CMD_INFO_FUNCTIONS:
             /* Already handled by special parsing above */
             break;
 
+        case CMD_DISASM: {
+            /* disas [addr|func] [--before=N] [--after=N] */
+            char *arg = strtok(NULL, " \t\n");
+            while (arg) {
+                if (strncmp(arg, "--before=", 9) == 0) {
+                    cmd->int_arg = atoi(arg + 9);
+                } else if (strncmp(arg, "--after=", 8) == 0) {
+                    cmd->value_arg = atoi(arg + 8);
+                } else if (arg[0] >= '0' && arg[0] <= '9') {
+                    /* Raw address number */
+                    cmd->addr_arg = strtoll(arg, NULL, 0);
+                } else if (strncmp(arg, "0x", 2) == 0) {
+                    /* Hex address */
+                    cmd->addr_arg = strtoll(arg, NULL, 0);
+                } else {
+                    /* Function name - store in string_arg */
+                    cmd->string_arg = strdup(arg);
+                }
+                arg = strtok(NULL, " \t\n");
+            }
+            break;
+        }
+
         case CMD_LIST_SOURCE: {
             /* list [file] [line] [count] */
-            char *file = strtok(NULL, " \t\n");
-            char *line_str = strtok(NULL, " \t\n");
-            char *count_str = strtok(NULL, " \t\n");
+            char *arg1 = strtok(NULL, " \t\n");
+            char *arg2 = strtok(NULL, " \t\n");
+            char *arg3 = strtok(NULL, " \t\n");
 
-            if (file) {
-                cmd->string_arg = strdup(file);
-            }
-            if (line_str) {
-                cmd->int_arg = atoi(line_str);
-            }
-            if (count_str) {
-                cmd->value_arg = atoi(count_str);
+            /* Check if first arg is a number (line number) */
+            if (arg1 && arg1[0] >= '0' && arg1[0] <= '9') {
+                /* list <line> [count] */
+                cmd->int_arg = atoi(arg1);
+                if (arg2) {
+                    cmd->value_arg = atoi(arg2);
+                }
+                /* No file specified - will use addr2line */
+            } else if (arg1) {
+                /* list <file> [line] [count] */
+                cmd->string_arg = strdup(arg1);
+                if (arg2) {
+                    cmd->int_arg = atoi(arg2);
+                }
+                if (arg3) {
+                    cmd->value_arg = atoi(arg3);
+                }
             }
             break;
         }
@@ -440,6 +520,7 @@ const char* command_type_name(command_type_t type) {
         case CMD_MEMORY_READ:     return "memory read";
         case CMD_MEMORY_WRITE:    return "memory write";
         case CMD_BACKTRACE:       return "backtrace";
+        case CMD_DISASM:          return "disas";
         case CMD_SET_OUTPUT:      return "set output";
         case CMD_SET_EXPAND:      return "set expand";
         case CMD_FILTER:          return "filter";
@@ -477,6 +558,7 @@ void parser_print_usage(void) {
     /* Information display */
     printf("%sInformation Display:%s\n", bold, reset);
     printf("  backtrace, bt         Show backtrace\n");
+    printf("  disas [addr]          Disassemble around address or RIP\n");
     printf("  list <file> [n] [c]   Show source code (n lines starting at line n)\n");
     printf("  register dump, r      Dump all registers\n");
     printf("  register read <reg>   Read a register (e.g., rax, rip)\n");

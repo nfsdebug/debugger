@@ -28,11 +28,15 @@ typedef enum {
     CMD_BREAKPOINT_ENABLE,  /* New: enable a breakpoint */
     CMD_BREAKPOINT_DISABLE, /* New: disable a breakpoint */
     CMD_BREAKPOINT_DELETE,  /* New: delete a breakpoint */
+    CMD_WATCHPOINT_ADDR,    /* New: watchpoint at address */
+    CMD_WATCHPOINT_LIST,    /* New: list watchpoints */
+    CMD_WATCHPOINT_DELETE,  /* New: delete watchpoint */
     CMD_MEMORY_READ,
     CMD_MEMORY_WRITE,
     CMD_BACKTRACE,
     CMD_LIST_SOURCE,        /* New: list source code */
     CMD_INFO_FUNCTIONS,     /* New: list all functions */
+    CMD_DISASM,             /* New: disassemble */
     CMD_SET_OUTPUT,
     CMD_SET_EXPAND,
     CMD_FILTER,
