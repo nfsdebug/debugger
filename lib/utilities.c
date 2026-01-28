@@ -352,19 +352,19 @@ void get_elf(char *name)
     for (i = 0; i < nb_symbols; ++i)
     {
         // printf("Nom : %s types:  %hhu %u %llx\n", strtab + symtab[i].st_name, strtab +symtab[i].st_info,(uint16_t)(strtab +symtab[i].st_shndx),(strtab + symtab[i].st_value));
-        if (((unsigned char)(strtab + symtab[i].st_info) == 178))
+        if ((unsigned char)(symtab[i].st_info) == 178)
         {
             func[count_func].name = (strtab + symtab[i].st_name);
-            func[count_func].highpc = (strtab + symtab[i].st_value);
-            func[count_func].lowpc = (strtab + symtab[i].st_value);
+            func[count_func].highpc = symtab[i].st_value;
+            func[count_func].lowpc = symtab[i].st_value;
 
             count_func++;
         }
-        if ((unsigned char)(strtab + symtab[i].st_info) == 177)
+        if ((unsigned char)(symtab[i].st_info) == 177)
         {
             var[count_var].name = (strtab + symtab[i].st_name);
-            var[count_var].highpc = (strtab + symtab[i].st_value);
-            var[count_var].lowpc = (strtab + symtab[i].st_value);
+            var[count_var].highpc = symtab[i].st_value;
+            var[count_var].lowpc = symtab[i].st_value;
             var[count_var].funcname = "ELF";
 
             count_var++;
