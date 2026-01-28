@@ -122,6 +122,8 @@ int main(int argc, char **argv)
 
                         Dwarf_Addr adr = func[i].lowpc + prog_offset;
 
+                        printf("DEBUG:\tSetting a breakpoint on function %s at adress %llx\n", func[i].name, adr);
+
                         // Add 3 to the adress
 
                         long long bef = (ptrace(PTRACE_PEEKDATA, child, (void *)adr, 0) & ~0xff) | 0xcc;
@@ -135,7 +137,7 @@ int main(int argc, char **argv)
             {
 
                 // printf("%s\n", token);
-                Dwarf_Addr adr = strtoll(token, NULL, 16) + prog_offset;
+                Dwarf_Addr adr = strtoll(token, NULL, 0) + prog_offset;
 
                 printf("DEBUG:\tSetting a breakpoint on adress %llx\n", adr);
                 // Add 3 to the adress
