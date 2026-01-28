@@ -100,7 +100,8 @@ int main(int argc, char **argv)
         }
 
         // If the user entered "b, break" then he want to setup a breakpoint
-        if (strstr(cmd, "b"))
+        // Check for standalone "b" or "break" or starts with "b "
+        if ((cmd[0] == 'b' && (cmd[1] == ' ' || cmd[1] == '\0')) || strstr(cmd, "break"))
         {
             char *string = cmd;
             char *token = strtok(string, " ");
@@ -314,127 +315,135 @@ int main(int argc, char **argv)
             else if (strcasestr(cmd, "write"))
             {
                 char *string = cmd;
-                // Extract the first token
-                char *token = strtok(string, " ");
-                // get the adress (second in the string)
-                token = strtok(NULL, " ");
-                char *token2 = strtok(NULL, " ");
+                // Extract the first token ("register")
+                char *temp = strtok(string, " ");
+                // Get "write"
+                temp = strtok(NULL, " ");
+                // Get register name
+                char *token = strtok(NULL, " ");
+                // Get value
+                char *value_str = strtok(NULL, " ");
+
+                // Convert value (supports both decimal and hex with 0x prefix)
+                long long value = strtoll(value_str, NULL, 0);
+
                 struct user_regs_struct reg;
                 ptrace(PTRACE_GETREGS, child, NULL, &reg);
 
                 if (strcasestr(token, "rax"))
                 {
-                    reg.rax = atoi(token2);
+                    reg.rax = value;
                 }
                 else if (strcasestr(token, "rbx"))
                 {
-                    reg.rbx = atoi(token2);
+                    reg.rbx = value;
                 }
                 else if (strcasestr(token, "rcx"))
                 {
-                    reg.rcx = atoi(token2);
+                    reg.rcx = value;
                 }
                 else if (strcasestr(token, "rdx"))
                 {
-                    reg.rdx = atoi(token2);
+                    reg.rdx = value;
                 }
                 else if (strcasestr(token, "rdi"))
                 {
-                    reg.rdi = atoi(token2);
+                    reg.rdi = value;
                 }
                 else if (strcasestr(token, "rsi"))
                 {
-                    reg.rsi = atoi(token2);
+                    reg.rsi = value;
                 }
                 else if (strcasestr(token, "rbp"))
                 {
-                    reg.rbp = atoi(token2);
+                    reg.rbp = value;
                 }
                 else if (strcasestr(token, "rsp"))
                 {
-                    reg.rsp = atoi(token2);
+                    reg.rsp = value;
                 }
                 else if (strcasestr(token, "r8"))
                 {
-                    reg.r8 = atoi(token2);
+                    reg.r8 = value;
                 }
                 else if (strcasestr(token, "r9"))
                 {
-                    reg.r9 = atoi(token2);
+                    reg.r9 = value;
                 }
                 else if (strcasestr(token, "r10"))
                 {
-                    reg.r10 = atoi(token2);
+                    reg.r10 = value;
                 }
                 else if (strcasestr(token, "r11"))
                 {
-                    reg.r11 = atoi(token2);
+                    reg.r11 = value;
                 }
                 else if (strcasestr(token, "r12"))
                 {
-                    reg.r12 = atoi(token2);
+                    reg.r12 = value;
                 }
                 else if (strcasestr(token, "r13"))
                 {
-                    reg.r13 = atoi(token2);
+                    reg.r13 = value;
                 }
                 else if (strcasestr(token, "r14"))
                 {
-                    reg.r14 = atoi(token2);
+                    reg.r14 = value;
                 }
                 else if (strcasestr(token, "r15"))
                 {
-                    reg.r15 = atoi(token2);
+                    reg.r15 = value;
                 }
                 else if (strcasestr(token, "rip"))
                 {
-                    reg.rip = atoi(token2);
+                    reg.rip = value;
                 }
-                else if (strcasestr(token, "rdx"))
+                else if (strcasestr(token, "rsp"))
                 {
-                    reg.rdx = atoi(token2);
+                    reg.rsp = value;
                 }
                 else if (strcasestr(token, "eflags"))
                 {
-                    reg.eflags = atoi(token2);
+                    reg.eflags = value;
                 }
                 else if (strcasestr(token, "cs"))
                 {
-                    reg.cs = atoi(token2);
+                    reg.cs = value;
                 }
                 else if (strcasestr(token, "orig_rax"))
                 {
-                    reg.orig_rax = atoi(token2);
+                    reg.orig_rax = value;
                 }
                 else if (strcasestr(token, "fs_base"))
                 {
-                    reg.fs_base = atoi(token2);
+                    reg.fs_base = value;
                 }
                 else if (strcasestr(token, "gs_base"))
                 {
-                    reg.gs_base = atoi(token2);
+                    reg.gs_base = value;
                 }
                 else if (strcasestr(token, "fs"))
                 {
-                    reg.fs = atoi(token2);
+                    reg.fs = value;
                 }
                 else if (strcasestr(token, "gs"))
                 {
-                    reg.gs = atoi(token2);
+                    reg.gs = value;
                 }
                 else if (strcasestr(token, "ss"))
                 {
-                    reg.ss = atoi(token2);
+                    reg.ss = value;
                 }
                 else if (strcasestr(token, "ds"))
                 {
-                    reg.ds = atoi(token2);
+                    reg.ds = value;
                 }
                 else if (strcasestr(token, "es"))
                 {
-                    reg.es = atoi(token2);
+                    reg.es = value;
                 }
                 ptrace(PTRACE_SETREGS, child, NULL, &reg);
+                printf("Register '%s' set to 0x%llx\n", token, value);
             }
         }
         if (strcasestr(cmd, "backtrace"))

@@ -69,7 +69,7 @@ long int set_register(char *choice, pid_t child_pid, long long content)
     {
         reg.rbp = content;
     }
-    else if (strcasestr(choice, "rsp,"))
+    else if (strcasestr(choice, "rsp"))
     {
         reg.rsp = content;
     }
