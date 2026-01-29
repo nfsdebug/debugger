@@ -53,6 +53,7 @@ make test-disas
 ## Documentation
 
 - [Test Suite](tests/README.md) - Automated testing overview
+- [Debugging Examples](examples/README.md) - Real-world debugging tutorials
 - [Command Reference](docs/commands.md) - All debugger commands *(coming soon)*
 - [Architecture](docs/architecture.md) - Project structure *(coming soon)*
 
