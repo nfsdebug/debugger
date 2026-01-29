@@ -1,7 +1,5 @@
 # NDB Debugger
 
-**Disclaimer**: This is an experimental debugger project. Use at your own risk.
-
 ## Overview
 
 NDB is a CLI debugger for Linux x86-64 using `ptrace`, `libdwarf`, and `libunwind`.
