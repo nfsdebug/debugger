@@ -321,9 +321,9 @@ int main(int argc, char **argv)
             {
                 char *string = cmd;
                 // Extract the first token ("register")
-                char *temp = strtok(string, " ");
+                (void)strtok(string, " ");
                 // Get "write"
-                temp = strtok(NULL, " ");
+                (void)strtok(NULL, " ");
                 // Get register name
                 char *token = strtok(NULL, " ");
                 // Get value
@@ -453,7 +453,7 @@ int main(int argc, char **argv)
         }
         if (strcasestr(cmd, "backtrace"))
         {
-            unw_word_t ip, start_ip = 0, sp, off;
+            unw_word_t ip, sp, off;
             int n = 0, ret;
             unw_cursor_t c;
             char buf[512];
@@ -471,9 +471,6 @@ int main(int argc, char **argv)
                 {
                     if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
                         printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
-
-                    if (n == 0)
-                        start_ip = ip;
 
                     buf[0] = '\0';
                     unw_get_proc_name(&c, buf, sizeof(buf), &off);
@@ -525,7 +522,7 @@ int main(int argc, char **argv)
                 if (signinf.si_signo != 5)
                 {
                     printf("\n child stopped : %s (%d) at adress %llx \n", strsignal(signinf.si_signo), signinf.si_signo, (long long unsigned)signinf.si_addr);
-                    unw_word_t ip, start_ip = 0, sp, off;
+                    unw_word_t ip, sp, off;
                     int n = 0, ret;
                     unw_cursor_t c;
                     char buf[512];
@@ -538,9 +535,6 @@ int main(int argc, char **argv)
                         {
                             if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
                                 printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
-
-                            if (n == 0)
-                                start_ip = ip;
 
                             buf[0] = '\0';
                             unw_get_proc_name(&c, buf, sizeof(buf), &off);
@@ -573,7 +567,7 @@ int main(int argc, char **argv)
                 else if ((signinf.si_signo == 5) && (breakpoint == 1))
                 {
                     printf("\n child stopped : %s (%d) at adress %llx \n", strsignal(signinf.si_signo), signinf.si_signo, (long long unsigned)signinf.si_addr);
-                    unw_word_t ip, start_ip = 0, sp, off;
+                    unw_word_t ip, sp, off;
                     int n = 0, ret;
                     unw_cursor_t c;
                     char buf[512];
@@ -586,9 +580,6 @@ int main(int argc, char **argv)
                         {
                             if ((ret = unw_get_reg(&c, UNW_REG_IP, &ip)) < 0 || (ret = unw_get_reg(&c, UNW_REG_SP, &sp)) < 0)
                                 printf("unw_get_reg/unw_get_proc_name() failed: ret=%d\n", ret);
-
-                            if (n == 0)
-                                start_ip = ip;
 
                             buf[0] = '\0';
                             unw_get_proc_name(&c, buf, sizeof(buf), &off);

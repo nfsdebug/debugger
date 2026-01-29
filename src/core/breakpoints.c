@@ -245,6 +245,7 @@ void breakpoints_list(breakpoint_state_t *state) {
 
 /* Check if we hit a breakpoint and return the breakpoint index */
 int breakpoints_check_hit(breakpoint_state_t *state, pid_t pid, uint64_t rip) {
+    (void)pid; /* Unused parameter - kept for API compatibility */
     /* When INT3 is hit, RIP points to the instruction AFTER the INT3 */
     /* We need to check RIP-1 */
     uint64_t bp_addr = rip - 1;

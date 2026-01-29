@@ -58,7 +58,7 @@ typedef struct {
 } theme_config_t;
 
 /* Initialize theme (detect terminal capabilities) */
-void theme_init(theme_config_t *config);
+void theme_init(const theme_config_t *config);
 
 /* Set color mode */
 void theme_set_color_mode(color_mode_t mode);

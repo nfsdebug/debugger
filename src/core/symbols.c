@@ -46,6 +46,7 @@ static void* read_elf_file(const char *path, size_t *size_out) {
 /* Read symbols from a symbol table section */
 static int read_symbol_table(symbol_table_t *table, void *elf_data,
                              Elf64_Sym *syms, int count, const char *strtab) {
+    (void)elf_data; /* Unused parameter - kept for future use */
     for (int i = 0; i < count; i++) {
         /* Skip empty symbols */
         if (syms[i].st_name == 0) {

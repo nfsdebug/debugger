@@ -94,6 +94,7 @@ const char *output_category_name(output_category_t cat) {
 }
 
 static void print_prefix(output_level_t level, output_category_t cat) {
+    (void)level; /* Unused parameter - kept for future use */
     if (!g_output_config.show_prefix) {
         return;
     }

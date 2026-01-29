@@ -740,8 +740,6 @@ static int run_interactive(void) {
         }
 
         /* Execute command */
-        int continue_execution = 0;
-
         switch (cmd.type) {
             case CMD_CONTINUE:
             case CMD_SINGLE_STEP:
@@ -887,7 +885,6 @@ static int run_interactive(void) {
 
             case CMD_QUIT:
                 g_running = 0;
-                continue_execution = 0;
                 break;
 
             default:

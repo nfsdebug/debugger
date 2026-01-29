@@ -154,6 +154,7 @@ long int set_register(char *choice, pid_t child_pid, long long content)
         reg.es = content;
     }
     ptrace(PTRACE_SETREGS, child_pid, NULL, &reg);
+    return 0;
 }
 void get_dbg(char *name)
 {
@@ -314,7 +315,7 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     Dwarf_Unsigned lineno;
     char **filesnames;
     Dwarf_Unsigned countname;
-    Dwarf_Unsigned countfiles;
+    Dwarf_Signed countfiles;
     int rc = dwarf_diename(die, &die_name, &err);
 
     if (rc == DW_DLV_ERROR)

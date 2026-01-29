@@ -128,7 +128,7 @@ static int detect_truecolor(void) {
            strstr(colorterm, "24bit") != NULL;
 }
 
-void theme_init(theme_config_t *config) {
+void theme_init(const theme_config_t *config) {
     if (config) {
         memcpy(&g_theme, config, sizeof(g_theme));
     } else {
