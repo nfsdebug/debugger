@@ -249,11 +249,17 @@ int parser_parse_command(const char *input, command_t *cmd) {
                 free(copy);
                 return 0;
             } else {
-                /* It's an address - set watchpoint there */
+                /* Check if it's a hex address or a variable name */
                 if (strncmp(subcmd, "0x", 2) == 0) {
+                    /* Hex address */
+                    cmd->addr_arg = strtoll(subcmd, NULL, 0);
+                } else if (subcmd[0] >= '0' && subcmd[0] <= '9') {
+                    /* Decimal address */
                     cmd->addr_arg = strtoll(subcmd, NULL, 0);
                 } else {
-                    cmd->addr_arg = strtoll(subcmd, NULL, 0);
+                    /* Variable name - store in string_arg for later resolution */
+                    cmd->string_arg = strdup(subcmd);
+                    cmd->addr_arg = 0;  /* Will be resolved later */
                 }
                 /* Default: write watchpoint, size 1 (most compatible) */
                 cmd->int_arg = 1;  /* 1 = WP_WRITE */

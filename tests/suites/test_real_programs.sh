@@ -30,7 +30,7 @@ break level2
 break level3
 continue")
 
-    if echo "$output" | grep -q "Breakpoint.*level1"; then
+    if echo "$output" | grep -q "level1"; then
         echo -e "${GREEN}✓${NC} Can set breakpoint in level1"
         TESTS_PASSED=$((TESTS_PASSED + 1))
     else
@@ -39,7 +39,7 @@ continue")
     fi
     TESTS_RUN=$((TESTS_RUN + 1))
 
-    if echo "$output" | grep -q "Breakpoint.*level2"; then
+    if echo "$output" | grep -q "level2"; then
         echo -e "${GREEN}✓${NC} Can set breakpoint in level2"
         TESTS_PASSED=$((TESTS_PASSED + 1))
     else

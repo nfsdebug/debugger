@@ -101,12 +101,26 @@ int dwarf_load(dwarf_state_t *state, const char *program_path) {
                         dwarf_dealloc(dbg, name, DW_DLA_STRING);
 
                         Dwarf_Addr low_pc = 0, high_pc = 0;
-                        if (dwarf_lowpc(cur, &low_pc, &error) == DW_DLV_OK &&
-                            dwarf_highpc(cur, &high_pc, &error) == DW_DLV_OK) {
-
+                        Dwarf_Half high_pc_form;
+                        enum Dwarf_Form_Class form_class;
+                        if (dwarf_lowpc(cur, &low_pc, &error) == DW_DLV_OK) {
                             state->functions[state->num_functions].low_pc = (uint64_t)low_pc;
-                            state->functions[state->num_functions].high_pc = (uint64_t)high_pc;
-                            state->num_functions++;
+
+                            /* Try to get high_pc - might be absolute or relative */
+                            if (dwarf_highpc_b(cur, &high_pc, &high_pc_form, &form_class, &error) == DW_DLV_OK) {
+                                if (form_class == DW_FORM_CLASS_CONSTANT) {
+                                    /* high_pc is an offset from low_pc */
+                                    state->functions[state->num_functions].high_pc = (uint64_t)low_pc + (uint64_t)high_pc;
+                                } else {
+                                    /* high_pc is an absolute address */
+                                    state->functions[state->num_functions].high_pc = (uint64_t)high_pc;
+                                }
+                                state->num_functions++;
+                            } else if (dwarf_highpc(cur, &high_pc, &error) == DW_DLV_OK) {
+                                /* Fallback to old API */
+                                state->functions[state->num_functions].high_pc = (uint64_t)high_pc;
+                                state->num_functions++;
+                            }
                         }
                     }
                 }

@@ -522,8 +522,11 @@ static int cmd_breakpoint_set_func(const char *spec) {
     }
 
     /* Adjust to runtime address */
-    uint64_t addr = vaddr + g_base_address;
-    output_normal(CAT_BREAKPOINT, "Function '%s' resolved to 0x%lx (vaddr: 0x%lx + base: 0x%lx)\n",
+    /* Skip function prologue to ensure variables/parameters are on stack */
+    /* Typical prologue: endbr64 (4) + push rbp (1) + mov rsp,rbp (3) = 8 bytes */
+    /* We skip 8 bytes to get past where parameters are saved to stack */
+    uint64_t addr = vaddr + g_base_address + 8;
+    output_normal(CAT_BREAKPOINT, "Function '%s' resolved to 0x%lx (vaddr: 0x%lx + base: 0x%lx + prologue_skip: 8)\n",
                   spec, addr, vaddr, g_base_address);
     return cmd_breakpoint_set_addr(addr);
 }
@@ -882,12 +885,30 @@ static int run_interactive(void) {
                 break;
 
             case CMD_WATCHPOINT_ADDR: {
-                /* Add base address for PIE if address looks like vaddr (< 1GB usually means vaddr) */
+                /* Check if it's a variable name or an address */
                 uint64_t addr = cmd.addr_arg;
-                if (addr < 0x40000000) {  /* If < 1GB, assume vaddr */
-                    addr += g_base_address;
-                    output_normal(CAT_PROCESS, "Watchpoint address adjusted: 0x%lx + 0x%lx = 0x%lx\n",
-                                 cmd.addr_arg, g_base_address, addr);
+                if (cmd.string_arg) {
+                    /* Variable name - look it up */
+                    if (!g_variables_loaded && g_program_path) {
+                        if (variables_load(g_program_path) == 0) {
+                            g_variables_loaded = 1;
+                        }
+                    }
+
+                    if (variables_get_address(g_child_pid, cmd.string_arg, &addr) == 0) {
+                        output_normal(CAT_PROCESS, "Watchpoint on variable '%s' at 0x%lx\n",
+                                     cmd.string_arg, addr);
+                    } else {
+                        output_error("Cannot find variable '%s'", cmd.string_arg);
+                        break;
+                    }
+                } else {
+                    /* Raw address - add base address for PIE if needed */
+                    if (addr < 0x40000000) {  /* If < 1GB, assume vaddr */
+                        addr += g_base_address;
+                        output_normal(CAT_PROCESS, "Watchpoint address adjusted: 0x%lx + 0x%lx = 0x%lx\n",
+                                     cmd.addr_arg, g_base_address, addr);
+                    }
                 }
                 cmd_watchpoint_add(addr, cmd.int_arg, cmd.value_arg);
                 break;
@@ -1041,6 +1062,9 @@ int main(int argc, char **argv) {
 
     /* Get runtime base address */
     g_base_address = get_base_address(g_child_pid);
+
+    /* Set base address for variables module (for PIE binaries) */
+    variables_set_base_address(g_base_address);
 
 #ifdef HAVE_LIBUNWIND
     /* Initialize libunwind */

@@ -31,6 +31,7 @@ typedef struct {
     var_info_t *vars;
     int num_vars;
     int max_vars;
+    uint64_t base_address;  /* Base address for PIE binaries */
 } variables_state_t;
 
 #define MAX_VARS 1000
@@ -59,7 +60,13 @@ static void free_die_chain(Dwarf_Debug dbg, Dwarf_Die die) {
 }
 
 int variables_load(const char *program_path) {
+    /* Save the base address before resetting */
+    uint64_t saved_base = g_var_state.base_address;
+
     memset(&g_var_state, 0, sizeof(g_var_state));
+
+    /* Restore the base address */
+    g_var_state.base_address = saved_base;
 
     g_var_state.vars = calloc(MAX_VARS, sizeof(var_info_t));
     if (!g_var_state.vars) {
@@ -226,6 +233,11 @@ void variables_free(void) {
     }
     g_var_state.num_vars = 0;
     g_var_state.initialized = 0;
+    g_var_state.base_address = 0;
+}
+
+void variables_set_base_address(uint64_t base_addr) {
+    g_var_state.base_address = base_addr;
 }
 
 static int count_asterisks(const char *expr) {
@@ -320,33 +332,66 @@ int variables_eval_expression(pid_t pid, const char *expr, uint64_t *result, int
         end--;
     }
 
-    /* Look up variable */
+    /* Look up variable - find in current function scope */
+    /* First, get current RIP to determine which function we're in */
+    struct user_regs_struct regs;
+    if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) < 0) {
+        output_error("Failed to get registers\n");
+        return -1;
+    }
+
+    /* Variables are stored grouped by function in the order they were parsed */
+    /* We'll prefer the last occurrence of a variable name (most likely in the current function) */
+    /* This is a heuristic - a better solution would store function context with each variable */
     const var_info_t *var = NULL;
-    for (int i = 0; i < g_var_state.num_vars; i++) {
+    int found_index = -1;
+    for (int i = g_var_state.num_vars - 1; i >= 0; i--) {
         if (strcmp(g_var_state.vars[i].name, var_name) == 0) {
-            var = &g_var_state.vars[i];
-            break;
+            /* Prefer local variables over globals (search backwards) */
+            if (!g_var_state.vars[i].is_global) {
+                var = &g_var_state.vars[i];
+                found_index = i;
+                break;
+            } else if (var == NULL) {
+                var = &g_var_state.vars[i];
+                found_index = i;
+            }
         }
     }
 
     if (!var) {
+        output_error("Variable '%s' not found in %d loaded variables\n", var_name, g_var_state.num_vars);
         return -1; /* Variable not found */
     }
 
     if (var->is_global) {
         /* Global variable - use its address */
-        *result = var->location;
+        /* For PIE binaries, the location in DWARF is a virtual address */
+        /* If the address looks like a vaddr (< 0x10000), add base address */
+        uint64_t addr = var->location;
+        if (addr < 0x10000 && g_var_state.base_address != 0) {
+            addr += g_var_state.base_address;
+        }
+        *result = addr;
         return 0;
     } else {
-        /* Local variable - need to get from stack */
-        /* For simplicity, we'll try reading from RBP+offset */
+        /* Local variable - need to get from stack or register */
         struct user_regs_struct regs;
         if (ptrace(PTRACE_GETREGS, pid, NULL, &regs) < 0) {
+            output_error("Failed to get registers\n");
             return -1;
         }
 
+        /* For function parameters, they might still be in registers if prologue hasn't executed */
+        /* Check if the offset suggests it's a parameter (positive offsets are usually parameters) */
+        /* System V AMD64 ABI: first 6 integer/pointer args in RDI, RSI, RDX, RCX, R8, R9 */
+        static const int param_offsets[] = {-40, -48, -56, -64, -72, -80};  /* Typical stack offsets for params 1-6 */
+        static const uint64_t param_regs[] = {/*RDI*/ 0, /*RSI*/ 0, /*RDX*/ 0, /*RCX*/ 0, /*R8*/ 0, /*R9*/ 0};
+        (void)param_regs;  /* TODO: Use register values for parameters */
+
         /* Get address from frame pointer + offset */
-        *result = regs.rbp + var->offset_from_fp;
+        uint64_t addr = regs.rbp + var->offset_from_fp;
+        *result = addr;
         return 0;
     }
 }
