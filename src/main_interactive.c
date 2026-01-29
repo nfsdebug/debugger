@@ -41,8 +41,8 @@
 #include "core/symbols.h"
 #include "core/disasm.h"
 #include "core/watchpoints.h"
-/* DWARF disabled due to libdwarf abort issue */
-/* #include "core/dwarf.h" */
+/* DWARF support for line-based breakpoints */
+#include "core/dwarf.h"
 
 /* Global state */
 static pid_t g_child_pid = -1;
@@ -51,8 +51,7 @@ static breakpoint_state_t g_breakpoints;
 static symbol_table_t g_symbols;
 static wp_state_t g_watchpoints;  /* Hardware watchpoints */
 static char *g_program_path = NULL;  /* Path to target program */
-/* DWARF disabled due to libdwarf abort issue */
-/* static dwarf_state_t g_dwarf; */
+static dwarf_state_t g_dwarf;
 static uint64_t g_base_address = 0;  /* Runtime base address */
 static int g_at_breakpoint = 0;
 static int g_current_bp_index = -1;
@@ -450,19 +449,72 @@ static int cmd_breakpoint_set_current(void) {
     return cmd_breakpoint_set_addr(regs.rip);
 }
 
-static int cmd_breakpoint_set_func(const char *func_spec) {
-    /* Check for "function:line" format - DWARF disabled, show error */
-    char *colon = strchr(func_spec, ':');
+static int cmd_breakpoint_set_func(const char *spec) {
+    /* Check for "file:line" or "function:line" format */
+    char *colon = strchr(spec, ':');
     if (colon) {
-        output_error("Line number breakpoints (func:line) require DWARF support (currently disabled)");
-        output_error("Use address breakpoints instead: disassemble target to find address");
-        return -1;
+        /* Split on colon */
+        char *before = strndup(spec, colon - spec);
+        char *after = colon + 1;
+        int line = atoi(after);
+
+        if (line <= 0) {
+            output_error("Invalid line number: %s", after);
+            free(before);
+            return -1;
+        }
+
+        /* Check if it's a file:line or function:line by checking if 'before' exists in symbols */
+        uint64_t func_addr = symbols_find_address(&g_symbols, before);
+        if (func_addr != 0) {
+            /* It's a function:line - use DWARF to find the line address within the function */
+            if (!g_dwarf.initialized) {
+                output_error("DWARF not initialized - compile target with -g");
+                free(before);
+                return -1;
+            }
+
+            /* Try to find source file for this function */
+            const source_location_t *loc = dwarf_addr_to_line(&g_dwarf, func_addr + g_base_address);
+            if (loc) {
+                /* Found source file, now find the specific line */
+                uint64_t line_addr = dwarf_line_to_addr(&g_dwarf, loc->file, line);
+                if (line_addr != 0) {
+                    output_normal(CAT_BREAKPOINT, "Line %s:%d resolved to 0x%lx\n", before, line, line_addr);
+                    free(before);
+                    return cmd_breakpoint_set_addr(line_addr);
+                }
+            }
+
+            output_error("Cannot find line %d in function %s", line, before);
+            free(before);
+            return -1;
+        } else {
+            /* It's a file:line */
+            if (!g_dwarf.initialized) {
+                output_error("DWARF not initialized - compile target with -g");
+                free(before);
+                return -1;
+            }
+
+            uint64_t line_addr = dwarf_line_to_addr(&g_dwarf, before, line);
+            if (line_addr == 0) {
+                output_error("Cannot find %s:%d in debug info", before, line);
+                output_normal(CAT_PROCESS, "Tip: Use 'list %s' to see available lines\n", before);
+                free(before);
+                return -1;
+            }
+
+            output_normal(CAT_BREAKPOINT, "Line %s:%d resolved to 0x%lx\n", before, line, line_addr);
+            free(before);
+            return cmd_breakpoint_set_addr(line_addr);
+        }
     }
 
     /* Just function name - use symbol table */
-    uint64_t vaddr = symbols_find_address(&g_symbols, func_spec);
+    uint64_t vaddr = symbols_find_address(&g_symbols, spec);
     if (vaddr == 0) {
-        output_error("Function not found: %s", func_spec);
+        output_error("Function not found: %s", spec);
         output_normal(CAT_PROCESS, "Tip: Use 'info functions' to list available functions\n");
         return -1;
     }
@@ -470,7 +522,7 @@ static int cmd_breakpoint_set_func(const char *func_spec) {
     /* Adjust to runtime address */
     uint64_t addr = vaddr + g_base_address;
     output_normal(CAT_BREAKPOINT, "Function '%s' resolved to 0x%lx (vaddr: 0x%lx + base: 0x%lx)\n",
-                  func_spec, addr, vaddr, g_base_address);
+                  spec, addr, vaddr, g_base_address);
     return cmd_breakpoint_set_addr(addr);
 }
 
@@ -971,10 +1023,9 @@ int main(int argc, char **argv) {
     }
 
     /* Initialize DWARF from program */
-    // TODO: Fix libdwarf abort() issue - temporarily disabled
-    // if (dwarf_load(&g_dwarf, argv[1]) < 0) {
-    //     output_error("No DWARF info - compile with -g for source-level debugging\n");
-    // }
+    if (dwarf_load(&g_dwarf, argv[1]) < 0) {
+        output_error("No DWARF info - compile with -g for source-level debugging\n");
+    }
 
     /* Print process info */
     section_print_separator(60);
@@ -989,7 +1040,7 @@ int main(int argc, char **argv) {
     run_interactive();
 
     /* Cleanup */
-    /* dwarf_free(&g_dwarf); DWARF disabled */
+    dwarf_free(&g_dwarf);
     symbols_cleanup(&g_symbols);
     breakpoints_cleanup(&g_breakpoints, g_child_pid);
     wp_cleanup(&g_watchpoints);

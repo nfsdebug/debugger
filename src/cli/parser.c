@@ -205,7 +205,7 @@ int parser_parse_command(const char *input, command_t *cmd) {
                 free(copy);
                 return 0;
             }
-            /* Check if it's a hex address (starts with 0x) or a function name */
+            /* Check if it's a hex address (starts with 0x) or a function name/file:line spec */
             if (strncmp(subcmd, "0x", 2) == 0) {
                 /* Hex address */
                 cmd->addr_arg = strtoll(subcmd, NULL, 0);
@@ -213,9 +213,9 @@ int parser_parse_command(const char *input, command_t *cmd) {
                 free(copy);
                 return 0;
             } else {
-                /* Function name */
+                /* Function name or file:line spec - don't lowercase, preserve case for filenames */
                 cmd->type = CMD_BREAKPOINT_FUNC;
-                cmd->string_arg = strdup(subcmd);
+                cmd->string_arg = strdup(subcmd);  /* Use original case for filenames */
                 free(subcmd);
                 free(copy);
                 return 0;
