@@ -1,5 +1,9 @@
-# Compiled binaries
+# Compiled object files (root directory)
 *.o
+*.a
+*.so
+
+# Compiled binaries and executables
 *.out
 *.bin
 debug
@@ -11,13 +15,19 @@ multifunction
 new_tty
 write_on_new_tty
 
-# Target directory
+# Target directory (all build artifacts)
 target/
 
-# Libraries and temporary build files
-*.a
-*.so
-utilities.o
+# Build directories
+build/
+cmake-build-*
+build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.cmake
 
 # NCurses tarballs
 *.tar.gz
@@ -30,6 +40,7 @@ utilities.o
 .vscode/
 .idea/
 *.sublime-*
+*.bak
 
 # Debug and history files
 history.txt
@@ -41,3 +52,11 @@ Thumbs.db
 
 # Plan files (internal documentation)
 PLAN_*.md
+
+# Temporary and test files
+BACKTRACE_FIX_REPORT.md
+test_backtrace_complete.sh
+*.tmp
+
+# Test binaries directories
+tests/binaries/
