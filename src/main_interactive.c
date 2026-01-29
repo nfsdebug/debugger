@@ -41,6 +41,7 @@
 #include "core/symbols.h"
 #include "core/disasm.h"
 #include "core/watchpoints.h"
+#include "core/variables.h"
 /* DWARF support for line-based breakpoints */
 #include "core/dwarf.h"
 
@@ -55,6 +56,7 @@ static dwarf_state_t g_dwarf;
 static uint64_t g_base_address = 0;  /* Runtime base address */
 static int g_at_breakpoint = 0;
 static int g_current_bp_index = -1;
+static int g_variables_loaded = 0;  /* Whether DWARF variables are loaded */
 
 #ifdef HAVE_LIBUNWIND
 static unw_addr_space_t g_as;
@@ -686,6 +688,44 @@ static int cmd_disas(uint64_t addr, int before, int after) {
     return result;
 }
 
+/* === PRINT COMMAND === */
+
+static int cmd_print(const char *expr) {
+    if (!expr || strlen(expr) == 0) {
+        output_error("Usage: print <expression>");
+        output_normal(CAT_PROCESS, "  Examples: print x, print *ptr, print **ptr\n");
+        return -1;
+    }
+
+    /* Load variables if not already loaded */
+    if (!g_variables_loaded && g_program_path) {
+        if (variables_load(g_program_path) == 0) {
+            g_variables_loaded = 1;
+        }
+    }
+
+    /* Try to get the address of the expression */
+    uint64_t addr = 0;
+    if (variables_get_address(g_child_pid, expr, &addr) < 0) {
+        output_error("Cannot evaluate expression: %s", expr);
+        output_normal(CAT_PROCESS, "  Tip: Variable may not be in scope or not compiled with -g\n");
+        return -1;
+    }
+
+    /* Read the value at that address */
+    uint64_t value = 0;
+    if (variables_read_value(g_child_pid, addr, &value, sizeof(value)) < 0) {
+        output_error("Cannot read memory at 0x%lx", addr);
+        return -1;
+    }
+
+    /* Print the result */
+    output_normal(CAT_PROCESS, "%s = ", expr);
+    variables_print_value(value, NULL);
+
+    return 0;
+}
+
 /* === STEP OVER === */
 
 static int cmd_step_over(void) {
@@ -883,6 +923,12 @@ static int run_interactive(void) {
                 cmd_backtrace();
                 break;
 
+            case CMD_PRINT:
+                if (cmd.string_arg) {
+                    cmd_print(cmd.string_arg);
+                }
+                break;
+
             case CMD_LIST_SOURCE:
                 {
                     int line = (cmd.int_arg > 0) ? cmd.int_arg : 1;
@@ -1044,6 +1090,7 @@ int main(int argc, char **argv) {
     symbols_cleanup(&g_symbols);
     breakpoints_cleanup(&g_breakpoints, g_child_pid);
     wp_cleanup(&g_watchpoints);
+    variables_free();
 #ifdef HAVE_LIBUNWIND
     if (g_ui) _UPT_destroy(g_ui);
     if (g_as) unw_destroy_addr_space(g_as);

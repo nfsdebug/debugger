@@ -37,8 +37,10 @@ static const struct {
     {"disassemble", CMD_DISASM},
     {"set", CMD_SET_OUTPUT},
     {"filter", CMD_FILTER},
+    {"print", CMD_PRINT},
     /* Short aliases */
     {"c", CMD_CONTINUE},
+    {"p", CMD_PRINT},
     {"s", CMD_SINGLE_STEP},
     {"n", CMD_STEP_OVER},
     {"r", CMD_REGISTER_DUMP},
@@ -457,6 +459,25 @@ int parser_parse_command(const char *input, command_t *cmd) {
             break;
         }
 
+        case CMD_PRINT: {
+            /* Get the rest of the line as the expression */
+            char *expr = strtok(NULL, "");
+            if (expr) {
+                /* Trim leading whitespace */
+                while (*expr == ' ' || *expr == '\t') {
+                    expr++;
+                }
+                /* Trim trailing whitespace/newline */
+                char *end = expr + strlen(expr) - 1;
+                while (end > expr && (*end == ' ' || *end == '\t' || *end == '\n')) {
+                    *end = '\0';
+                    end--;
+                }
+                cmd->string_arg = strdup(expr);
+            }
+            break;
+        }
+
         case CMD_FILTER: {
             /* Parse comma-separated filter list */
             char *filter_str = strtok(NULL, " \t\n");
@@ -524,6 +545,7 @@ const char* command_type_name(command_type_t type) {
         case CMD_SET_OUTPUT:      return "set output";
         case CMD_SET_EXPAND:      return "set expand";
         case CMD_FILTER:          return "filter";
+        case CMD_PRINT:           return "print";
         case CMD_HELP:            return "help";
         case CMD_QUIT:            return "quit";
         default:                  return "unknown";
@@ -563,6 +585,7 @@ void parser_print_usage(void) {
     printf("  register dump, r      Dump all registers\n");
     printf("  register read <reg>   Read a register (e.g., rax, rip)\n");
     printf("  memory read <addr>    Read memory at address\n");
+    printf("  print <expr>, p <expr> Print variable/expression (e.g., print x, print *ptr)\n");
     printf("\n");
 
     /* Breakpoints */

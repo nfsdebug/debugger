@@ -40,6 +40,7 @@ typedef enum {
     CMD_SET_OUTPUT,
     CMD_SET_EXPAND,
     CMD_FILTER,
+    CMD_PRINT,             /* New: print variable */
     CMD_HELP,
     CMD_QUIT,
     CMD_UNKNOWN
