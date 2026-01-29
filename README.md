@@ -1,32 +1,81 @@
+# NDB Debugger
 
-**Disclaimer** : This repository is an experimental project consisting of various branches that have not been merged into the main branch (main). Each branch may explore different features or alternative approaches. Some branches may be incomplete, untested, or unstable. Use this code at your own risk.
+**Disclaimer**: This is an experimental debugger project. Use at your own risk.
 
-This is an experimental tool for debugging purposes. The application uses ptrace to get the child process information. The Dwarf and the Unwind libraries allows it to obtain additional information on the tracked byte code execution. There are two platforms :
+## Overview
 
- - the first one is the console version of the debugger. It is the most advanced tool of both ;
- - the second one use the NCurses API to improve readability and carries the implementation from the first console version. This version is unstable at the moment, but is going to be improved soon. This could be the version
-used for the future demonstration. Here is a screenshot of the application :
+NDB is a CLI debugger for Linux x86-64 using `ptrace`, `libdwarf`, and `libunwind`.
 
-![ndb_picture](https://user-images.githubusercontent.com/30315405/159188426-1f9c0234-8a4f-4555-a5fb-3116c30f5263.png)
+## Quick Start
 
-Hence, there are two versions of the project. We decided to separate into two branchs the project until the NCurses version is stable.
+```bash
+# Build
+make
 
-Here is the protocol for the installation :
+# Run
+./target/main_interactive ./your_program
+```
 
- - The terminal version required to launch `make`. The tool is launched with the command `./debug YourApp`;
- - The NCurses version is started with the command `bash configure.sh`. This will install  the thread-safe NCurses version, and to install the lib_vec tool from @dss_gabriel. You need to install `libdwarf-dev` and `libunwind-ptrace`  as well. Hence, the application is started with `target/interface`.  Go to the `target` directory, then execute the interface with `./interface`.The Help panel show you how to use the tool. You can enter, for example, `exec ./test`. Note that you should load the vec library with the command `export LD_LIBRARY_PATH=/home/YourUserName/debugger/ext/vec`.
+## Features
 
-Here are some implemented functionalities :
- - sighandler, which can know on what signal the traced program failed ;
- - loaded lib viewer and the associated ranges ;
- - backtrack viewer ;
- - breakpoint ;
- - DWARF knowledge ;
- - registers viewer ;
- - etc
+- **Breakpoints**: Set, list, enable, disable, delete breakpoints at functions or addresses
+- **Watchpoints**: Monitor memory addresses for changes
+- **Stepping**: Step into/over instructions, continue execution
+- **Disassembly**: Disassemble functions with configurable context
+- **Registers**: Dump and read CPU registers
+- **Memory**: Read memory at addresses
+- **Backtrace**: View call stack
+- **Symbols**: List functions, resolve addresses to symbols
 
+## Building
 
-Note : The NCurses tool is experimental, and its behavior depends on the platform you use.
+**Dependencies:**
+```bash
+# Ubuntu/Debian
+sudo apt install libdwarf-dev libunwind-dev libunwind-ptrace-dev libreadline-dev
+```
 
+**Compile:**
+```bash
+make
+```
 
+## Testing
 
+```bash
+make test          # Run all tests (34 tests)
+make test-basic
+make test-breakpoints
+make test-step
+make test-watchpoints
+make test-registers
+make test-disas
+```
+
+## Documentation
+
+- [Test Suite](tests/README.md) - Automated testing overview
+- [Command Reference](docs/commands.md) - All debugger commands *(coming soon)*
+- [Architecture](docs/architecture.md) - Project structure *(coming soon)*
+
+## Project Structure
+
+```
+src/
+├── main_interactive.c   # Main CLI entry point
+├── core/                 # Core debugging functionality
+│   ├── breakpoints.c     # Breakpoint management
+│   ├── disasm.c          # Disassembly engine
+│   ├── symbols.c         # Symbol resolution
+│   └── watchpoints.c     # Watchpoint support
+├── cli/                  # Command-line interface
+│   ├── parser.c          # Command parsing
+│   └── readline.c        # Readline integration
+└── display/              # Output formatting
+    ├── output.c
+    └── theme.c
+```
+
+## License
+
+See LICENSE file.
