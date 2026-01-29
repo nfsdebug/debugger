@@ -40,6 +40,16 @@ build_test_programs() {
         gcc -g -O0 -o "$TEST_BIN_DIR/test_complex" "$SCRIPT_DIR/programs/test_complex.c" -lpthread
     fi
 
+    # Signal handling tests
+    if [ -f "$SCRIPT_DIR/programs/test_signals.c" ]; then
+        gcc -g -O0 -o "$TEST_BIN_DIR/test_signals" "$SCRIPT_DIR/programs/test_signals.c"
+    fi
+
+    # Threading tests
+    if [ -f "$SCRIPT_DIR/programs/test_threads.c" ]; then
+        gcc -g -O0 -o "$TEST_BIN_DIR/test_threads" "$SCRIPT_DIR/programs/test_threads.c" -lpthread
+    fi
+
     echo "Test programs built successfully"
 }
 
