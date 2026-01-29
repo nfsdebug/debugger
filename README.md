@@ -33,6 +33,12 @@ make
 sudo apt install libdwarf-dev libunwind-dev libunwind-ptrace-dev libreadline-dev
 ```
 
+**Required for backtrace feature:**
+- `libunwind-dev` - Core unwinding library
+- `libunwind-ptrace-dev` - ptrace integration for unwinding traced processes
+
+The backtrace feature will be disabled at compile time if these libraries are not available.
+
 **Compile:**
 ```bash
 make

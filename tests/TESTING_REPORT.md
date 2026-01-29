@@ -5,6 +5,8 @@
 **NDB Version:** be7432e (Update README.md)
 **Test Platform:** Linux 6.14.0-37-generic
 
+**UPDATE (2026-01-29):** The backtrace feature has been fixed! See Section 5.1 Issue #1 for details.
+
 ---
 
 ## Executive Summary
@@ -253,18 +255,19 @@ This report documents comprehensive testing of the NDB debugger on complex, real
 
 ### 5.1 Critical Issues
 
-#### Issue #1: Backtrace Feature Broken
-**Status:** Critical
+#### Issue #1: Backtrace Feature Broken - FIXED ✓
+**Status:** RESOLVED
 **Component:** libunwind integration
-**Description:** Backtrace feature not available due to missing libunwind-ptrace
+**Description:** Backtrace feature not available due to missing compile-time flag
 **Error Message:**
 ```
 [ERROR] Backtrace not available (libunwind-ptrace not installed)
 [ERROR] Install: sudo apt install libunwind-dev
 ```
-**Note:** libunwind-dev is installed, but libunwind-ptrace may not be available in the repository
-**Workaround:** None currently
-**Priority:** High - core debugging feature
+**Root Cause:** The makefile was not defining `-DHAVE_LIBUNWIND` during compilation, causing all libunwind code to be excluded even though the libraries were linked.
+**Fix Applied:** Added `-DHAVE_LIBUNWIND` to the main_interactive compilation rule in makefile
+**Verification:** Backtrace now shows full call stack with function names and offsets
+**Priority:** High - core debugging feature (RESOLVED)
 
 #### Issue #2: Watchpoints Not Implemented
 **Status:** Critical
@@ -384,10 +387,10 @@ The mini-calculator was chosen because it:
 
 ### 7.1 Immediate Actions (High Priority)
 
-1. **Fix Backtrace Feature**
-   - Investigate libunwind-ptrace availability
-   - Add fallback backtrace implementation
-   - Document requirements clearly
+1. **Fix Backtrace Feature** ✓ COMPLETED
+   - Added `-DHAVE_LIBUNWIND` to makefile compilation flags
+   - Verified backtrace shows full call stack with function names
+   - Documented libunwind-ptrace dependency in README
 
 2. **Implement Watchpoints**
    - Add `watch` command to parser

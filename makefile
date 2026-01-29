@@ -16,7 +16,7 @@ $(TARGET)/debug_console : $(SRC)/debug_console.c $(SRC)/utilities.c
 	gcc -Wall -Wextra -g $(SRC)/debug_console.c $(TARGET)/utilities.o -o $@ -ldwarf -lunwind -lunwind-ptrace -lunwind-generic
 
 $(TARGET)/main_interactive : $(SRC)/main_interactive.c $(SRC)/core/breakpoints.c $(SRC)/core/symbols.c $(SRC)/core/disasm.c $(SRC)/core/watchpoints.c $(SRC)/display/output.c $(SRC)/display/sections.c $(SRC)/display/theme.c $(SRC)/cli/config.c $(SRC)/cli/parser.c $(SRC)/cli/readline.c
-	gcc -Wall -Wextra -g -I$(SRC) -I$(SRC)/core -I$(SRC)/display -I$(SRC)/cli $(SRC)/main_interactive.c $(SRC)/core/breakpoints.c $(SRC)/core/symbols.c $(SRC)/core/disasm.c $(SRC)/core/watchpoints.c $(SRC)/display/output.c $(SRC)/display/sections.c $(SRC)/display/theme.c $(SRC)/cli/config.c $(SRC)/cli/parser.c $(SRC)/cli/readline.c -o $@ -lunwind -lunwind-ptrace -lunwind-generic -lreadline
+	gcc -Wall -Wextra -g -DHAVE_LIBUNWIND -I$(SRC) -I$(SRC)/core -I$(SRC)/display -I$(SRC)/cli $(SRC)/main_interactive.c $(SRC)/core/breakpoints.c $(SRC)/core/symbols.c $(SRC)/core/disasm.c $(SRC)/core/watchpoints.c $(SRC)/display/output.c $(SRC)/display/sections.c $(SRC)/display/theme.c $(SRC)/cli/config.c $(SRC)/cli/parser.c $(SRC)/cli/readline.c -o $@ -lunwind -lunwind-ptrace -lunwind-generic -lreadline
 
 $(TARGET)/test_process :  $(EXP)/test_process.c
 	gcc -L./$(VEC) -Wl,-rpath=./$(VEC) $< -o $@ -lvec
