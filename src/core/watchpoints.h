@@ -48,12 +48,12 @@ int wp_remove(wp_state_t *state, int index);
 int wp_enable(wp_state_t *state, int index, int enable);
 
 /* List all watchpoints */
-void wp_list(wp_state_t *state);
+void wp_list(const wp_state_t *state);
 
 /* Check if a watchpoint was hit */
-int wp_check_hit(wp_state_t *state);
+int wp_check_hit(const wp_state_t *state);
 
 /* Debug function to print DR7 status */
-void wp_debug_status(wp_state_t *state);
+void wp_debug_status(const wp_state_t *state);
 
 #endif /* WATCHPOINTS_H */

@@ -31,12 +31,12 @@ int symbols_init(symbol_table_t *table, const char *program_path);
 void symbols_cleanup(symbol_table_t *table);
 
 /* Find symbol by name */
-uint64_t symbols_find_address(symbol_table_t *table, const char *name);
+uint64_t symbols_find_address(const symbol_table_t *table, const char *name);
 
 /* Find symbol name by address (reverse lookup) */
-const char* symbols_find_name(symbol_table_t *table, uint64_t addr);
+const char* symbols_find_name(const symbol_table_t *table, uint64_t addr);
 
 /* List all functions */
-void symbols_list_functions(symbol_table_t *table);
+void symbols_list_functions(const symbol_table_t *table);
 
 #endif /* SYMBOLS_H */

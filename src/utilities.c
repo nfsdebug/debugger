@@ -36,7 +36,7 @@ struct variable_s *var;
 int count_var = 0;
 char *namesrc ;
 
-long int set_register(char *choice, pid_t child_pid, long long content)
+long int set_register(const char *choice, pid_t child_pid, long long content)
 {
     struct user_regs_struct reg;
     ptrace(PTRACE_GETREGS, child_pid, NULL, &reg);
@@ -156,7 +156,7 @@ long int set_register(char *choice, pid_t child_pid, long long content)
     ptrace(PTRACE_SETREGS, child_pid, NULL, &reg);
     return 0;
 }
-void get_dbg(char *name)
+void get_dbg(const char *name)
 {
     func = malloc(sizeof(struct functions_s) * MAX_FUNCTIONS);
     var = malloc(sizeof(struct variable_s) * MAX_FUNCTIONS);
@@ -245,7 +245,7 @@ void get_dbg(char *name)
 
 void dwarf_get_info(Dwarf_Debug dbg, Dwarf_Die in_die,
                     int is_info, int in_level,
-                    char *name)
+                    const char *name)
 {
 
     int res = DW_DLV_ERROR;
@@ -297,7 +297,7 @@ void dwarf_get_info(Dwarf_Debug dbg, Dwarf_Die in_die,
 
 void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
                int level,
-               char *name)
+               const char *name)
 {
     Dwarf_Error error = 0;
     Dwarf_Error *errp = 0;
@@ -397,7 +397,7 @@ void get_dwarf(Dwarf_Debug dbg, Dwarf_Die die,
     }
 }
 
-void get_elf(char *name)
+void get_elf(const char *name)
 {
     void *start = NULL;
     int i, fd;

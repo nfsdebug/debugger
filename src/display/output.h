@@ -55,7 +55,7 @@ typedef struct {
 } output_config_t;
 
 /* Initialize output system */
-void output_init(output_config_t *config);
+void output_init(const output_config_t *config);
 
 /* Set output level */
 void output_set_level(output_level_t level);

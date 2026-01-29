@@ -54,7 +54,7 @@ int breakpoints_add_addr(breakpoint_state_t *state, void *addr, pid_t pid);
 int breakpoints_remove(breakpoint_state_t *state, int index, pid_t pid);
 
 /* Find breakpoint by address */
-int breakpoints_find_by_addr(breakpoint_state_t *state, uint64_t addr);
+int breakpoints_find_by_addr(const breakpoint_state_t *state, uint64_t addr);
 
 /* Enable/disable breakpoint */
 int breakpoints_enable(breakpoint_state_t *state, int index, pid_t pid, int enable);
@@ -63,10 +63,10 @@ int breakpoints_enable(breakpoint_state_t *state, int index, pid_t pid, int enab
 int breakpoints_hit(breakpoint_state_t *state, int index);
 
 /* List all breakpoints */
-void breakpoints_list(breakpoint_state_t *state);
+void breakpoints_list(const breakpoint_state_t *state);
 
 /* Check if we hit a breakpoint and return the breakpoint index */
-int breakpoints_check_hit(breakpoint_state_t *state, pid_t pid, uint64_t rip);
+int breakpoints_check_hit(const breakpoint_state_t *state, pid_t pid, uint64_t rip);
 
 /* Step past a breakpoint (restore instruction, single step, re-set INT3) */
 int breakpoints_step_past(breakpoint_state_t *state, pid_t pid, int bp_index);

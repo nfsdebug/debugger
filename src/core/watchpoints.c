@@ -222,7 +222,7 @@ int wp_enable(wp_state_t *state, int index, int enable) {
     return update_dr7(state);
 }
 
-void wp_list(wp_state_t *state) {
+void wp_list(const wp_state_t *state) {
     output_normal(CAT_PROCESS, "\n  Watchpoints:\n");
     int found = 0;
 
@@ -248,7 +248,7 @@ void wp_list(wp_state_t *state) {
     }
 }
 
-int wp_check_hit(wp_state_t *state) {
+int wp_check_hit(const wp_state_t *state) {
     /* Read DR6 to see which breakpoint triggered */
     unsigned long dr6 = read_dr(state->pid, 6);
     if (dr6 == 0) {
@@ -270,7 +270,7 @@ int wp_check_hit(wp_state_t *state) {
 }
 
 /* Debug function to print DR7 status */
-void wp_debug_status(wp_state_t *state) {
+void wp_debug_status(const wp_state_t *state) {
     unsigned long dr7 = read_dr(state->pid, 7);
     output_normal(CAT_PROCESS, "DR7 status: 0x%lx\n", dr7);
     for (int i = 0; i < 4; i++) {

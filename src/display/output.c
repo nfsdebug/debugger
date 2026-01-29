@@ -46,7 +46,7 @@ static const char *category_names[] = {
     "PROCESS", "SIGNAL", "BACKTRACE", "REGISTERS", "MEMORY", "BREAKPOINT"
 };
 
-void output_init(output_config_t *config) {
+void output_init(const output_config_t *config) {
     if (config) {
         memcpy(&g_output_config, config, sizeof(g_output_config));
     }

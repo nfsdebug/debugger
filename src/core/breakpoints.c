@@ -175,7 +175,7 @@ int breakpoints_remove(breakpoint_state_t *state, int index, pid_t pid) {
     return 0;
 }
 
-int breakpoints_find_by_addr(breakpoint_state_t *state, uint64_t addr) {
+int breakpoints_find_by_addr(const breakpoint_state_t *state, uint64_t addr) {
     for (int i = 0; i < state->count; i++) {
         if (state->bps[i].actual_address == addr) {
             return i;
@@ -220,7 +220,7 @@ int breakpoints_hit(breakpoint_state_t *state, int index) {
     return state->bps[index].hit_count;
 }
 
-void breakpoints_list(breakpoint_state_t *state) {
+void breakpoints_list(const breakpoint_state_t *state) {
     if (state->count == 0) {
         output_normal(CAT_BREAKPOINT, "No breakpoints set\n");
         return;
@@ -244,7 +244,7 @@ void breakpoints_list(breakpoint_state_t *state) {
 }
 
 /* Check if we hit a breakpoint and return the breakpoint index */
-int breakpoints_check_hit(breakpoint_state_t *state, pid_t pid, uint64_t rip) {
+int breakpoints_check_hit(const breakpoint_state_t *state, pid_t pid, uint64_t rip) {
     (void)pid; /* Unused parameter - kept for API compatibility */
     /* When INT3 is hit, RIP points to the instruction AFTER the INT3 */
     /* We need to check RIP-1 */

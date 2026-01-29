@@ -181,7 +181,7 @@ void symbols_cleanup(symbol_table_t *table) {
     }
 }
 
-uint64_t symbols_find_address(symbol_table_t *table, const char *name) {
+uint64_t symbols_find_address(const symbol_table_t *table, const char *name) {
     if (!table || !name) {
         return 0;
     }
@@ -195,7 +195,7 @@ uint64_t symbols_find_address(symbol_table_t *table, const char *name) {
     return 0;
 }
 
-const char* symbols_find_name(symbol_table_t *table, uint64_t addr) {
+const char* symbols_find_name(const symbol_table_t *table, uint64_t addr) {
     if (!table) {
         return NULL;
     }
@@ -210,7 +210,7 @@ const char* symbols_find_name(symbol_table_t *table, uint64_t addr) {
     return NULL;
 }
 
-void symbols_list_functions(symbol_table_t *table) {
+void symbols_list_functions(const symbol_table_t *table) {
     if (!table || table->count == 0) {
         output_normal(CAT_PROCESS, "No symbols loaded\n");
         return;

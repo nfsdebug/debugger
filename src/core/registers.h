@@ -52,4 +52,7 @@ void register_print(const register_value_t *reg);
 /* Print all registers (formatted) */
 void registers_print(const register_state_t *state);
 
+/* Get register ID by name (const-correct) */
+register_id_t register_get_id(const char *name);
+
 #endif /* REGISTERS_H */
